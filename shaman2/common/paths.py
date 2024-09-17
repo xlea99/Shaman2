@@ -2,18 +2,20 @@ import os
 from pathlib import Path
 import tkinter
 from tkinter import simpledialog, filedialog
-from shaman2.common.config import config
+import tomlkit
 
 # Helper method for testing the validity of a given pathToValidate in different ways.
 def validatePath(pathToValidate: Path,  # The path to actually attempt to validate.
                  subPathsToTest: list = None,  # A list of subpaths to test for RELATIVE to the pathToValidate
-                 readAccess: bool = True, writeAccess: bool = True, execAccess: bool = True,
-                 # Whether to test for certain accessibility
-                 suppressErrors: bool = False  # Whether to suppress errors, and return True/False instead.
+                 readAccess: bool = True, writeAccess: bool = True, execAccess: bool = True, # Whether to test for certain accessibility
+                 suppressErrors: bool = False,  # Whether to suppress errors, and return True/False instead.
+                 createMissing = False # Whether to create a directory/any subdirectories if missing
                  ):
     # Test that the path actually exists
     if (not pathToValidate.exists()):
-        if(suppressErrors):
+        if(createMissing):
+            pathToValidate.mkdir(parents=True,exist_ok=True)
+        elif(suppressErrors):
             return False
         else:
             raise ValueError(f"Path '{pathToValidate}' does not exist!")
@@ -95,12 +97,12 @@ class Paths:
         if(lowerPathname in self.allPaths.keys()):
             return self.allPaths[lowerPathname]["Path"]
     # Method for registering a new path with the given name, path, and options.
-    def add(self,pathname,path,subPathsToTest : list = None,suppressErrors = False):
+    def add(self,pathname,path,subPathsToTest : list = None,suppressErrors = False,createMissing=False):
         if(pathname in self.allPaths.keys()):
             raise ValueError(f"Path name '{pathname}' already exists!")
         if(type(path) is not Path):
             path = Path(path)
-        validatePath(pathToValidate=path,subPathsToTest=subPathsToTest,suppressErrors=suppressErrors)
+        validatePath(pathToValidate=path,subPathsToTest=subPathsToTest,suppressErrors=suppressErrors,createMissing=createMissing)
         self.allPaths[pathname.lower()] = {"Path" : path}
     def __setitem__(self,key,value):
         self.add(pathname=key,path=value)
@@ -113,18 +115,29 @@ thisFilePath = Path(__file__).resolve()
 rootPath = thisFilePath.parent.parent.parent
 paths["root"] = rootPath
 
-# Various top level folder paths
-paths["assets"] = paths["root"] / "config"
-paths["data"] = paths["root"] / "data"
+# Setup bin
 paths["bin"] = paths["root"] / "bin"
-
-# Path to the selenium chromedriver install
 paths["chromedriver"] = paths["bin"] / "chromedriver.exe"
 
-# Data subpaths
-paths["downloads"] = paths["data"] / "downloads"
-paths["logs"] = paths["data"] / "logs"
-paths["config"] = paths["data"] / "config"
+# Setup assets
+paths["assets"] = paths["root"] / "assets"
 
-# Path to snapshots folder
-paths["snapshots"] = paths["logs"] / "snapshots"
+# Setup data folder and subfolders, using setup.toml. Create a new setup.toml if it doesn't exist, defaulting data folder
+# to appdata folder.
+if(os.path.exists(paths["bin"] / "setup.toml")):
+    with open(paths["bin"] / "setup.toml", "r") as f:
+        setupFile = tomlkit.parse(f.read())
+    dataFolderPath = Path(setupFile["dataFolderPath"]).resolve()
+else:
+    newSetupToml = tomlkit.document()
+    dataFolderPath = paths["appData"] / "Shaman2"
+    newSetupToml["dataFolderPath"] = str(dataFolderPath)
+    with open(paths["bin"] / "setup.toml", "w") as newSetupTomlFile:
+        newSetupTomlFile.write(tomlkit.dumps(newSetupToml))
+paths.add(pathname="data",path=dataFolderPath,createMissing=True)
+paths.add(pathname="downloads", path=paths["data"] / "downloads", createMissing=True)
+paths.add(pathname="config", path=paths["data"] / "config", createMissing=True)
+paths.add(pathname="logs", path=paths["data"] / "logs", createMissing=True)
+paths.add(pathname="snapshots", path=paths["logs"] / "snapshots", createMissing=True)
+
+
