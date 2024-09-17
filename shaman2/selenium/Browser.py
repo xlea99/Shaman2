@@ -364,7 +364,6 @@ class Browser(webdriver.Chrome):
     #endregion === Utilities ===
 
 
-
 # A few custom expected condition classes.
 class wait_for_non_stale_element(object):
     def __init__(self, locator):

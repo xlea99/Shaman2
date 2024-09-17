@@ -106,8 +106,6 @@ class Paths:
         self.allPaths[pathname.lower()] = {"Path" : path}
     def __setitem__(self,key,value):
         self.add(pathname=key,path=value)
-
-
 paths = Paths()
 
 # Root path
@@ -122,22 +120,22 @@ paths["chromedriver"] = paths["bin"] / "chromedriver.exe"
 # Setup assets
 paths["assets"] = paths["root"] / "assets"
 
-# Setup data folder and subfolders, using setup.toml. Create a new setup.toml if it doesn't exist, defaulting data folder
-# to appdata folder.
+# Setup workspace folder and subfolders, using setup.toml. Create a new setup.toml if it doesn't exist, defaulting
+# workspace folder to appdata folder.
 if(os.path.exists(paths["bin"] / "setup.toml")):
     with open(paths["bin"] / "setup.toml", "r") as f:
         setupFile = tomlkit.parse(f.read())
-    dataFolderPath = Path(setupFile["dataFolderPath"]).resolve()
+    workspaceFolderPath = Path(setupFile["dataFolderPath"]).resolve()
 else:
     newSetupToml = tomlkit.document()
-    dataFolderPath = paths["appData"] / "Shaman2"
-    newSetupToml["dataFolderPath"] = str(dataFolderPath)
+    workspaceFolderPath = paths["appData"] / "Shaman2"
+    newSetupToml["workspaceFolderPath"] = str(workspaceFolderPath)
     with open(paths["bin"] / "setup.toml", "w") as newSetupTomlFile:
         newSetupTomlFile.write(tomlkit.dumps(newSetupToml))
-paths.add(pathname="data",path=dataFolderPath,createMissing=True)
-paths.add(pathname="downloads", path=paths["data"] / "downloads", createMissing=True)
-paths.add(pathname="config", path=paths["data"] / "config", createMissing=True)
-paths.add(pathname="logs", path=paths["data"] / "logs", createMissing=True)
+paths.add(pathname="workspace",path=workspaceFolderPath,createMissing=True)
+paths.add(pathname="downloads", path=paths["workspace"] / "downloads", createMissing=True)
+paths.add(pathname="config", path=paths["workspace"] / "config", createMissing=True)
+paths.add(pathname="logs", path=paths["workspace"] / "logs", createMissing=True)
 paths.add(pathname="snapshots", path=paths["logs"] / "snapshots", createMissing=True)
 
 
