@@ -114,10 +114,8 @@ rootPath = thisFilePath.parent.parent.parent
 paths["root"] = rootPath
 
 # Various top level folder paths
-paths["config"] = paths["root"] / "config"
 paths["assets"] = paths["root"] / "config"
 paths["data"] = paths["root"] / "data"
-paths["logs"] = paths["root"] / "logs"
 paths["bin"] = paths["root"] / "bin"
 
 # Path to the selenium chromedriver install
@@ -125,6 +123,8 @@ paths["chromedriver"] = paths["bin"] / "chromedriver.exe"
 
 # Data subpaths
 paths["downloads"] = paths["data"] / "downloads"
+paths["logs"] = paths["data"] / "logs"
+paths["config"] = paths["data"] / "config"
 
 # Path to snapshots folder
 paths["snapshots"] = paths["logs"] / "snapshots"
