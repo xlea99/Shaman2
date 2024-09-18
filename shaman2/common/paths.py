@@ -119,13 +119,14 @@ paths["chromedriver"] = paths["bin"] / "chromedriver.exe"
 
 # Setup assets
 paths["assets"] = paths["root"] / "assets"
+paths["media"] = paths["assets"] / "media"
 
 # Setup workspace folder and subfolders, using setup.toml. Create a new setup.toml if it doesn't exist, defaulting
 # workspace folder to appdata folder.
 if(os.path.exists(paths["bin"] / "setup.toml")):
     with open(paths["bin"] / "setup.toml", "r") as f:
         setupFile = tomlkit.parse(f.read())
-    workspaceFolderPath = Path(setupFile["dataFolderPath"]).resolve()
+    workspaceFolderPath = Path(setupFile["workspaceFolderPath"]).resolve()
 else:
     newSetupToml = tomlkit.document()
     workspaceFolderPath = paths["appData"] / "Shaman2"

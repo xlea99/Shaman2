@@ -4,6 +4,7 @@ import os
 original_stdout = sys.stdout
 sys.stdout = open(os.devnull, 'w')
 import pygame
+pygame.mixer.init()
 sys.stdout.close()
 sys.stdout = original_stdout
 

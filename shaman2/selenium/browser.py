@@ -181,6 +181,7 @@ class Browser(webdriver.Chrome):
     # value -   Search term to search for using the method specified by "by" (a literal xpath or CSS selector)
     # element - An existing WebElement to test on. Can't use with by/value
     # timeout - How long to search for, at minimum. Defaults to zero to run exactly one test.
+    # minSearchTime -       Ensures that, even if the test initially passes, it keeps searching for the element until this time has been reached. If the search fails even after first succeeding, the whole search is considered failed.
     # testNotStale -        Tests that the element is not considered "stale"
     # testClickable -       Tests that the element is considered "clickable"
     # testScrolledInView -  Tests that the element is scrolled into view
@@ -188,15 +189,16 @@ class Browser(webdriver.Chrome):
     # raiseError -          Whether to raise an error when the test fails, or simply return "False"
     # singleTestInterval -  How long to perform each single test for, defaulting at 0.2 seconds per test.
     # TODO is this enough to defeat Verizon's weird elements that selenium believes are clickable, but secretly aren't yet?
-    def searchForElement(self,by = None,value : str = None,element : WebElement = None,timeout : float = 0,
+    def searchForElement(self,by = None,value : str = None,element : WebElement = None,timeout : float = 0, minSearchTime : float = 0,
                          testNotStale = True,testClickable = False,testScrolledInView = False,
-                         invertedSearch = False,raiseError = False,singleTestInterval = 0.2):
+                         invertedSearch = False,raiseError = False,singleTestInterval = 0.1):
         # Throw error if both a value and an element are given
         if(value and element):
             error = ValueError("Both a value and an element cannot be specified together in searchForElement.")
             log.error(error)
             raise error
 
+        minTestTime = time.time() + minSearchTime
         endTestTime = time.time() + timeout
         targetElement = element
         searchAttempt = 0
@@ -220,26 +222,38 @@ class Browser(webdriver.Chrome):
                 # If all tests pass, and this is an inverted search, that means the element is still present and we
                 # need to continue testing (if timeout allows)
                 if(invertedSearch):
-                    time.sleep(0.2)
+                    time.sleep(0.1)
+                    continue
                 # If all tests pass, and this is a standard search, return the element
                 else:
-                    return targetElement
+                    # However, as a caveat, if minTestTime hasn't been reached, we ignore success and keep searching.
+                    if(time.time() >= minTestTime):
+                        return targetElement
+                    else:
+                        time.sleep(0.1)
+                        continue
 
             # === TESTS FAIL ===
-            except (selenium.common.exceptions.TimeoutException, selenium.common.exceptions.NoSuchElementException) as e:
+            except Exception as e:
                 # If the tests didn't pass, and this is an inverted search, that means the element is considered to
                 # be lacking from the page, and we're done.
                 if(invertedSearch):
-                    return True
+                    # Again, as a caveat, if minTestTime hasn't been reached, we ignore success and keep searching.
+                    if(time.time() >= minTestTime):
+                        return True
+                    else:
+                        time.sleep(0.1)
+                        continue
                 # If the tests didn't pass, and this is a regular search, that means the element is not yet
                 # considered "found" and we continue testing (if timeout allows)
                 else:
-                    time.sleep(0.2)
+                    time.sleep(0.1)
+                    continue
 
         # If timeout expires without success, return False or raise an error
         if(raiseError):
             if(invertedSearch):
-                error = ValueError(f"InvertedSearched for element, but element persisted on page past timeout.")
+                error = ValueError(f"InvertedSearched for element, but element persisted on page past timeout after {searchAttempt} search attempts.")
                 log.error(error)
                 raise error
             else:
@@ -366,14 +380,14 @@ class Browser(webdriver.Chrome):
 
 # A few custom expected condition classes.
 class wait_for_non_stale_element(object):
-    def __init__(self, locator):
-        self.locator = locator
+    def __init__(self, element):
+        self.element = element
 
     def __call__(self, driver):
         try:
-            element = EC.presence_of_element_located(self.locator)(driver)
-            test = element.text  # Here we ensure the element is not stale by invoking a property on it.
-            return element
+            # Access an attribute of the element to ensure it is not stale.
+            test = self.element.text
+            return self.element  # Return the element if it's not stale.
         except selenium.common.exceptions.StaleElementReferenceException:
             return False
 class wait_for_element_scrolled_in_viewport(object):
@@ -390,5 +404,3 @@ class wait_for_element_scrolled_in_viewport(object):
                 rect.right <= (window.innerWidth || document.documentElement.clientWidth)
             );
         """, self.element)
-
-b = Browser()
