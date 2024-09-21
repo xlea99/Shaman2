@@ -191,7 +191,7 @@ class Browser(webdriver.Chrome):
     # TODO is this enough to defeat Verizon's weird elements that selenium believes are clickable, but secretly aren't yet?
     def searchForElement(self,by = None,value : str = None,element : WebElement = None,timeout : float = 0, minSearchTime : float = 0,
                          testNotStale = True,testClickable = False,testScrolledInView = False,
-                         invertedSearch = False,raiseError = False,singleTestInterval = 0.1):
+                         invertedSearch = False,raiseError = False,singleTestInterval = 0.1,debug=False):
         # Throw error if both a value and an element are given
         if(value and element):
             error = ValueError("Both a value and an element cannot be specified together in searchForElement.")
@@ -200,15 +200,18 @@ class Browser(webdriver.Chrome):
 
         minTestTime = time.time() + minSearchTime
         endTestTime = time.time() + timeout
-        targetElement = element
         searchAttempt = 0
         wait = WebDriverWait(self, singleTestInterval)
         while(searchAttempt < 1 or time.time() < endTestTime):
             searchAttempt += 1
             try:
                 # If element is not provided, test to find it by locator
-                if(not targetElement):
-                    targetElement = wait.until(EC.presence_of_element_located((by, value)))
+                if(not element):
+                    targetElement = self.find_element(by=by,value=value)
+                # If it's an inverted search AND a given element, we simply try to take a sample attribute to ensure
+                # it still exists.
+                elif(element and invertedSearch):
+                    test = element.text
 
                 # Perform various other tests if specified
                 if(testNotStale):
@@ -228,6 +231,8 @@ class Browser(webdriver.Chrome):
                 else:
                     # However, as a caveat, if minTestTime hasn't been reached, we ignore success and keep searching.
                     if(time.time() >= minTestTime):
+                        if(debug):
+                            log.debug(f"Searched successfully for element with {searchAttempt} search attempts.")
                         return targetElement
                     else:
                         time.sleep(0.1)
@@ -240,6 +245,8 @@ class Browser(webdriver.Chrome):
                 if(invertedSearch):
                     # Again, as a caveat, if minTestTime hasn't been reached, we ignore success and keep searching.
                     if(time.time() >= minTestTime):
+                        if(debug):
+                            log.debug(f"InvertedSearched successfully for element with {searchAttempt} search attempts.")
                         return True
                     else:
                         time.sleep(0.1)
@@ -261,6 +268,8 @@ class Browser(webdriver.Chrome):
                 log.error(e)
                 raise e
         else:
+            if(debug):
+                log.debug(f"Failed to successfully{" inverted" if invertedSearch else ""} search for element after {searchAttempt} search attempts.")
             return False
 
     # This advanced element clicker method provides the ability to "soft" or "fuzzy" click on an element that

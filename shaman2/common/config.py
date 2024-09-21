@@ -1,6 +1,10 @@
 import tomlkit
 import os
 from shaman2.common.paths import paths
+from shaman2.common.logger import log
+
+
+#region === Main Config Setup ===
 
 mainConfigPath = paths["config"] / "main.toml"
 if(os.path.exists(mainConfigPath)):
@@ -46,3 +50,21 @@ else:
     with open(mainConfigPath, "r") as f:
         mainConfig = tomlkit.parse(f.read())
 
+#endregion === Main Config Setup ===
+
+#region === Clients Config Setup ===
+
+clientConfigPath = paths["config"] / "clients.toml"
+if(os.path.exists(clientConfigPath)):
+    with open(clientConfigPath, "r") as f:
+        clientConfig = tomlkit.parse(f.read())
+else:
+    newClientConfigToml = tomlkit.document()
+    with open(clientConfigPath, "w") as newMainConfigTomlFile:
+        newMainConfigTomlFile.write(tomlkit.dumps(newClientConfigToml))
+
+    error = ValueError("client.toml file did not exist. File created, but needs to be filled with at least one client info before proceeding.")
+    log.error(error)
+    raise error
+
+#endregion === Clients Config Setup ===
