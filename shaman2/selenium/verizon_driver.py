@@ -157,8 +157,6 @@ class VerizonDriver:
             viewOrdersHeaderXPath = "//div[contains(@class,'view-orders-conatiner')]//h2[contains(text(),'Orders')]"
             self.browser.searchForElement(by=By.XPATH,value=viewOrdersHeaderXPath,timeout=120,
                                           testClickable=True,testLiteralClick=True)
-            #self.OrderViewer_WaitForLoadingScreen()
-            print("DONE")
 
     #endregion === Site Navigation ===
 
@@ -167,159 +165,77 @@ class VerizonDriver:
     # This method reads the entire displayed order and converts it into a formatted Python
     # dictionary. readUnloadingOrder is a special method for when Verizon orders show up but won't load
     # for unknown reasons, so that it still returns something.
-    def OrderViewer_ReadDisplayedOrder(self,readUnloadingOrder=False):
+    def OrderViewer_ReadDisplayedOrder(self):
+        self.browser.switchToTab("Verizon")
         order = {}
 
-        # Header Values
-        headerRowPrefix = "//tbody[@class='p-element p-datatable-tbody']/tr[1]"
-        try:
-            order["OrderNumber"] = self.browser.find_element(by=By.XPATH,value=f"{headerRowPrefix}/td[1]/div",timeout=60).text
-            order["WirelessNumber"] = self.browser.find_element(by=By.XPATH,value=f"{headerRowPrefix}/td[2]/a").text
-            order["OrderDate"] = self.browser.find_element(by=By.XPATH,value=f"{headerRowPrefix}/td[3]/div").text
-            order["ProductSolution"] = self.browser.find_element(by=By.XPATH,value=f"{headerRowPrefix}/td[4]/div").text
-            order["OrderType"] = self.browser.find_element(by=By.XPATH,value=f"{headerRowPrefix}/td[5]/div").text
-            order["Status"] = self.browser.find_element(by=By.XPATH,value=f"{headerRowPrefix}/td[6]/div").text
-        except selenium.common.exceptions.NoSuchElementException as e:
-            if(self.browser.elementExists(by=By.XPATH,value="//div[contains(text(),'No Results Found')]")):
-                b.log.warning("Tried to read a displayed Verizon order, but got 'No Results Found' on the order viewer.")
-                return None
-            else:
-                raise e
+        # Test to prevent "No results found"
+        if(self.browser.searchForElement(by=By.XPATH, value="//div[contains(text(),'No Results Found')]",timeout=1)):
+            log.warning("Tried to read a displayed Verizon order, but got 'No Results Found' on the order viewer.")
+            return None
 
-        try:
-            # Body Values
-            aceLocNumber = self.browser.find_element(by=By.XPATH, value="//div[text()='Ace/Loc Order number']/following-sibling::div",timeout=30).text
-            aceLocMatch = re.search(r"Order #: (\d+) Loc: (\w+)",aceLocNumber)
+        # Header Values
+        headerRowPrefixXPath = "//tbody[@class='p-element p-datatable-tbody']/tr[1]"
+        order["OrderNumber"] = self.browser.searchForElement(by=By.XPATH,value=f"{headerRowPrefixXPath}/td[1]/div",timeout=60).text
+        order["WirelessNumber"] = self.browser.searchForElement(by=By.XPATH,value=f"{headerRowPrefixXPath}/td[2]/a").text
+        order["OrderDate"] = self.browser.searchForElement(by=By.XPATH,value=f"{headerRowPrefixXPath}/td[3]/div").text
+        order["ProductSolution"] = self.browser.searchForElement(by=By.XPATH,value=f"{headerRowPrefixXPath}/td[4]/div").text
+        order["OrderType"] = self.browser.searchForElement(by=By.XPATH,value=f"{headerRowPrefixXPath}/td[5]/div").text
+        order["Status"] = self.browser.searchForElement(by=By.XPATH,value=f"{headerRowPrefixXPath}/td[6]/div").text
+
+
+        #region === Body Values ===
+        # Since these values may not yet exist if the order is not completed, we catch any NoSuchElementExceptions and
+        # store a None value instead.
+        bodyValueTimeout = 30
+
+        # Ace Order Number/Loc Code
+        aceLocNumberField = self.browser.searchForElement(by=By.XPATH,value="//div[text()='Ace/Loc Order number']/following-sibling::div",timeout=bodyValueTimeout)
+        if(aceLocNumberField):
+            aceLocMatch = re.search(r"Order #: (\d+) Loc: (\w+)", aceLocNumberField.text)
             order["AceOrderNumber"] = aceLocMatch.group(1)
             order["AceLocationNumber"] = aceLocMatch.group(2)
-            # Since these values may not yet exist if the order is not completed, we catch any NoSuchElementExceptions and
-            # store a None value instead.
-            try:
-                order["ShipDate"] = self.browser.find_element(by=By.XPATH, value="//div[text()='Ship Date']/following-sibling::div").text
-            except selenium.common.exceptions.NoSuchElementException:
-                order["ShipDate"] = None
-            order["ShipTo"] = self.browser.find_element(by=By.XPATH, value="//div[text()='Ship To']/following-sibling::div/address").text
-            try:
-                order["Courier"] = self.browser.find_element(by=By.XPATH, value="//div[text()='Courier']/following-sibling::div").text
-            except selenium.common.exceptions.NoSuchElementException:
-                order["Courier"] = None
-            try:
-                order["TrackingNumber"] = self.browser.find_element(by=By.XPATH, value="//div[text()='Tracking Number']/following-sibling::div/a").text
-            except selenium.common.exceptions.NoSuchElementException:
-                order["TrackingNumber"] = None
+        else:
+            order["AceOrderNumber"] = None
+            order["AceLocationNumber"] = None
+            # We lower bodyValueTimeout, as this likely means the order isn't loading due to Verizon's ingenuinity
+            bodyValueTimeout = 2
 
-            #TODO Temp disabled. Not really used for anything.
-            '''
-            # Package Details
-            packageDetailsButton = self.browser.find_element(by=By.XPATH,value="//button[contains(text(),'Package Details')]",timeout=10)
-            packageDetailsButton.click()
-            packageDetailsHeader = "//div/div/ul/"
-            packageDetailsDict = {}
-            devicePackageList = self.browser.elementExists(by=By.XPATH,value=f"{packageDetailsHeader}/div/li/div/div[text()='Device']/parent::div")
-            if(devicePackageList):
-                device_count = devicePackageList.find_element(by=By.XPATH,value="./div[contains(@class,'column-2')]").text
-                device_name = devicePackageList.find_element(by=By.XPATH,value="./div[contains(@class,'column-3')]").text
-                device_oneTimeCost = devicePackageList.find_element(by=By.XPATH,value="./div[contains(@class,'column-4')]").text
-                device_recurringCost = devicePackageList.find_element(by=By.XPATH,value="./div[contains(@class,'column-5')]").text
-                packageDetailsDict["Device"] =   {"Count" : int(device_count),
-                                                  "DeviceName" : device_name,
-                                                  "OneTimeCost" : b.fuzzyStringToNumber(device_oneTimeCost),
-                                                  "RecurringCost" : b.fuzzyStringToNumber(device_recurringCost)}
-            planPackageList = self.browser.elementExists(by=By.XPATH,value=f"{packageDetailsHeader}/li/div/div[text()='Plan']/parent::div")
-            if(planPackageList):
-                plan_count = planPackageList.find_element(by=By.XPATH,value="./div[contains(@class,'column-2')]").text
-                plan_name = planPackageList.find_element(by=By.XPATH,value="./div[contains(@class,'column-3')]").text
-                plan_oneTimeCost = planPackageList.find_element(by=By.XPATH,value="./div[contains(@class,'column-4')]").text
-                plan_recurringCost = planPackageList.find_element(by=By.XPATH,value="./div[contains(@class,'column-5')]").text
-                packageDetailsDict["Plan"] =     {"Count" : int(plan_count),
-                                                  "PlanName" : plan_name,
-                                                  "OneTimeCost" : b.fuzzyStringToNumber(plan_oneTimeCost),
-                                                  "RecurringCost" : b.fuzzyStringToNumber(plan_recurringCost)}
-            simPackageList = self.browser.elementExists(by=By.XPATH,value=f"{packageDetailsHeader}/li/div/div[text()='Sim']/parent::div")
-            if(simPackageList):
-                sim_count = simPackageList.find_element(by=By.XPATH,value="./div[contains(@class,'column-2')]").text
-                sim_name = simPackageList.find_element(by=By.XPATH,value="./div[contains(@class,'column-3')]").text
-                sim_oneTimeCost = simPackageList.find_element(by=By.XPATH,value="./div[contains(@class,'column-4')]").text
-                sim_recurringCost = simPackageList.find_element(by=By.XPATH,value="./div[contains(@class,'column-5')]").text
-                packageDetailsDict["Sim"] =      {"Count" : int(sim_count),
-                                                  "SimName" : sim_name,
-                                                  "OneTimeCost" : b.fuzzyStringToNumber(sim_oneTimeCost),
-                                                  "RecurringCost" : b.fuzzyStringToNumber(sim_recurringCost)}
-            #featuresPackageList = self.browser.elementExists(by=By.XPATH,value=f"{packageDetailsHeader}/li/div/div[text()='Features']/parent::div/parent::li")
-            #if(featuresPackageList):
-            #    features_chargeableFeaturesOneTimeCost = featuresPackageList.find_element(by=By.XPATH,value="./div/div[contains(text(),'Chargeable or Selected Features')]/following-sibling::div[contains(@class,'column-4')]").text
-            #    features_chargeableFeaturesRecurringCost = featuresPackageList.find_element(by=By.XPATH,value="./div/div[contains(text(),'Chargeable or Selected Features')]/following-sibling::div[contains(@class,'column-5')]").text
-            #    features_includedFeaturesOneTimeCost = featuresPackageList.find_element(by=By.XPATH,value="./div/div[contains(text(),'Included Features')]/following-sibling::div[contains(@class,'column-4')]").text
-            #    features_includedFeaturesRecurringCost = featuresPackageList.find_element(by=By.XPATH,value="./div/div[contains(text(),'Included Features')]/following-sibling::div[contains(@class,'column-5')]").text
-            #    packageDetailsDict["ChargeableFeatures"] = {"OneTimeCost" : b.fuzzyStringToNumber(features_chargeableFeaturesOneTimeCost),
-            #                                                "RecurringCost" : b.fuzzyStringToNumber(features_chargeableFeaturesRecurringCost)}
-            #    packageDetailsDict["IncludedFeatures"] =   {"OneTimeCost" : b.fuzzyStringToNumber(features_includedFeaturesOneTimeCost),
-            #                                                "RecurringCost" : b.fuzzyStringToNumber(features_includedFeaturesRecurringCost)}
-            accessoryPackageList = self.browser.elementExists(by=By.XPATH,value=f"{packageDetailsHeader}/li/div/div/div[text()='Accessory']/parent::div/parent::div/parent::li")
-            if(accessoryPackageList):
-                packageDetailsDict["Accessory"] = []
-                accessoryPackages = accessoryPackageList.find_elements(by=By.XPATH,value="./div")
-                for accessoryPackage in accessoryPackages:
-                    accessory_accessoryCount = accessoryPackage.find_element(by=By.XPATH,value="./div/div[contains(@class,'column-2')]").text
-                    accessory_accessoryName = accessoryPackage.find_element(by=By.XPATH,value="./div/div[contains(@class,'column-3')]").text
-                    accessory_accessoryOneTimeCost = accessoryPackage.find_element(by=By.XPATH,value="./div/div[contains(@class,'column-4')]").text
-                    accessory_accessoryRecurringCost = accessoryPackage.find_element(by=By.XPATH,value="./div/div[contains(@class,'column-5')]").text
-                    packageDetailsDict["Accessory"].append({"Count" : int(accessory_accessoryCount),
-                                                      "AccessoryName" : accessory_accessoryName,
-                                                      "OneTimeCost" : b.fuzzyStringToNumber(accessory_accessoryOneTimeCost),
-                                                      "RecurringCost" : b.fuzzyStringToNumber(accessory_accessoryRecurringCost)})
-            shippingPackageList = self.browser.elementExists(by=By.XPATH,value=f"{packageDetailsHeader}/li/div/div[text()='Shipping']/parent::div")
-            if(shippingPackageList):
-                shipping_shippingName = shippingPackageList.find_element(by=By.XPATH,value="./div[contains(@class,'column-3')]").text
-                shipping_oneTimeCost = shippingPackageList.find_element(by=By.XPATH,value="./div[contains(@class,'column-4')]").text
-                shipping_recurringCost = shippingPackageList.find_element(by=By.XPATH,value="./div[contains(@class,'column-5')]").text
-                packageDetailsDict["Shipping"] = {"ShippingName" : shipping_shippingName,
-                                                  "OneTimeCost" : b.fuzzyStringToNumber(shipping_oneTimeCost),
-                                                  "RecurringCost" : b.fuzzyStringToNumber(shipping_recurringCost)}
-            taxesFeesPackageList = self.browser.elementExists(by=By.XPATH,value=f"{packageDetailsHeader}/li/div/div/div[text()='Taxes and Fees ']/parent::div/parent::div/parent::li")
-            if(taxesFeesPackageList):
-                packageDetailsDict["TaxesFees"] = []
-                allTaxesFees = taxesFeesPackageList.find_elements(by=By.XPATH,value="./div")
+        # Ship Date
+        shipDateField = self.browser.searchForElement(by=By.XPATH,value="//div[text()='Ship Date']/following-sibling::div",timeout=bodyValueTimeout)
+        order["ShipDate"] = shipDateField.text if shipDateField else None
 
-                for taxFee in allTaxesFees:
-                    taxesFees_name = taxFee.find_element(by=By.XPATH,value="./div/div[contains(@class,'column-3')]").text
-                    taxesFees_oneTimeCost = taxFee.find_element(by=By.XPATH,value="./div/div[contains(@class,'column-4')]").text
-                    taxesFees_recurringCost = taxFee.find_element(by=By.XPATH,value="./div/div[contains(@class,'column-5')]").text
-                    packageDetailsDict["TaxesFees"].append({"TaxFeeName" : taxesFees_name,
-                                                      "OneTimeCost" : b.fuzzyStringToNumber(taxesFees_oneTimeCost),
-                                                      "RecurringCost" : b.fuzzyStringToNumber(taxesFees_recurringCost)})
-            order["PackageDetails"] = packageDetailsDict
-            '''
-            order["PackageDetails"] = {}
+        # Ship To
+        shipToField = self.browser.searchForElement(by=By.XPATH, value="//div[text()='Ship To']/following-sibling::div/address",timeout=bodyValueTimeout)
+        order["ShipTo"] = shipToField.text if shipDateField else None
 
-            # Line Information
-            lineInformationButton = self.browser.find_element(by=By.XPATH,value="//a[contains(text(),'Line Information')]",timeout=10)
-            lineInformationButton.click()
-            lineInformation = self.browser.find_element(by=By.XPATH,value="//div[@aria-labelledby='tab2']/ul/div/li/div[contains(@class,'column-2')]").text
-            imeiMatch = re.compile(r'Device ID: (\d+)').search(lineInformation)
-            simMatch = re.compile(r'SIM ID: (\d+)').search(lineInformation)
-            if(imeiMatch):
-                order["IMEI"] = imeiMatch.group(1)
-            if(simMatch):
-                order["SIM"] = simMatch.group(1)
-        except Exception as e:
-            if (not readUnloadingOrder):
-                raise e
-            else:
-                categoriesToAdd = ["IMEI","SIM","AceOrderNumber","AceLocationNumber","ShipTo","ShipDate","Courier","PackageDetails"]
-                for category in categoriesToAdd:
-                    if(category not in order.keys()):
-                        order[category] = None
+        # Courier
+        courierField = self.browser.searchForElement(by=By.XPATH, value="//div[text()='Courier']/following-sibling::div",timeout=bodyValueTimeout)
+        order["Courier"] = courierField.text if courierField else None
 
+        # Tracking
+        trackingField = self.browser.searchForElement(by=By.XPATH, value="//div[text()='Tracking Number']/following-sibling::div/a",timeout=bodyValueTimeout)
+        order["TrackingNumber"] = trackingField.text if trackingField else None
+
+        # Package Details #TODO temporarily (permanently?) disabled. See Shaman1 for past implementation
+        order["PackageDetails"] = {}
+
+        # Line Information
+        lineInformationButton = self.browser.searchForElement(by=By.XPATH, value="//a[contains(text(),'Line Information')]",timeout=bodyValueTimeout)
+        self.browser.safeClick(element=lineInformationButton,timeout=bodyValueTimeout)
+        lineInformation = self.browser.searchForElement(by=By.XPATH,value="//div[@aria-labelledby='tab2']/ul/div/li/div[contains(@class,'column-2')]",timeout=bodyValueTimeout)
+        imeiMatch = re.compile(r'Device ID: (\d+)').search(lineInformation.text)
+        order["IMEI"] = imeiMatch.group(1) if imeiMatch else None
+        simMatch = re.compile(r'SIM ID: (\d+)').search(lineInformation.text)
+        order["SIM"] = simMatch.group(1) if simMatch else None
+
+        #endregion === Body Values ===
+
+        log.debug(f"Read this Verizon order: {order}")
         return order
 
-    # Loading screen wait method for the Order Viewer section.
-    def OrderViewer_WaitForLoadingScreen(self,timeout=120):
-        loaderMessageString = "//div[@class='Loader--overlay']"
-        WebDriverWait(self.browser.driver, timeout).until(expected_conditions.invisibility_of_element((By.XPATH, loaderMessageString)))
-        time.sleep(0.2)
     # This method uses an orderNumber to search for an order on the OrderViewer. Returns True if the order is
-    # found, and False if it isn't found.
+    # found, and False if it isn't found. #TODO there used to be "Are you still there?" detection in here, but we're going to move it externally. See Shaman1 for implementation
     def OrderViewer_SearchOrder(self,orderNumber : str):
         self.browser.switchToTab("Verizon")
 
@@ -327,28 +243,21 @@ class VerizonDriver:
         searchField.clear()
         searchField.send_keys(orderNumber)
 
-        try:
-            searchButton = self.browser.find_element(by=By.XPATH,value="//span[@id='grid-search-icon']")
-            searchButton.click()
-            self.OrderViewer_WaitForLoadingScreen()
-        except selenium.common.exceptions.ElementClickInterceptedException as e:
-            b.playsoundAsync(f"{b.paths.media}/shaman_attention.mp3")
-            userResponse = input("Program is halting on Verizon Order screen. Is the \"Are you still there?\" prompt displayed? If so, please click 'yes' and then press enter to continue. Press any other key to exit.")
-            if(userResponse):
-                raise e
-            else:
-                searchButton = self.browser.find_element(by=By.XPATH, value="//span[@id='grid-search-icon']")
-                searchButton.click()
-                self.OrderViewer_WaitForLoadingScreen()
+        searchButton = self.browser.find_element(by=By.XPATH,value="//span[@id='grid-search-icon']")
+        searchButton.click()
+        # Wait for the Order header to become clickable again (meaning loading has finished.) Yes, the typo is
+        # intentional lmfao
+        viewOrdersHeaderXPath = "//div[contains(@class,'view-orders-conatiner')]//h2[contains(text(),'Orders')]"
+        self.browser.searchForElement(by=By.XPATH, value=viewOrdersHeaderXPath, minSearchTime=3,timeout=120,
+                                      testClickable=True, testLiteralClick=True)
 
-
-        foundOrderLocator = self.browser.elementExists(by=By.XPATH,value=f"//div[text()='{orderNumber}']",timeout=1)
+        foundOrderLocator = self.browser.searchForElement(by=By.XPATH,value=f"//div[text()='{orderNumber}']",timeout=1)
         if(foundOrderLocator):
             # Helper section to ensure that Verizon doesn't decide to randomly collapse the order on lookup for unknown reasons.
-            expandIcon = self.browser.elementExists(by=By.XPATH,value=f"//div[text()='{orderNumber}']/following-sibling::td/div/span[@class='onedicon icon-plus-small']")
+            foundOrderExpandIconXPath = f"//div[text()='{orderNumber}']/following-sibling::td/div/span[@class='onedicon icon-plus-small']"
+            expandIcon = self.browser.searchForElement(by=By.XPATH,value=foundOrderExpandIconXPath,timeout=1)
             if(expandIcon):
                 expandIcon.click()
-                time.sleep(3)
             return True
         else:
             return False
@@ -907,79 +816,11 @@ class VerizonDriver:
 
     #endregion === Device Ordering ===
 
-    #region === Page Tests ===
-    # This method simply tests to see if the "Session Expiring" message has popped up and, if it has, clicks "yes"
-    # on the continue prompt.
-    def testForSessionsExpiringMessage(self,clickContinue : bool = True):
-        sessionExpiringBoxYes = self.browser.elementExists(by=By.XPATH,value="//h2[text()='Session Expiring']/following-sibling::div/div/div/button[text()='Yes']")
-        if(sessionExpiringBoxYes):
-            if(clickContinue):
-                sessionExpiringBoxYes.click()
-                time.sleep(10)
-            return True
-        else:
-            return False
-
-    # This method tests to see if browser is on the correct Verizon site or not.
-    def Test_OnVerizonSite(self):
-        validVerizonSitePrefixes = ["mblogin.verizonwireless.com","mb.verizonwireless.com"]
-
-        for validVerizonSitePrefix in validVerizonSitePrefixes:
-            if(validVerizonSitePrefix in self.browser.get_current_url()):
-                return True
-        return False
-    # This method tests to see if Verizon is currently actually logged in or not.
-    def Test_LoggedIn(self):
-        if("mb.verizonwireless.com" in self.browser.get_current_url()):
-            return True
-        else:
-            return False
-    # This method tests to see if the "Session Expiring" message has popped up or not.
-    def Test_SessionExpiringPopup(self):
-        sessionExpiringBox = "//h2[text()='Session Expiring']/following-sibling::div/div/div/button[text()='Yes']"
-        return self.browser.elementExists(by=By.XPATH,value=sessionExpiringBox)
-    # This method tests to see if a loading menu is currently present that might obfuscate other elements.
-    def Test_LoadingScreen(self):
-        loader1MessageString = "//div[@class='loader']"
-        loader1 = self.browser.elementExists(by=By.XPATH,value=loader1MessageString,timeout=0.5)
-        if(loader1):
-            time.sleep(3)
-            return True
-
-        loader2MessageString = "//div[@class='loading']"
-        loader2 = self.browser.elementExists(by=By.XPATH,value=loader2MessageString,timeout=0.5)
-        if(loader2):
-            time.sleep(3)
-            return True
-
-        return False
-
-
-    #endregion === Page Tests ===
-
-
-# Various errors for handling Verizon Errors.
-class VerizonError(Exception):
-    def __init__(self, message="An error with the Verizon Driver occurred"):
-        self.message = message
-        super().__init__(self.message)
-class NotOnVerizonSite(VerizonError):
-    def __init__(self, currentURL = ""):
-        super().__init__(f"VerizonDriver not currently on the Verizon MyBiz portal. Currently URL: '{currentURL}'")
-class NotLoggedIn(VerizonError):
-    def __init__(self):
-        super().__init__(f"VerizonDriver not currently logged in to the Verizon MyBiz portal.")
-class SessionExpiring(VerizonError):
-    def __init__(self):
-        super().__init__(f"Verizon MyBiz session is expiring - box must be clicked to continue session.")
-class LoadingScreen(VerizonError):
-    def __init__(self):
-        super().__init__(f"Verizon MyBiz still stuck at loading while trying to click a new element.")
 
 
 br = Browser()
 v = VerizonDriver(br)
 v.logInToVerizon()
 v.navToOrderViewer()
-#v.pullUpLine("8058277916")
-#print(v.LineViewer_UpgradeLine())
+v.OrderViewer_SearchOrder("MB1000440959372")
+orderResult = v.OrderViewer_ReadDisplayedOrder()
