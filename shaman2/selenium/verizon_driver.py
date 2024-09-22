@@ -815,12 +815,3 @@ class VerizonDriver:
 
 
     #endregion === Device Ordering ===
-
-
-
-br = Browser()
-v = VerizonDriver(br)
-v.logInToVerizon()
-v.navToOrderViewer()
-v.OrderViewer_SearchOrder("MB1000440959372")
-orderResult = v.OrderViewer_ReadDisplayedOrder()
