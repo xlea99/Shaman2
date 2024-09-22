@@ -198,6 +198,7 @@ class Browser(webdriver.Chrome):
             log.error(error)
             raise error
 
+        lastException = None
         minTestTime = time.time() + minSearchTime
         endTestTime = time.time() + timeout
         searchAttempt = 0
@@ -208,10 +209,12 @@ class Browser(webdriver.Chrome):
                 # If element is not provided, test to find it by locator
                 if(not element):
                     targetElement = self.find_element(by=by,value=value)
-                # If it's an inverted search AND a given element, we simply try to take a sample attribute to ensure
-                # it still exists.
-                elif(element and invertedSearch):
-                    test = element.text
+                else:
+                    targetElement = element
+                    # If it's an inverted search AND a given element, we simply try to take a sample attribute to ensure
+                    # it still exists.
+                    if(invertedSearch):
+                        test = targetElement.text
 
                 # Perform various other tests if specified
                 if(testNotStale):
@@ -240,6 +243,7 @@ class Browser(webdriver.Chrome):
 
             # === TESTS FAIL ===
             except Exception as e:
+                lastException = e
                 # If the tests didn't pass, and this is an inverted search, that means the element is considered to
                 # be lacking from the page, and we're done.
                 if(invertedSearch):
@@ -264,9 +268,8 @@ class Browser(webdriver.Chrome):
                 log.error(error)
                 raise error
             else:
-                # noinspection PyUnboundLocalVariable
-                log.error(e)
-                raise e
+                log.error(lastException)
+                raise lastException
         else:
             if(debug):
                 log.debug(f"Failed to successfully{" inverted" if invertedSearch else ""} search for element after {searchAttempt} search attempts.")
@@ -283,33 +286,46 @@ class Browser(webdriver.Chrome):
     # element - An existing WebElement to attempt to click on. Can't use with by/value
     # timeout - How long to attempt to click for, at minimum. Defaults to zero to run exactly one click attempt.
     # successfulClickCondition -    A condition that will be tested AFTER a made click to determine whether it was considered "successful" or not.
+    # prioritizeCondition -         This means that the condition comes before all when determining click success, even the click itself. Other error messages will be ignored as long as condition is true.
     # jsClick -                     Whether to click using javascript, or selenium
     # raiseError -                  Whether to raise an error after unsuccessful click and timeout.
     # retryClicks -                 Whether multiple clicks should even be attempted on first failed click.
     # minClicks/maxClicks -         Configurable min and max clicks to attempt, regardless of success.
-    # testInterval -                Time interval to wait between clicks and element search.
+    # testInterval -                Time interval to wait between element searches.
+    # clickDelay -                  Time to wait between successive click attempts.
     def safeClick(self,by = None,value : str = None,element : WebElement = None,timeout=0,
-                  successfulClickCondition : Callable = None,jsClick=False,raiseError=True,
-                  retryClicks = False,minClicks : int = 0,maxClicks : int = 10**10,testInterval=0.5):
+                  successfulClickCondition : Callable = None,prioritizeCondition = False, jsClick=False,raiseError=True,
+                  retryClicks = False,minClicks : int = 0,maxClicks : int = 10**10,testInterval=0.5,clickDelay=0.5):
         # Throw error if both a value and an element are given
         if(value and element):
             error = ValueError("Both a value and an element cannot be specified together in safeClick.")
             log.error(error)
             raise error
 
+        # Helper method to evaluate if the condition is currently true.
+        def evaluateCondition():
+            # If condition exists, evaluate it. Otherwise, consider it successful by default.
+            if(successfulClickCondition):
+                return successfulClickCondition(self)
+            else:
+                return True
+
+        lastException = None
+        hasEvaluatedConditionThisLoop = False
         clickAttempt = 0
         clickCount = 0
         clickSuccessful = False
         endTime = time.time() + timeout
         # Begin the click loop
         while (clickAttempt < 1 or time.time() < endTime):
+            hasEvaluatedConditionThisLoop = False
             clickAttempt += 1
             try:
                 # Get the element, searching for it if necessary
                 if(element):
                     targetElement = element
                 else:
-                    targetElement = self.searchForElement(by=by,value=value,timeout=testInterval)
+                    targetElement = self.searchForElement(by=by,value=value,timeout=testInterval,raiseError=True)
 
                 # Attempt to click
                 if(jsClick):
@@ -318,12 +334,12 @@ class Browser(webdriver.Chrome):
                     targetElement.click()
                 clickCount += 1
 
-                # Now we evaluate if the click was considered "successful" or not.
-                if(clickCount >= minClicks):
-                    # If a condition exists, evaluate it. Otherwise, consider the click successful.
-                    if(successfulClickCondition and successfulClickCondition(self) or not successfulClickCondition):
+                if (clickCount >= minClicks):
+                    hasEvaluatedConditionThisLoop = True
+                    if(evaluateCondition()):
                         clickSuccessful = True
                         break
+
 
                 # This means that a click was "made", but considered unsuccessful. We raise an error, to be caught
                 # and potentially handled further in our except block.
@@ -331,28 +347,78 @@ class Browser(webdriver.Chrome):
 
 
             except Exception as e:
+                lastException = e
+                # If this click has a prioritizedCondition, we evaluate the condition here to
+                if(prioritizeCondition):
+                    if(not hasEvaluatedConditionThisLoop):
+                        if(evaluateCondition()):
+                            if(clickCount >= minClicks):
+                                clickSuccessful = True
+                                break
                 # If the click was unsuccessful, we test now to see whether we should continue or not.
                 if (not retryClicks or clickCount >= maxClicks):
                     break
                 else:
-                    time.sleep(testInterval)
+                    time.sleep(clickDelay)
 
         # Return a boolean or raise error depending on whether the click was successful or not.
         if(clickSuccessful):
             return True
         else:
             if(raiseError):
-                # noinspection PyUnboundLocalVariable
-                log.error(e)
-                raise e
+                log.error(lastException)
+                raise lastException
             else:
-                # noinspection PyUnboundLocalVariable
-                log.warning(e)
+                log.warning(lastException)
                 return False
 
     #endregion === Element Manipulation ===
 
+    #region === Tests ===
+
+    # Simply tests whether the element is considered "checked" or not.
+    def testForSelectedElement(self,by = None, value : str = None,element : WebElement = None,inverted=False):
+        # Throw error if both a value and an element are given
+        if(value and element):
+            error = ValueError("Both a value and an element cannot be specified together in safeClick.")
+            log.error(error)
+            raise error
+
+        if(value):
+            element = self.searchForElement(by=by,value=value)
+
+        if(inverted):
+            return not element.is_selected()
+        else:
+            return element.is_selected()
+
+
+    #endregion === Tests ===
+
     #region === Utilities ===
+
+    # Simply waits until the given URL string can be found in the browser's URL.
+    def waitForURL(self,urlSnippet,timeout=30,raiseError=True):
+        endTime = time.time() + timeout
+
+        testCount = 0
+        while testCount < 1  or time.time() < endTime:
+            testCount += 1
+            # If URL is found, we return True as the wait is done.
+            if(urlSnippet in self.current_url):
+                return True
+            else:
+                time.sleep(0.5)
+
+        # If we've reached the endTime without finding the URL, the wait failed.
+        errorMessage = f"Waited for URL: '{urlSnippet}' on page, but URL was never found after timeout of {timeout}"
+        if(raiseError):
+            error = RuntimeError(errorMessage)
+            log.error(error)
+            raise error
+        else:
+            log.warning(errorMessage)
+            return False
 
     # Takes a "snapshot" of the given tabName, saving a screenshot and the HTML of the full DOM at the time of
     # taking to the log folder.

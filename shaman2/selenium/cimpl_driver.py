@@ -70,7 +70,7 @@ class CimplDriver:
                 userResponse = input("Please log in to Cimpl, and press enter to continue. Type anything to cancel.")
                 return not userResponse
             else:
-                self.browser.implicitly_wait(10)
+                #self.browser.implicitly_wait(10)
                 self.waitForLoadingScreen()
 
                 usernameInput = self.browser.searchForElement(by=By.XPATH,value="//input[@id='username']",timeout=3,testClickable=True)
