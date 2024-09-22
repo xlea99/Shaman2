@@ -7,6 +7,8 @@ from shaman2.utilities.shaman_utils import convertServiceIDFormat
 from shaman2.common.logger import log
 from shaman2.common.config import mainConfig, clientConfig
 
+#region === TMA Data Structures ===
+
 # Helper class serving as a structure for organizing and storing locational information about where the program
 # is on a TMA page.
 class TMALocation:
@@ -324,6 +326,8 @@ class Assignment:
         self.info_GLCode = None
         self.info_ProfitCenter = None
         self.info_BatchGroup = None
+
+#endregion === TMA Data Structures ===
 
 # How many TMA Location Datas will be stored at maximum, to conserve the TMA object from endlessly inflating.
 MAXIMUM_STORED_HISTORY = 20
@@ -2312,7 +2316,6 @@ class TMADriver():
 
     # endregion === Assignment Navigation ===
 
-
 # orderType - New Install, Upgrade, etc.
 # client - Sysco, SLB, Rimkus, etc.
 # carrier - Verizon, AT&T, etc.
@@ -2354,16 +2357,3 @@ def genTMAOrderNotes(orderType,carrier=None,portalOrderNum=None,orderDate=None,u
     resultString += f"TRACKING: {tracking}"
 
     return resultString
-
-
-br = Browser()
-t = TMADriver(br)
-t.logInToTMA()
-
-#t.navToLocation(TMALocation(client="Sysco",entryType="People",entryID="asup5134"))
-#supersad = t.People_ReadAllInformation()
-
-t.navToLocation(TMALocation(client="Sysco",entryType="Service",entryID="437-247-0448"))
-
-#t.switchToNewTab()
-#t.Assignment_BuildAssignmentFromAccount(client="Sysco",vendor="Verizon Wireless",siteCode="000")

@@ -185,12 +185,13 @@ class Browser(webdriver.Chrome):
     # testNotStale -        Tests that the element is not considered "stale"
     # testClickable -       Tests that the element is considered "clickable"
     # testScrolledInView -  Tests that the element is scrolled into view
+    # testLiteralClick -    ACTUALLY attempts to click the element, for when certain elements report as clickable but still somehow aren't.
     # invertedSearch -      Inverts the search - instead of searching for presence of element, searches for LACK of element on page
     # raiseError -          Whether to raise an error when the test fails, or simply return "False"
     # singleTestInterval -  How long to perform each single test for, defaulting at 0.2 seconds per test.
     # TODO is this enough to defeat Verizon's weird elements that selenium believes are clickable, but secretly aren't yet?
     def searchForElement(self,by = None,value : str = None,element : WebElement = None,timeout : float = 0, minSearchTime : float = 0,
-                         testNotStale = True,testClickable = False,testScrolledInView = False,
+                         testNotStale = True,testClickable = False,testScrolledInView = False,testLiteralClick = False,
                          invertedSearch = False,raiseError = False,singleTestInterval = 0.1,debug=False):
         # Throw error if both a value and an element are given
         if(value and element):
@@ -223,6 +224,9 @@ class Browser(webdriver.Chrome):
                     wait.until(EC.element_to_be_clickable(targetElement))
                 if(testScrolledInView):
                     wait.until(wait_for_element_scrolled_in_viewport(targetElement))
+                if(testLiteralClick):
+                    self.safeClick(element=targetElement,timeout=singleTestInterval,raiseError=True)
+
 
                 # === TESTS PASS ===
                 # If all tests pass, and this is an inverted search, that means the element is still present and we
@@ -293,7 +297,7 @@ class Browser(webdriver.Chrome):
     # minClicks/maxClicks -         Configurable min and max clicks to attempt, regardless of success.
     # testInterval -                Time interval to wait between element searches.
     # clickDelay -                  Time to wait between successive click attempts.
-    def safeClick(self,by = None,value : str = None,element : WebElement = None,timeout=0,
+    def safeClick(self,by = None,value : str = None,element : WebElement = None,timeout : float = 0,
                   successfulClickCondition : Callable = None,prioritizeCondition = True, jsClick=False,raiseError=True,
                   retryClicks = False,minClicks : int = 0,maxClicks : int = 10**10,testInterval=0.5,clickDelay=0.5):
         # Throw error if both a value and an element are given
@@ -350,7 +354,7 @@ class Browser(webdriver.Chrome):
             except Exception as e:
                 lastException = e
                 # If this click has a prioritizedCondition, we evaluate the condition here.
-                if(prioritizeCondition):
+                if(prioritizeCondition and successfulClickCondition is not None):
                     if(not hasEvaluatedConditionThisLoop):
                         if(evaluateCondition()):
                             if(clickCount >= minClicks):
