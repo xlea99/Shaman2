@@ -1,6 +1,5 @@
 import time
 import re
-import copy
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
 from shaman2.selenium.browser import Browser
@@ -384,7 +383,7 @@ class TMADriver():
     # These methods help streamline the process of switching to a new TMA popup tab when certain
     # TMA actions happen. SwitchToNewTab will try to locate a single new popupTMA tab, and switch
     # to it. ReturnToBaseTMA will close all TMA popup tabs, and switch back to the base TMA tab.
-    def switchToNewTab(self,timeout=30):
+    def switchToNewTab(self,timeout=10):
         for i in range(timeout):
             popupDict = self.browser.checkForPopupTabs()
 
@@ -563,7 +562,7 @@ class TMADriver():
     def navToClientHome(self,clientName):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
-        if(self.currentLocation.isLoggedIn != True):
+        if(not self.currentLocation.isLoggedIn):
             log.error(f"Could not navToClientHome '{clientName}', as TMA is not currently logged in.")
             return False
 
@@ -596,8 +595,6 @@ class TMADriver():
     # currently logged in, and locationData is valid.
     def navToLocation(self,locationData : TMALocation = None, timeout=60):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
-
-        copyOfTargetLocation = copy.copy(locationData)
 
         self.readPage()
         if(not self.currentLocation.isLoggedIn):
@@ -1380,7 +1377,6 @@ class TMADriver():
             log.error(error)
             raise error
         elif (len(equipmentArray) > 1):
-            equipmentIndex = 1
             error = ValueError("Multiple equipments linked to service. This is not yet handled - will require some refactoring of code.")
             log.error(error)
             raise error
@@ -2143,7 +2139,7 @@ class TMADriver():
 
     # endregion === Equipment Data & Navigation ===
 
-    # region ======================Assignment Navigation =============================
+    # region === Assignment Navigation ===
 
     # All these methods assume that TMA is currently on the assignment wizard.
     # TODO add supported reading of assignment info into assignment objects.
@@ -2165,7 +2161,7 @@ class TMADriver():
             totalPages = int(pageCountMatch.group(2))  # Second number (total pages)
             return currentPage,totalPages
         # This template can be used to test for a specific sideTab in the Account Wizard to see if it's the "active" tab.
-        sideTabXPathTemplate = "//a[contains(@id,'ctl01_SideBarButton')][translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz') = '{tabNameLower}']/parent::div"
+        sideTabXPathTemplate = "//a[contains(@id,'SideBarButton')][translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')='{tabName}']/parent::div"
         # Meanwhile, this simpler XPath can be used to simply get the active sideTab, whatever that is.
         currentSideTabXPath = "//div/a[contains(@id,'SideBarButton')]"
 
@@ -2204,7 +2200,7 @@ class TMADriver():
         #region === Sites Sidetab ===
         # Now, we should be on the "Sites" sideTab
         # To find the valid site, we will flip through all pages until we locate our exact match.
-        targetSiteXPath = f"//table[contains(@id,'sgvSites')]/tbody/tr[contains(@class,'sgvitems')]/td[1][starts-with(text(),{siteCode})]"
+        targetSiteXPath = f"//table[contains(@id,'sgvSites')]/tbody/tr[contains(@class,'sgvitems')]/td[1][starts-with(text(),'{siteCode}')]"
         nextButtonCSS = "#wizLinkAssignments_wizFindExistingAssigment_gvpSites_btnNext"
         # Here we loop through each site, looking for our specified site code.
         while True:
@@ -2218,7 +2214,7 @@ class TMADriver():
                 raise error
             else:
                 # Flip to the next page. First build a test XPATH to ensure the next page has been reached.
-                nextPageTextTestForXPath = f"{pageCountTextXPath}[contains(text(),'(Page {currentPageNumber} of {totalPageNumber})']"
+                nextPageTextTestForXPath = f"{pageCountTextXPath}[contains(text(),'(Page {currentPageNumber + 1} of {totalPageNumber})')]"
                 self.browser.safeClick(by=By.CSS_SELECTOR,value=nextButtonCSS,timeout=30,
                                        successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=nextPageTextTestForXPath))
         # We've now found our element, so we can click on it.
@@ -2241,7 +2237,7 @@ class TMADriver():
                 if (siteCode == "000"):
                     selectorFor000XPath = "//table/tbody/tr/td/div/div/table/tbody/tr[contains(@class,'sgvitems')]/td[text()='000']"
                     self.browser.safeClick(by=By.XPATH,value=selectorFor000XPath,retryClicks=True,timeout=60,clickDelay=3,
-                                           successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=sideTabXPathTemplate.format(tabName="Company"),invertedSearch=True))
+                                           successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=sideTabXPathTemplate.format(tabName="company"),invertedSearch=True))
                 else:
                     error = RuntimeError("Company tab is asking for information on a non-000 OpCo! Edits will be required. God help you!")
                     log.error(error)
@@ -2255,7 +2251,7 @@ class TMADriver():
                 if (siteCode == "000"):
                     selectorForCorpOfficesXPath = "//table/tbody/tr/td/div/div/table/tbody/tr[contains(@class,'sgvitems')]/td[text()='Corp Offices']"
                     self.browser.safeClick(by=By.XPATH, value=selectorForCorpOfficesXPath, retryClicks=True, timeout=60,clickDelay=3,
-                                           successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=sideTabXPathTemplate.format(tabName="Division"),invertedSearch=True))
+                                           successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=sideTabXPathTemplate.format(tabName="division"),invertedSearch=True))
                 else:
                     error = RuntimeError("Division tab is asking for information on a non-000 OpCo! Edits will be required. God help you!")
                     log.error(error)
@@ -2271,7 +2267,7 @@ class TMADriver():
                 else:
                     departmentSelectionChoiceXPATH = "//table/tbody/tr/td/div/div/table/tbody/tr[contains(@class,'sgvitems')]/td[text()='Wireless-OPCO']"
                 self.browser.safeClick(by=By.XPATH, value=departmentSelectionChoiceXPATH, retryClicks=True, timeout=60,clickDelay=3,
-                                       successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=sideTabXPathTemplate.format(tabName="Department"),invertedSearch=True))
+                                       successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=sideTabXPathTemplate.format(tabName="department"),invertedSearch=True))
 
             # If TMA pops up with "CostCenters" selection. We've been told to essentially ignore this, and pick whatever
             # the last option is.
@@ -2282,7 +2278,7 @@ class TMADriver():
                 entriesQuantity = len(allEntries)
                 lastEntry = allEntries[entriesQuantity - 1]
                 self.browser.safeClick(element=lastEntry, retryClicks=True, timeout=60,clickDelay=3,
-                                       successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=sideTabXPathTemplate.format(tabName="CostCenters"),invertedSearch=True))
+                                       successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=sideTabXPathTemplate.format(tabName="costcenters"),invertedSearch=True))
 
             # If TMA pops up with "ProfitCenter" selection. This is essentially the same as CostCenters, with no necessary
             # special exception for OpCo 000.
@@ -2293,7 +2289,7 @@ class TMADriver():
                 entriesQuantity = len(allEntries)
                 lastEntry = allEntries[entriesQuantity - 1]
                 self.browser.safeClick(element=lastEntry, retryClicks=True, timeout=60, clickDelay=3,
-                                       successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=sideTabXPathTemplate.format(tabName="ProfitCenter"),invertedSearch=True))
+                                       successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=sideTabXPathTemplate.format(tabName="profitcenter"),invertedSearch=True))
 
             # If TMA brings us to "Finalize" we exit the loop as we've finished with making the assignment.
             elif (currentTab == "finalize"):
@@ -2310,11 +2306,11 @@ class TMADriver():
         #endregion === Misc Sidetabs ===
 
         yesMakeAssignmentButtonXPath = "//table/tbody/tr/td/div/ol/li/a[contains(@id,'wizFindExistingAssigment_lnkLinkAssignment')][text()='Yes, make the assignment.']"
-        self.browser.safeClick(by=By.XPATH,value=yesMakeAssignmentButtonXPath,retryClicks=True,timeout=60,clickDelay=5,
-                               successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=yesMakeAssignmentButtonXPath,invertedSearch=True))
+        #self.browser.safeClick(by=By.XPATH,value=yesMakeAssignmentButtonXPath,retryClicks=True,timeout=60,clickDelay=5,
+        #                       successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=yesMakeAssignmentButtonXPath,invertedSearch=True))
         log.info("Successfully created assignment.")
 
-    # endregion ======================Assignment Navigation =============================
+    # endregion === Assignment Navigation ===
 
 
 # orderType - New Install, Upgrade, etc.
@@ -2363,28 +2359,11 @@ def genTMAOrderNotes(orderType,carrier=None,portalOrderNum=None,orderDate=None,u
 br = Browser()
 t = TMADriver(br)
 t.logInToTMA()
-#input("search for andram?")
 
 #t.navToLocation(TMALocation(client="Sysco",entryType="People",entryID="asup5134"))
 #supersad = t.People_ReadAllInformation()
-#t.navToLocation(TMALocation(client="Sysco",entryType="People",entryID="mcad0107"))
-#miriam = t.People_ReadAllInformation()
 
-#input("search for francois?")
-#t.navToLocation(TMALocation(client="Sysco",entryType="People",entryID="fexp3586"))
-#input("search for jingles?")
-#t.navToLocation(TMALocation(client="Sysco",entryType="People",entryID="jjin7173"))
-
-#input("search for andram's phone?")
 t.navToLocation(TMALocation(client="Sysco",entryType="Service",entryID="437-247-0448"))
-t.Service_NavToEquipmentFromService()
-#input("Read andram's phone?")
-#andramService = t.Service_ReadMainInfo()
-#t.Service_ReadLineInfoInfo(andramService)
-#t.Service_ReadBaseCost(andramService)
-#t.Service_ReadFeatureCosts(andramService)
-#t.Service_ReadAllLinkedInformation(andramService)
-#input("search for francois' phone?")
-#t.navToLocation(TMALocation(client="Sysco",entryType="Service",entryID="438-336-7857"))
-#input("search for jingle's phone?")
-#t.navToLocation(TMALocation(client="Sysco",entryType="Service",entryID="317-372-6252"))
+
+#t.switchToNewTab()
+#t.Assignment_BuildAssignmentFromAccount(client="Sysco",vendor="Verizon Wireless",siteCode="000")

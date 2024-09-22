@@ -294,7 +294,7 @@ class Browser(webdriver.Chrome):
     # testInterval -                Time interval to wait between element searches.
     # clickDelay -                  Time to wait between successive click attempts.
     def safeClick(self,by = None,value : str = None,element : WebElement = None,timeout=0,
-                  successfulClickCondition : Callable = None,prioritizeCondition = False, jsClick=False,raiseError=True,
+                  successfulClickCondition : Callable = None,prioritizeCondition = True, jsClick=False,raiseError=True,
                   retryClicks = False,minClicks : int = 0,maxClicks : int = 10**10,testInterval=0.5,clickDelay=0.5):
         # Throw error if both a value and an element are given
         if(value and element):
@@ -327,12 +327,13 @@ class Browser(webdriver.Chrome):
                 else:
                     targetElement = self.searchForElement(by=by,value=value,timeout=testInterval,raiseError=True)
 
-                # Attempt to click
-                if(jsClick):
-                    self.execute_script("arguments[0].click();", targetElement)
-                else:
-                    targetElement.click()
-                clickCount += 1
+                # Attempt to click if we still have clicks left and retryClicks is True.
+                if (clickCount == 0 or (retryClicks and clickCount < maxClicks)):
+                    if(jsClick):
+                        self.execute_script("arguments[0].click();", targetElement)
+                    else:
+                        targetElement.click()
+                    clickCount += 1
 
                 if (clickCount >= minClicks):
                     hasEvaluatedConditionThisLoop = True
@@ -348,18 +349,14 @@ class Browser(webdriver.Chrome):
 
             except Exception as e:
                 lastException = e
-                # If this click has a prioritizedCondition, we evaluate the condition here to
+                # If this click has a prioritizedCondition, we evaluate the condition here.
                 if(prioritizeCondition):
                     if(not hasEvaluatedConditionThisLoop):
                         if(evaluateCondition()):
                             if(clickCount >= minClicks):
                                 clickSuccessful = True
                                 break
-                # If the click was unsuccessful, we test now to see whether we should continue or not.
-                if (not retryClicks or clickCount >= maxClicks):
-                    break
-                else:
-                    time.sleep(clickDelay)
+                time.sleep(clickDelay)
 
         # Return a boolean or raise error depending on whether the click was successful or not.
         if(clickSuccessful):
