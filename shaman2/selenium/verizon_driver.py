@@ -10,7 +10,7 @@ import re
 from shaman2.selenium.browser import Browser
 from shaman2.common.logger import log
 from shaman2.common.paths import paths
-from shaman2.common.config import mainConfig
+from shaman2.common.config import mainConfig, devices, accessories
 from shaman2.utilities.async_sound import playsoundAsync
 
 class VerizonDriver:
@@ -389,8 +389,10 @@ class VerizonDriver:
                                       testClickable=True,testLiteralClick=True)
 
     # This method clears the full cart, from anywhere. It cancels out whatever was previously
-    # happening, but ensures the cart is fully empty for future automation.
-    def emptyCart(self):
+    # happening, but ensures the cart is fully empty for future automation. Since Verizon is a miserable
+    # excuse for a website, sometimes clicking on "clear cart" just literally does nothing. Therefore, this
+    # method contains "attempts" parameter which will repeat trying to clear the cart if it seems unsuccessful.
+    def emptyCart(self,attempts=2):
         self.navToHomescreen()
 
         miniCart = self.browser.searchForElement(by=By.XPATH,value="//app-mini-cart/div/div/span",timeout=30,testClickable=True)
@@ -402,100 +404,108 @@ class VerizonDriver:
             viewCartButton = self.browser.searchForElement(by=By.XPATH,value=viewCartButtonXPath,timeout=60,testClickable=True)
             viewCartButton.click()
 
-            shoppingCartHeaderXPath = "//div[contains(@class,'device-shopping-cart-content-left')]//h1[contains(text(),'Shopping cart')]"
-            self.browser.searchForElement(by=By.XPATH,value=shoppingCartHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True)
+            for i in range(attempts):
+                shoppingCartHeaderXPath = "//div[contains(@class,'device-shopping-cart-content-left')]//h1[contains(text(),'Shopping cart')]"
+                self.browser.searchForElement(by=By.XPATH,value=shoppingCartHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True)
 
-            clearCartButtonXPath = "//a[@id='dtm_clearcart']"
-            clearCartButton = self.browser.searchForElement(by=By.XPATH,value=clearCartButtonXPath,timeout=30,testClickable=True)
-            clearCartButton.click()
+                clearCartButtonXPath = "//a[@id='dtm_clearcart']"
+                clearCartButton = self.browser.searchForElement(by=By.XPATH,value=clearCartButtonXPath,timeout=30,testClickable=True)
+                clearCartButton.click()
 
-            confirmationClearButtonXPath = "//mat-dialog-container//button[text()='Clear']"
-            confirmationClearButton = self.browser.searchForElement(by=By.XPATH,value=confirmationClearButtonXPath,timeout=30,testClickable=True)
-            confirmationClearButton.click()
+                confirmationClearButtonXPath = "//mat-dialog-container//button[text()='Clear']"
+                confirmationClearButton = self.browser.searchForElement(by=By.XPATH,value=confirmationClearButtonXPath,timeout=30,testClickable=True)
+                confirmationClearButton.click()
 
-            self.browser.searchForElement(by=By.XPATH,value="//h1[text()='Your cart is empty.']",timeout=60,
-                                          testClickable=True,testLiteralClick=True)
-            self.navToHomescreen()
+                cartCleared = self.browser.searchForElement(by=By.XPATH,value="//h1[text()='Your cart is empty.']",timeout=60,
+                                              testClickable=True,testLiteralClick=True)
+                if(cartCleared):
+                    self.navToHomescreen()
+                    return True
+                else:
+                    continue
+            error = RuntimeError(f"Could not successfully clear cart after {attempts} attempts!")
+            log.error(error)
+            raise error
 
     # Assumes we're on the device selection page. Given a Universal Device ID, searches for that
     # device (if supported) on Verizon.
     def DeviceSelection_SearchForDevice(self,deviceID,orderPath="NewInstall"):
-        searchBox = self.browser.waitForClickableElement(by=By.XPATH,value="//input[@id='search']",timeout=15)
-        searchButton = self.browser.waitForClickableElement(by=By.XPATH,value="//button[@id='grid-search-button']",timeout=15)
+        searchBox = self.browser.searchForElement(by=By.XPATH,value="//input[@id='search']",timeout=15,testClickable=True)
+        searchButton = self.browser.searchForElement(by=By.XPATH,value="//span[contains(@class,'icon-search')]",timeout=15,testClickable=True)
 
         searchBox.clear()
-        searchBox.send_keys(b.equipment["VerizonMappings"][deviceID]["SearchTerm"])
+        searchBox.send_keys(devices[deviceID]["vzwSearchTerm"])
         searchButton.click()
 
         if(orderPath == "NewInstall"):
             # Now we test to ensure that the proper device card has fully loaded.
-            targetDeviceCard = f"//div/div[contains(@class,'device-name')][contains(text(),'{b.equipment['VerizonMappings'][deviceID]['NewInstallCardName']}')]"
-            self.waitForPageLoad(by=By.XPATH,value=targetDeviceCard)
+            targetDeviceCardXPath = f"//div/div[contains(@class,'device-name')][contains(text(),'{devices[deviceID]['vzwNewInstallCardName']}')]"
+            self.browser.searchForElement(by=By.XPATH,value=targetDeviceCardXPath,timeout=60,testClickable=True)
         else:
             # Now we test to ensure that the proper device card has fully loaded.
-            targetDeviceCard = f"//div/div[contains(@class,'device-title')][text()='{b.equipment['VerizonMappings'][deviceID]['UpgradeCardName']}']"
-            self.waitForPageLoad(by=By.XPATH,value=targetDeviceCard)
+            targetDeviceCardXPath = f"//div/div[contains(@class,'device-title')][text()='{devices[deviceID]['vzwUpgradeCardName']}']"
+            self.browser.searchForElement(by=By.XPATH,value=targetDeviceCardXPath,timeout=60,testClickable=True)
     def DeviceSelection_SelectDeviceQuickView(self,deviceID,orderPath="NewInstall"):
         if(orderPath == "NewInstall"):
-            targetDeviceCardString = f"//div/div[contains(@class,'device-name')][contains(text(),'{b.equipment['VerizonMappings'][deviceID]['NewInstallCardName']}')]"
-            targetDeviceQuickViewButton = self.browser.waitForClickableElement(by=By.XPATH,value=f"{targetDeviceCardString}/following-sibling::div/div[@class='quick-view']/button[contains(@class,'quick-view')]",timeout=15)
-            targetDeviceQuickViewButton.click()
+            targetDeviceCardXPath = f"//div/div[contains(@class,'device-name')][contains(text(),'{devices[deviceID]['vzwNewInstallCardName']}')]"
+            deviceDetailsXPath = f"//div[contains(@class,'pdp-header-section')]/div[contains(@class,'left-top-details')]/div[contains(text(),'{devices[deviceID]['vzwNewInstallCardName']}')]"
         else:
-            #TODO manual implementation because there doesn't seem to be a great way to detect when this element becomes available.
-            hoverTimeout = 10
-            for i in range(hoverTimeout):
-                try:
-                    targetDeviceCardString = f"//div/div[contains(@class,'device-title')][text()='{b.equipment['VerizonMappings'][deviceID]['UpgradeCardName']}']"
-                    targetDeviceCard = self.browser.find_element(by=By.XPATH,value=targetDeviceCardString)
-                    self.browser.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", targetDeviceCard)
-                    hoverAction = ActionChains(self.browser.driver)
-                    hoverAction.move_to_element(targetDeviceCard)
-                    hoverAction.perform()
-                    targetDeviceQuickViewButtonString = f"{targetDeviceCardString}/ancestor::div[contains(@class,'device-card')]//a[text()='Quick view']"
-                    targetDeviceQuickViewButton = self.browser.waitForClickableElement(by=By.XPATH,value=targetDeviceQuickViewButtonString,timeout=15)
-                    targetDeviceQuickViewButton.click()
-                    break
-                except Exception as e:
-                    if(i >= hoverTimeout - 1):
-                        raise e
-                    else:
-                        print("we sleepin")
-                        time.sleep(1)
+            targetDeviceCardXPath = f"//div/div[contains(@class,'device-title')][text()='{devices[deviceID]['vzwUpgradeCardName']}']"
+            deviceDetailsXPath = f"//div[contains(@class,'pdp-header-section')]//div[contains(text(),'{devices[deviceID]['vzwUpgradeCardName']}')]"
+
+        targetDeviceCard = self.browser.searchForElement(by=By.XPATH,value=targetDeviceCardXPath,timeout=5)
+        self.browser.execute_script("arguments[0].scrollIntoView({block: 'center'});", targetDeviceCard)
+        self.browser.safeClick(element=targetDeviceCard,timeout=10)
+
+        # Test for device details to confirm device has been successfully pulled up.
+        self.browser.searchForElement(by=By.XPATH,value=deviceDetailsXPath,timeout=60,minSearchTime=5,
+                                      testClickable=True,testLiteralClick=True)
     # Assumes we're in the quick view menu for a device. Various options for this menu.
-    def DeviceSelection_QuickView_Select2YearContract(self,orderPath="NewInstall"):
+    def DeviceSelection_DeviceView_Select2YearContract(self,orderPath="NewInstall"):
         if(orderPath == "NewInstall"):
-            yearlyContractSelection = self.browser.waitForClickableElement(by=By.XPATH,value="//div[contains(@class,'payment-option-each')]/div[contains(text(),'Yearly contract')]/parent::div",timeout=15)
+            yearlyContractXPath = "//div[contains(@class,'payment-option-each')]/div[contains(text(),'Yearly contract')]/parent::div"
+            yearlyContractSelection = self.browser.searchForElement(by=By.XPATH,value=yearlyContractXPath,timeout=15,testClickable=True)
             yearlyContractSelection.click()
 
-            twoYearContractSelection = self.browser.waitForClickableElement(by=By.XPATH,value="//div/ul/li/div[contains(text(),'2 Year Contract Required')]/parent::li",timeout=15)
+            twoYearContractSelectionXPath = "//div/ul/li/div[contains(text(),'2 Year Contract Required')]/parent::li"
+            twoYearContractSelection = self.browser.searchForElement(by=By.XPATH,value=twoYearContractSelectionXPath,timeout=15,testClickable=True)
             twoYearContractSelection.click()
         else:
-            twoYearContractSelectionString = "//div[contains(text(),'2 Year Contract Pricing')]"
-            twoYearContractSelection = self.browser.waitForClickableElement(by=By.XPATH,value=twoYearContractSelectionString)
+            twoYearContractXPath = "//div[contains(text(),'2 year contract')]/ancestor::div[contains(@class,'payment-options')]"
+            twoYearContractSelection = self.browser.searchForElement(by=By.XPATH,value=twoYearContractXPath,timeout=15,testClickable=True)
             twoYearContractSelection.click()
-    def DeviceSelection_QuickView_AddToCart(self,orderPath="NewInstall"):
-        addToCartButton = self.browser.waitForClickableElement(by=By.XPATH,value="//button[@id='device-add-to-cart']")
-        addToCartButton.click()
-
+    def DeviceSelection_DeviceView_DeclineDeviceProtection(self):
+        declineDeviceProtectionOptionXPath = "//div[contains(text(),'Decline Device Protection')]"
+        declineDeviceProtectionOption = self.browser.searchForElement(by=By.XPATH,value=declineDeviceProtectionOptionXPath,timeout=15,testClickable=True)
+        self.browser.safeClick(element=declineDeviceProtectionOption,timeout=10,
+                               successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=f"{declineDeviceProtectionOption}[contains(@class,'bold')]"))
+    def DeviceSelection_DeviceView_AddToCartAndContinue(self,orderPath="NewInstall"):
         if(orderPath == "NewInstall"):
-            self.browser.waitForNotClickableElement(by=By.XPATH,value="//button[@id='device-add-to-cart']")
-        else:
-            self.waitForPageLoad(by=By.XPATH,value="//div[@id='page-header']/div/h1[contains(text(),'Shop Devices')]",testClick=True)
-    # Method to continue to the next page after the device selection. OrderPath is either NewInstall or Upgrade.
-    def DeviceSelection_Continue(self,orderPath="NewInstall"):
-        if(orderPath.lower() == "newinstall"):
-            continueButtonString = "//div/div/h2/following-sibling::button[text()='Continue']"
-        else:
-            continueButtonString = "//div[@id='page-header']//button[@id='continueBtn']"
-        continueButton = self.browser.waitForClickableElement(by=By.XPATH,value=continueButtonString)
-        continueButton.click()
+            addToCartButtonXPath = "//button[@id='dtm_addcart']"
+            addToCartButton = self.browser.searchForElement(by=By.XPATH,value=addToCartButtonXPath,timeout=10,testClickable=True)
+            addToCartButton.click()
 
-        if(orderPath.lower() == "newinstall"):
-            shopAccessoriesHeaderString = "//section/div/div[text()='Shop Accessories']"
-            self.waitForPageLoad(by=By.XPATH,value=shopAccessoriesHeaderString,testClick=True)
+            # Wait for header confirming device added
+            deviceAddedToCartXPath = "//div[contains(text(),'Your new device has been added to your cart.')]"
+            self.browser.searchForElement(by=By.XPATH,value=deviceAddedToCartXPath,timeout=30,testClickable=True)
+
+            # Click continue
+            continueButtonXPath = "//nav[@id='stickyMenubar']//button[contains(text(),'Continue')]"
+            continueButton = self.browser.searchForElement(by=By.XPATH,value=continueButtonXPath,timeout=30,testClickable=True)
+            continueButton.click()
+
+            # Wait for accessories page to load
+            shopAccessoriesHeaderXPath = "//section[contains(@class,'top-section')]//div[contains(text(),'Shop Accessories')]"
+            self.browser.searchForElement(by=By.XPATH,value=shopAccessoriesHeaderXPath,timeout=60,
+                                          testClickable=True,testLiteralClick=True)
         else:
-            deviceProtectionHeaderString = "//h1[contains(text(),'Device Protection')]"
-            self.waitForPageLoad(by=By.XPATH,value=deviceProtectionHeaderString,testClick=True)
+            buyNowButtonXPath = "//button[text()='Buy Now']"
+            buyNowButton = self.browser.searchForElement(by=By.XPATH,value=buyNowButtonXPath,timeout=10,testClickable=True)
+            buyNowButton.click()
+
+            # Wait for Shopping Cart page to load to confirm successful device add
+            shoppingCartHeaderXPath = "//div[contains(@class,'device-shopping-cart-content-left')]//h1[contains(text(),'Shopping cart')]"
+            self.browser.searchForElement(by=By.XPATH,value=shoppingCartHeaderXPath,timeout=60,minSearchTime=5)
 
     # Assumes we're on the accessory selection page. Given a Universal Accessory ID, searches
     # for that accessory (if support) on Verizon.
@@ -837,3 +847,8 @@ class VerizonDriver:
 br = Browser()
 vzw = VerizonDriver(br)
 vzw.logInToVerizon()
+vzw.emptyCart()
+vzw.pullUpLine("281-961-7581")
+vzw.LineViewer_UpgradeLine()
+vzw.DeviceSelection_SearchForDevice(deviceID="iPhone14_128GB",orderPath="Upgrade")
+vzw.DeviceSelection_SelectDeviceQuickView(deviceID="iPhone14_128GB",orderPath="Upgrade")
