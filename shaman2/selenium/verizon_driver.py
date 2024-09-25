@@ -272,25 +272,30 @@ class VerizonDriver:
         self.navToHomescreen()
 
         serviceSearchBarString = "//input[@id='dtm_search']"
-        serviceSearchBar = self.browser.waitForClickableElement(by=By.XPATH,value=serviceSearchBarString)
+        serviceSearchBar = self.browser.searchForElement(by=By.XPATH,value=serviceSearchBarString,testClickable=True,timeout=15)
         serviceSearchBar.clear()
         serviceSearchBar.send_keys(str(serviceID))
         serviceSearchBar.send_keys(Keys.ENTER)
 
+        # First, wait for the line loader to disappear.
+        lineLoadingXPath = "//div[contains(@class,'loading ng-star-inserted')]"
+        self.browser.searchForElement(by=By.XPATH, value=lineLoadingXPath, timeout=10,invertedSearch=True)
         self.testForUnregisteredPopup()
 
-        upgradeDateHeaderString = "//sub[text()='Upgrade date']"
-        self.waitForPageLoad(by=By.XPATH,value=upgradeDateHeaderString,testClick=True,waitTime=3,timeout=3,raiseError=False)
-
         # Test if Verizon can't find the line.
-        if(self.browser.elementExists(by=By.XPATH,value="//p[contains(text(),'No results found.')]")):
+        if(self.browser.searchForElement(by=By.XPATH,value="//p[contains(text(),'No results found.')]",timeout=2)):
             self.testForUnregisteredPopup()
-            exitButton = self.browser.waitForClickableElement(by=By.XPATH, value="//i[@id='icnClose']")
+            exitButton = self.browser.searchForElement(by=By.XPATH, value="//i[@id='icnClose']",timeout=3,testClickable=True)
             exitButton.click()
-            self.waitForPageLoad(by=By.XPATH, value="//h3[contains(text(),'Billing')]",testClick=True)
-            return False
+            self.browser.searchForElement(by=By.XPATH, value="//span[contains(text(),'Shop Devices')]",
+                                          testClickable=True, timeout=15, raiseError=False)
+            error = ValueError(f"Verizon is saying that line '{serviceID}' cannot be found.")
+            log.error(error)
+            raise error
         else:
-            return True
+            upgradeDateHeaderXPath = "//sub[text()='Upgrade date']"
+            self.browser.searchForElement(by=By.XPATH, value=upgradeDateHeaderXPath, timeout=120,
+                                          testClickable=True, testLiteralClick=True)
 
     # Assumes we're on the line viewer for a specific line, and clicks "Upgrade device" to begin
     # an upgrade. Also handles ETF shenanigans, so that either way, this function either ends up
@@ -299,63 +304,70 @@ class VerizonDriver:
         # Helper method to detect and handle potential "mtnPendingError" message on certain upgrade lines.
         def mtnPendingError():
             mtnPendingErrorBoxString = "//app-modal-header/div[contains(text(),'The following wireless number is ineligible for this service.')]"
-            mtnPendingErrorBox = self.browser.elementExists(by=By.XPATH,value=mtnPendingErrorBoxString,timeout=3)
+            mtnPendingErrorBox = self.browser.searchForElement(by=By.XPATH,value=mtnPendingErrorBoxString,timeout=3)
             if(mtnPendingErrorBox):
                 mtnPendingErrorCancelButtonString = "//app-modal-invalid-items-list//i[@aria-label='Close-Icon']"
-                mtnPendingErrorCancelButton = self.browser.waitForClickableElement(by=By.XPATH,value=mtnPendingErrorCancelButtonString)
+                mtnPendingErrorCancelButton = self.browser.searchForElement(by=By.XPATH,value=mtnPendingErrorCancelButtonString,testClickable=True,timeout=30)
                 mtnPendingErrorCancelButton.click()
 
-                self.waitForPageLoad(by=By.XPATH,value="//app-device-info//div[contains(@class,'device-info-content')]//h2[contains(text(),'Device information')]",testClick=True)
+                upgradeDateHeaderXPath = "//sub[text()='Upgrade date']"
+                self.browser.searchForElement(by=By.XPATH,value=upgradeDateHeaderXPath,testClickable=True,testLiteralClick=True,timeout=30,minSearchTime=2)
                 return True
             else:
                 return False
 
         # Do this if device is found as eligible for standard upgrade
-        upgradeDeviceEligibleButtonString = "//button[contains(text(),'Upgrade device')]"
-        upgradeDeviceEligibleButton = self.browser.elementExists(by=By.XPATH,value=upgradeDeviceEligibleButtonString,timeout=1.5)
+        upgradeDeviceEligibleButtonXPath = "//button[contains(text(),'Upgrade device')]"
+        upgradeDeviceEligibleButton = self.browser.searchForElement(by=By.XPATH,value=upgradeDeviceEligibleButtonXPath,timeout=2)
         if(upgradeDeviceEligibleButton):
             upgradeDeviceEligibleButton.click()
             # Handle cases where clicking the "upgrade" button fails.
-            if(not self.waitForPageLoad(by=By.XPATH,value="//div[@id='page-header']//h1[contains(text(),'Shop Devices')]",testClick=True)):
+            if(not self.browser.searchForElement(by=By.XPATH,value="//div[@id='page-header']//h1[contains(text(),'Shop Devices')]",
+                                                 testClickable=True,testLiteralClick=True,timeout=20)):
                 if(mtnPendingError()):
                     return "MTNPending"
                 else:
-                    raise ValueError("Clicking the 'upgrade' button either never loaded or landed at an ambiguous location.")
+                    error = ValueError("Clicking the 'upgrade' button either never loaded or landed at an ambiguous location.")
+                    log.error(error)
+                    raise error
         # Do this if device is found an ineligible for standard upgrade
         else:
-            # Do this if device is found as eligible for standard upgrade
-            upgradeDeviceIneligibleButtonString = "//a[@type='button'][contains(text(),'Upgrade Options')]"
-            upgradeDeviceIneligibleButton = self.browser.elementExists(by=By.XPATH,value=upgradeDeviceIneligibleButtonString,timeout=1.5)
+            upgradeDeviceIneligibleButtonXPath = "//a[@type='button'][contains(text(),'Upgrade Options')]"
+            upgradeDeviceIneligibleButton = self.browser.searchForElement(by=By.XPATH,value=upgradeDeviceIneligibleButtonXPath,timeout=2)
             if(upgradeDeviceIneligibleButton):
                 upgradeDeviceIneligibleButton.click()
                 # Handle cases where clicking the "upgrade" button fails.
-                if(not self.waitForPageLoad(by=By.XPATH,value="//div[contains(@class,'upgrade-title')]/div/h1[contains(text(),'Upgrade options')]")):
+                upgradeOptionsXPath = "//div/*[contains(text(),'Choose upgrade options for non-eligible lines')]"
+                if(not self.browser.searchForElement(by=By.XPATH,value=upgradeOptionsXPath,timeout=15)):
                     if (mtnPendingError()):
                         return "MTNPending"
                     else:
-                        raise ValueError("Clicking the 'upgrade' button either never loaded or landed at an ambiguous location.")
+                        error = ValueError("Clicking the 'upgrade' button either never loaded or landed at an ambiguous location.")
+                        log.error(error)
+                        raise error
                 else:
-                    upgradeOptionsDropdownString = "//button[@class='drop-down-vz']"
-                    upgradeOptionsDropdown = self.browser.waitForClickableElement(by=By.XPATH,value=upgradeOptionsDropdownString)
+                    upgradeOptionsDropdownXPath = "//button[@class='drop-down-vz']"
+                    upgradeOptionsDropdown = self.browser.searchForElement(by=By.XPATH,value=upgradeOptionsDropdownXPath,timeout=15,testClickable=True)
                     upgradeOptionsDropdown.click()
 
-                    waiverOptionString = f"{upgradeOptionsDropdownString}/following-sibling::ul/li[contains(text(),'Waiver')]"
-                    waiverOption = self.browser.waitForClickableElement(by=By.XPATH,value=waiverOptionString)
+                    waiverOptionXPath = f"{upgradeOptionsDropdownXPath}/following-sibling::ul/li[contains(text(),'Waiver')]"
+                    waiverOption = self.browser.searchForElement(by=By.XPATH,value=waiverOptionXPath,timeout=15,testClickable=True)
                     waiverOption.click()
 
-                    elementNotEligibleString = "//div[contains(@class,'Notification')][contains(text(),'The wireless number you are attempting to upgrade is not eligible to use a Waiver.')]"
-                    if(self.browser.elementExists(by=By.XPATH,value=elementNotEligibleString,timeout=5)):
+                    elementNotEligibleXPath = "//div[contains(@class,'Notification')][contains(text(),'The wireless number you are attempting to upgrade is not eligible to use a Waiver.')]"
+                    if(self.browser.searchForElement(by=By.XPATH,value=elementNotEligibleXPath,timeout=5)):
                         return "NotETFEligible"
 
-                    continueButtonString = "//app-choose-upgrade/div/section/button[contains(text(),'Continue')]"
-                    continueButton = self.browser.waitForClickableElement(by=By.XPATH,value=continueButtonString)
+                    continueButtonString = "//app-choose-upgrade//button[contains(text(),'Continue')]"
+                    continueButton = self.browser.searchForElement(by=By.XPATH,value=continueButtonString,testClickable=True,timeout=15)
                     continueButton.click()
 
-                    self.waitForPageLoad(by=By.XPATH,value="//div[@id='page-header']/div/h1[contains(text(),'Shop Devices')]",testClick=True)
-
+                    shopDevicesHeaderXPath = "//div[@id='page-header']/div/h1[contains(text(),'Shop Devices')]"
+                    self.browser.searchForElement(by=By.XPATH,value=shopDevicesHeaderXPath,testClickable=True,testLiteralClick=True,timeout=120,minSearchTime=5)
             else:
-                raise ValueError("Couldn't find ANY upgrade button, whether eligible or ineligible, on the line viewer page!")
-
+                error = ValueError("Couldn't find ANY upgrade button, whether eligible or ineligible, on the line viewer page!")
+                log.error(error)
+                raise error
         return True
 
     #endregion === Line Viewer ===
@@ -372,32 +384,37 @@ class VerizonDriver:
         shopDevicesButton.click()
 
         # Now we wait to ensure that we've fully navigated to the newDevice screen.
-        self.waitForPageLoad(by=By.XPATH,value="//h2[contains(text(),'Shop Devices')]",testClick=True)
+        shopDevicesHeaderXPath = "//h2[contains(text(),'Shop Devices')]"
+        self.browser.searchForElement(by=By.XPATH,value=shopDevicesHeaderXPath,timeout=120,minSearchTime=5,
+                                      testClickable=True,testLiteralClick=True)
 
     # This method clears the full cart, from anywhere. It cancels out whatever was previously
     # happening, but ensures the cart is fully empty for future automation.
     def emptyCart(self):
         self.navToHomescreen()
 
-        miniCart = self.browser.waitForClickableElement(by=By.XPATH,value="//app-mini-cart/div/div/span")
+        miniCart = self.browser.searchForElement(by=By.XPATH,value="//app-mini-cart/div/div/span",timeout=30,testClickable=True)
         miniCart.click()
 
-        if (not self.browser.elementExists(by=By.XPATH,value="//div[contains(text(),'No items in the cart yet, please continue shopping.')]",timeout=2)):
-            viewCartButton = self.browser.waitForClickableElement(by=By.XPATH,value="//button[@clickname='MB View Shopping Cart']",timeout=60)
+        noItemsInCartXPath = "//div[contains(text(),'No items in the cart yet, please continue shopping.')]"
+        if (not self.browser.searchForElement(by=By.XPATH,value=noItemsInCartXPath,timeout=2)):
+            viewCartButtonXPath = "//button[@clickname='MB View Shopping Cart']"
+            viewCartButton = self.browser.searchForElement(by=By.XPATH,value=viewCartButtonXPath,timeout=60,testClickable=True)
             viewCartButton.click()
 
-            self.waitForPageLoad(by=By.XPATH,value="//div[contains(@class,'device-shopping-cart-content-left')]//h1[contains(text(),'Shopping cart')]",testClick=True)
+            shoppingCartHeaderXPath = "//div[contains(@class,'device-shopping-cart-content-left')]//h1[contains(text(),'Shopping cart')]"
+            self.browser.searchForElement(by=By.XPATH,value=shoppingCartHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True)
 
-            clearCartButtonString = "//a[@id='dtm_clearcart']"
-            self.browser.waitForClickableElement(by=By.XPATH,value=clearCartButtonString)
-            clearCartButton = self.browser.waitForClickableElement(by=By.XPATH,value=clearCartButtonString)
+            clearCartButtonXPath = "//a[@id='dtm_clearcart']"
+            clearCartButton = self.browser.searchForElement(by=By.XPATH,value=clearCartButtonXPath,timeout=30,testClickable=True)
             clearCartButton.click()
 
-            confirmationClearButtonString = "//mat-dialog-container//button[text()='Clear']"
-            confirmationClearButton = self.browser.waitForClickableElement(by=By.XPATH,value=confirmationClearButtonString)
+            confirmationClearButtonXPath = "//mat-dialog-container//button[text()='Clear']"
+            confirmationClearButton = self.browser.searchForElement(by=By.XPATH,value=confirmationClearButtonXPath,timeout=30,testClickable=True)
             confirmationClearButton.click()
 
-            self.waitForPageLoad(by=By.XPATH,value="//h1[text()='Your cart is empty.']")
+            self.browser.searchForElement(by=By.XPATH,value="//h1[text()='Your cart is empty.']",timeout=60,
+                                          testClickable=True,testLiteralClick=True)
             self.navToHomescreen()
 
     # Assumes we're on the device selection page. Given a Universal Device ID, searches for that
@@ -815,3 +832,8 @@ class VerizonDriver:
 
 
     #endregion === Device Ordering ===
+
+
+br = Browser()
+vzw = VerizonDriver(br)
+vzw.logInToVerizon()

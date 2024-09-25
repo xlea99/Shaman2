@@ -329,6 +329,7 @@ class TMAAssignment:
 #endregion === TMA Data Structures ===
 
 # How many TMA Location Datas will be stored at maximum, to conserve the TMA object from endlessly inflating.
+#TODO doesn't actually work yet, i don't think
 MAXIMUM_STORED_HISTORY = 20
 
 class TMADriver():
