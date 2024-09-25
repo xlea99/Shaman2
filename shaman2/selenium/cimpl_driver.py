@@ -4,11 +4,12 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 import time
 from datetime import datetime
+from tomlkit.items import Array as tomlkitArray
 import os
 import re
 from shaman2.selenium.browser import Browser
 from shaman2.common.logger import log
-from shaman2.common.config import mainConfig
+from shaman2.common.config import mainConfig, devices, deviceCimplMappings, accessories,accessoryCimplMappings
 from shaman2.common.paths import paths
 from shaman2.utilities.async_sound import playsoundAsync
 from shaman2.utilities.shaman_utils import convertServiceIDFormat
@@ -70,7 +71,6 @@ class CimplDriver:
                 userResponse = input("Please log in to Cimpl, and press enter to continue. Type anything to cancel.")
                 return not userResponse
             else:
-                #self.browser.implicitly_wait(10)
                 self.waitForLoadingScreen()
 
                 usernameInput = self.browser.searchForElement(by=By.XPATH,value="//input[@id='username']",timeout=3,testClickable=True)
@@ -89,18 +89,19 @@ class CimplDriver:
 
     # A simple helper method that will cause the program to wait until it can not find the loading screen
     # element present on the screen. Also checks for any "error messages" that pop up.
-    def waitForLoadingScreen(self,timeout=15,minSearchTime=1):
+    # TODO Error message handling used to be done here, but needs to be moved due to huge delays.
+    def waitForLoadingScreen(self,timeout=60,minSearchTime=1):
         self.browser.switchToTab("Cimpl")
         loaderMessageXPath = "//div/div[contains(@class,'loader__message')]"
         self.browser.searchForElement(by=By.XPATH,value=loaderMessageXPath,invertedSearch=True,testClickable=True,
                                       timeout=timeout,minSearchTime=minSearchTime,raiseError=True)
 
-        errorMessageString = "//div[contains(@class,'message-box')][contains(text(),'An error occurred')]/following-sibling:div[contains(@class,'message-box__buttons-group')]/button[@id='btn-ok']"
-        errorMessageElement = self.browser.searchForElement(by=By.XPATH,value=errorMessageString,
-                                                           timeout=5,raiseError=False)
-        if(errorMessageElement):
-            self.browser.safeClick(element=errorMessageElement,timeout=15)
-            self.waitForLoadingScreen(timeout=timeout,minSearchTime=minSearchTime)
+        #errorMessageString = "//div[contains(@class,'message-box')][contains(text(),'An error occurred')]/following-sibling:div[contains(@class,'message-box__buttons-group')]/button[@id='btn-ok']"
+        #errorMessageElement = self.browser.searchForElement(by=By.XPATH,value=errorMessageString,
+        #                                                   timeout=5,raiseError=False)
+        #if(errorMessageElement):
+        #    self.browser.safeClick(element=errorMessageElement,timeout=15)
+        #    self.waitForLoadingScreen(timeout=timeout,minSearchTime=minSearchTime)
 
     #endregion === Basic Navigation ===
 
@@ -520,7 +521,7 @@ class CimplDriver:
                             # noinspection PyTypeChecker
                             row_data[key] = False
                     else:
-                        row_data[key] = tdElements[i].text
+                        row_data[key] = tdElements[i].text # type: ignore
 
                 returnList.append(row_data)
 
@@ -556,7 +557,7 @@ class CimplDriver:
         returnDict["Requestor"] = self.Workorders_ReadRequester()
         returnDict["Notes"] = self.Workorders_ReadNotes()
         if(returnDict["OperationType"] in ["New Request","Upgrade"]):
-            returnDict["Shipping"] = self.Workorders_ReadShippingAddress()
+            returnDict["Shipping"] = self.Workorders_ReadShippingAddress() # type: ignore
         else:
             returnDict["Shipping"] = None
 
@@ -639,7 +640,7 @@ class CimplDriver:
         editAccountButtonString = "//account-modal-popup-selector/div/div/div/div/div/cimpl-icon-button/div/div/i[contains(@class,'fa-pencil cimpl-icon-button')]"
 
         # This means an account currently exists, and we need to remove it first.
-        if(self.browser.searchForElement(by=By.XPATH,value=editAccountButtonString)):
+        if(self.browser.searchForElement(by=By.XPATH,value=editAccountButtonString,testClickable=True)):
             removeAccountButtonString = "//account-modal-popup-selector/div/div/div/div/div/cimpl-icon-button/div/div/i[contains(@class,'fa-times-circle cimpl-icon-button')]"
             removeAccountButton = self.browser.find_element(by=By.XPATH,value=removeAccountButtonString)
             removeAccountButton.click()
@@ -834,10 +835,9 @@ class CimplDriver:
 
     #endregion === Utility ===
 
-#TODO come back to ALL three of these
 # This helper method looks through a list of Notes to try and locate the Order Number. It prioritizes recent orders
 # over older ones.
-def findPlacedOrderNumber(noteList : list,carrier : str):
+def findPlacedCimplOrderNumber(noteList : list,carrier : str):
     targetOrder = None
     targetOrderDate = None
     verizonOrderPattern = re.compile(r"MB\d+")
@@ -854,7 +854,7 @@ def findPlacedOrderNumber(noteList : list,carrier : str):
         thisDate = datetime.strptime(note["CreatedDate"], '%m/%d/%Y %I:%M %p')
 
         subject = note["Subject"].strip().lower()
-        validOrderPlacedStrings = ["order placed","order number","new order number","order re-placed","order replaced","order confirmation"]
+        validOrderPlacedStrings = ["order placed","order number","new order number","order re-placed","order replaced","order confirmation","ordered"]
         if(subject in validOrderPlacedStrings):
             match = targetOrderPattern.search(note["Content"])
             if match:
@@ -864,14 +864,13 @@ def findPlacedOrderNumber(noteList : list,carrier : str):
     return targetOrder
 
 # This helper method simply extracts the assigned userID from the Actions of a Cimpl WO.
-def getUserID(actionsList : list):
+def getNetworkIDFromActions(actionsList : list):
     for action in actionsList:
         if(action.startswith("Assigned to Employee")):
             return action.split("Assigned to Employee - ")[1].split(" - ")[0]
 
 # This helper method takes a raw hardwareInfo list and classifies it in to the final deviceID and set of
 # accessoryIDs.
-# TODO Add system for accessory backups i.e. when one accessory isn't available, go to another.
 def classifyHardwareInfo(hardwareInfo : list,carrier,raiseNoEquipmentError=True):
     allAccessoryIDs = []
     deviceID = None
@@ -879,34 +878,36 @@ def classifyHardwareInfo(hardwareInfo : list,carrier,raiseNoEquipmentError=True)
         for hardware in hardwareInfo:
             if(hardware["Type"] == "Equipment"):
                 try:
-                    deviceID = b.equipment["CimplMappings"][hardware["Name"]]
+                    deviceID = deviceCimplMappings[hardware["Name"].strip().strip('"')]
                 except KeyError:
                     playsoundAsync(paths["media"] / "shaman_attention.mp3")
                     # TODO pretty duct-tapey, huh?
-                    response = input(f"Unknown Cimpl device detected: '{hardware['Name']}'. If this is a valid Cimpl device, add it to the equipment.toml and press enter to reload the config. Type anything else to exit.")
+                    response = input(f"Unknown Cimpl device detected: '{hardware['Name']}'. If this is a valid Cimpl device, add it to the device_cimpl_mappings.toml and press enter to reload the config. Type anything else to exit.")
                     if(response):
-                        raise KeyError(f"'{hardware['Name']}' is not a mapped Cimpl device.")
+                        error = KeyError(f"'{hardware['Name']}' is not a mapped Cimpl device.")
+                        log.error(error)
+                        raise error
                     else:
-                        with open(f"{b.paths.data}/equipment.toml", "rb") as f:
-                            b.equipment = tomli.load(f)
-                        deviceID = b.equipment["CimplMappings"][hardware["Name"]]
+                        # If the user makes changes, reload the cimpl mappings program-wide to accommodate new changes.
+                        deviceCimplMappings.reload()
+                        deviceID = deviceCimplMappings[hardware["Name"].strip().strip('"')]
             elif(hardware["Type"] == "Accessory"):
                 try:
-                    thisAccessory = b.accessories["CimplMappings"][hardware["Name"]]
+                    thisAccessory = accessoryCimplMappings[hardware["Name"]]
                 except KeyError:
                     #TODO TEMP - get rid of if i ever implement real ordering
                     thisAccessory = "SamsungVehicleCharger"
                     #raise KeyError(f"'{hardware['Name']}' is not a mapped Cimpl accessory.")
-                if(type(thisAccessory) is str):
-                    allAccessoryIDs.append(thisAccessory)
-                else:
+                print(type(thisAccessory))
+                if(isinstance(thisAccessory,(list,tomlkitArray))):
                     allAccessoryIDs.extend(thisAccessory)
+                else:
+                    allAccessoryIDs.append(thisAccessory)
     else:
         if(raiseNoEquipmentError):
             raise(ValueError("Hardware info is empty in Cimpl!"))
         else:
             return False
-
 
     # Check to ensure no duplicate accessory types due to a Sysco user getting a bit over-excited
     # with accessory the order page
@@ -915,18 +916,28 @@ def classifyHardwareInfo(hardwareInfo : list,carrier,raiseNoEquipmentError=True)
     finalAccessoryIDs = set()
     usedTypes = set()
     for accessoryID in allAccessoryIDs:
-        if(b.accessories[accessoryID]["type"] not in usedTypes):
-            usedTypes.add(b.accessories[accessoryID]["type"])
+        if(accessories[accessoryID]["type"] not in usedTypes):
+            usedTypes.add(accessories[accessoryID]["type"])
             finalAccessoryIDs.add(accessoryID)
 
     if(carrier.lower() == "verizon wireless"):
-        if(b.config["cimpl"]["skipVehicleCharger"]):
+        if(not mainConfig["sysco"]["orderVehicleChargers"]):
             for accessoryID in finalAccessoryIDs:
-                if(b.accessories[accessoryID]["type"] == "vehicleCharger"):
+                if(accessories[accessoryID]["type"] == "vehicleCharger"):
                     finalAccessoryIDs.remove(accessoryID)
                     break
-        if(b.config["cimpl"]["verizonSmartphoneBaseAccessory"] != ""):
-            if(b.equipment[deviceID]["subType"] == "Smart Phone"):
-                finalAccessoryIDs.add(b.config["cimpl"]["verizonSmartphoneBaseAccessory"])
+        # TODO for now, the "default order wall adapter" system works, but it could do with an overhaul to support more cases down the line
+        if(devices[deviceID]["tmaSubType"] == "Smart Phone"):
+            extraAccessoriesToOrder = mainConfig["sysco"]["vzwAccessoriesToAlwaysOrder_SmartPhone"]
+        elif(devices[deviceID]["tmaSubType"] == "Aircard"):
+            extraAccessoriesToOrder = mainConfig["sysco"]["vzwAccessoriesToAlwaysOrder_Aircard"]
+        elif(devices[deviceID]["tmaSubType"] == "Tablet"):
+            extraAccessoriesToOrder = mainConfig["sysco"]["vzwAccessoriesToAlwaysOrder_Tablet"]
+        else:
+            extraAccessoriesToOrder = []
+        finalAccessoryIDs = finalAccessoryIDs | set(extraAccessoriesToOrder)
 
     return {"DeviceID" : deviceID, "AccessoryIDs" : finalAccessoryIDs}
+
+hw = [{'Name': 'IPhone XR Accessory Bundle (Otterbox defender and Lightning Veh. Charger)', 'Type': 'Accessory', 'Serial Number': 'n/a', 'Cost': 'USD$ 33.99', 'Date of Purchase': 'n/a', 'Primary': False}, {'Name': 'Car Charger for iPhone 12 64 GB', 'Type': 'Accessory', 'Serial Number': 'n/a', 'Cost': 'USD$ 25.99', 'Date of Purchase': 'n/a', 'Primary': False}, {'Name': 'iPhone Otterbox Defender Case for iPhone 12', 'Type': 'Accessory', 'Serial Number': 'n/a', 'Cost': 'USD$ 38.99', 'Date of Purchase': 'n/a', 'Primary': False}, {'Name': 'iPhone 13 128GB - Midnight', 'Type': 'Equipment', 'Serial Number': 'n/a', 'Cost': 'USD$ 0.01', 'Date of Purchase': 'n/a', 'Primary': True}, {'Name': 'Blue Light Filter w/ Privacy: iPhone 13', 'Type': 'Accessory', 'Serial Number': 'n/a', 'Cost': 'USD$ 19.99', 'Date of Purchase': 'n/a', 'Primary': False}, {'Name': 'Car Charger for iPhone 14', 'Type': 'Accessory', 'Serial Number': 'n/a', 'Cost': 'USD$ 22.99', 'Date of Purchase': 'n/a', 'Primary': False}, {'Name': 'Otterbox Defender case for iPhone 13', 'Type': 'Accessory', 'Serial Number': 'n/a', 'Cost': 'USD$ 38.99', 'Date of Purchase': 'n/a', 'Primary': False}, {'Name': 'Otterbox Symmetry with MagSafe for iPhone 13', 'Type': 'Accessory', 'Serial Number': 'n/a', 'Cost': 'USD$ 18.50', 'Date of Purchase': 'n/a', 'Primary': False}]
+classHW = classifyHardwareInfo(hardwareInfo=hw,carrier="Verizon Wireless")

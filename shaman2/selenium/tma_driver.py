@@ -5,7 +5,7 @@ from selenium.webdriver.support.ui import Select
 from shaman2.selenium.browser import Browser
 from shaman2.utilities.shaman_utils import convertServiceIDFormat
 from shaman2.common.logger import log
-from shaman2.common.config import mainConfig, clientConfig
+from shaman2.common.config import mainConfig, clients
 
 #region === TMA Data Structures ===
 
@@ -114,7 +114,7 @@ class TMALocation:
 
 # These classes serve as simple structs for representing singular object in TMA such as a people object, service object,
 # or equipment object.
-class People:
+class TMAPeople:
 
     # Init method to initialize info for this People
     def __init__(self,locationData : TMALocation = None):
@@ -149,7 +149,7 @@ class People:
             returnString += ("-" + str(i) + "\n")
 
         return returnString
-class Service:
+class TMAService:
 
     # Basic init method to initialize all instance variables.
     def __init__(self):
@@ -223,7 +223,7 @@ class Service:
             returnString += "\nLinked Order: " + str(self.info_LinkedOrders[i])
         returnString += "\n" + str(self.info_LinkedEquipment.__str__())
         return returnString
-class Order:
+class TMAOrder:
 
     # Basic init method to initialize all instance variables.
     def __init__(self):
@@ -250,7 +250,7 @@ class Order:
         self.info_RefundAmount = None
 
         self.info_OrderNotes = None
-class Cost:
+class TMACost:
 
     # Basic init method to initialize instance variables.
     def __init__(self, isBaseCost=True, featureName=None, gross=0, discountPercentage=0, discountFlat=0):
@@ -278,7 +278,7 @@ class Cost:
         netPrice = self.info_Gross - self.info_DiscountFlat
         netPrice *= ((100 - self.info_DiscountPercentage) / 100)
         return netPrice
-class Equipment:
+class TMAEquipment:
 
     # Simple constructor with option to specify linkedService, and to initialize instance variables.
     def __init__(self, linkedService=None,mainType=None, subType=None, make=None, model=None):
@@ -300,10 +300,9 @@ class Equipment:
         returnString += "\nModel: " + str(self.info_Model)
         returnString += "\nIMEI: " + str(self.info_IMEI)
         returnString += "\nSIM Card: " + str(self.info_SIM)
-        returnString += "\nLinked Service:" + str(self.info_LinkedService)
 
         return returnString
-class Assignment:
+class TMAAssignment:
     # Initializing a TMAAssignment requires the client (LYB, Sysco, etc.) and vendor
     # (AT&T Mobility, Verizon Wireless, etc) to be specified.
     def __init__(self, client = None, vendor = None,siteCode = None,assignmentType = "Wireless"):
@@ -312,7 +311,7 @@ class Assignment:
         self.info_Vendor = vendor
 
 
-        self.info_Account = clientConfig[client]["Accounts"][vendor][self.info_Vendor]
+        self.info_Account = clients[client]["Accounts"][vendor][self.info_Vendor]
 
         self.info_SiteCode = siteCode
         self.info_Address = None
@@ -724,11 +723,11 @@ class TMADriver():
     # Reads main information from the "Line Info" service tab of a Service Entry in
     # TMA. If a Service object is supplied, it reads the info into this object - otherwise
     # it returns a new Service object.
-    def Service_ReadMainInfo(self,serviceObject : Service = None,client = None):
+    def Service_ReadMainInfo(self, serviceObject : TMAService = None, client = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         if(serviceObject is None):
-            serviceObject = Service()
+            serviceObject = TMAService()
         xpathPrefix = "//div/fieldset/ol/li"
         self.Service_NavToServiceTab("Line Info")
 
@@ -791,12 +790,12 @@ class TMADriver():
         log.debug(f"Successfully read main info for service {serviceObject.info_ServiceNumber}")
         return serviceObject
     # LINE INFO : Reads "Line Info" (install and disco date, inactive checkbox) for this service entry.
-    def Service_ReadLineInfoInfo(self,serviceObject : Service = None):
+    def Service_ReadLineInfoInfo(self, serviceObject : TMAService = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         self.Service_NavToServiceTab("line info")
         if(serviceObject is None):
-            serviceObject = Service()
+            serviceObject = TMAService()
 
         prefix = "//div/div/ol/li"
         serviceObject.info_InstalledDate = self.browser.find_element(by=By.XPATH, value=
@@ -811,14 +810,14 @@ class TMADriver():
         log.debug(f"Successfully read line info for service {serviceObject.info_ServiceNumber}")
         return serviceObject
     # COST ENTRIES : Read methods pertaining to cost entries associated with this service.
-    def Service_ReadBaseCost(self,serviceObject : Service = None):
+    def Service_ReadBaseCost(self, serviceObject : TMAService = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         self.Service_NavToServiceTab("base costs")
         if(serviceObject is None):
-            serviceObject = Service()
+            serviceObject = TMAService()
         # We always overwrite the existing info_BaseCost if there was one.
-        serviceObject.info_BaseCost = Cost(isBaseCost=True)
+        serviceObject.info_BaseCost = TMACost(isBaseCost=True)
         baseCostRowXPath = "//table[contains(@id,'Detail_sfBaseCosts_sgvFeatures')]/tbody/tr[contains(@class,'sgvitems')]"
         baseCostRow = self.browser.searchForElement(by=By.XPATH,value=baseCostRowXPath,timeout=1)
         if(baseCostRow):
@@ -829,19 +828,19 @@ class TMADriver():
             serviceObject.info_BaseCost.info_DiscountFlat = allDataEntries[3].text
         log.debug(f"Successfully read base cost for service {serviceObject.info_ServiceNumber}")
         return serviceObject
-    def Service_ReadFeatureCosts(self,serviceObject : Service = None):
+    def Service_ReadFeatureCosts(self, serviceObject : TMAService = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         self.Service_NavToServiceTab("features")
         if(serviceObject is None):
-            serviceObject = Service()
+            serviceObject = TMAService()
         serviceObject.info_FeatureCosts = []
 
         featureCostRowsXPath = "//table[contains(@id,'Detail_sfStandardFeatures_sgvFeatures')]/tbody/tr[contains(@class,'sgvitems')]"
         featureCostRows = self.browser.find_elements(by=By.XPATH, value=featureCostRowsXPath)
         if(featureCostRows):
             for featureCostRow in featureCostRows:
-                thisFeatureCostObject = Cost(isBaseCost=False)
+                thisFeatureCostObject = TMACost(isBaseCost=False)
                 allDataEntries = featureCostRow.find_elements(by=By.TAG_NAME, value="td")
                 thisFeatureCostObject.info_FeatureString = allDataEntries[0].text
                 thisFeatureCostObject.info_Gross = allDataEntries[1].text
@@ -852,7 +851,7 @@ class TMADriver():
         return serviceObject
     # LINKED ITEMS : Read methods pertaining to linked items to this service. Some methods are sensitive to
     # client, particularly linked people.
-    def Service_ReadLinkedPerson(self,serviceObject : Service = None,client=None):
+    def Service_ReadLinkedPerson(self, serviceObject : TMAService = None, client=None):
         if(client is None):
             if(serviceObject.info_Client is None):
                 log.warning("No client specified in function call OR provided in serviceObject. Defaulting to sysco.")
@@ -888,7 +887,7 @@ class TMADriver():
                 serviceObject.info_LinkedPersonNID = linkedPersonNetID
             serviceObject.info_LinkedPersonEmail = linkedPersonEmail
             return serviceObject
-    def Service_ReadLinkedInteractions(self,serviceObject : Service = None):
+    def Service_ReadLinkedInteractions(self, serviceObject : TMAService = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         self.Service_NavToServiceTab("links")
@@ -936,7 +935,7 @@ class TMADriver():
         else:
             serviceObject.info_LinkedInteractions = arrayOfLinkedIntNumbers
             return serviceObject
-    def Service_ReadLinkedOrders(self,serviceObject : Service = None):
+    def Service_ReadLinkedOrders(self, serviceObject : TMAService = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         self.Service_NavToServiceTab("links")
@@ -982,11 +981,11 @@ class TMADriver():
         else:
             serviceObject.info_LinkedOrders = arrayOfLinkedOrderNumbers
             return serviceObject
-    def Service_ReadAllLinkedInformation(self,serviceObject : Service = None,client=None):
+    def Service_ReadAllLinkedInformation(self, serviceObject : TMAService = None, client=None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         if(serviceObject is None):
-            serviceObject = Service()
+            serviceObject = TMAService()
         self.Service_ReadLinkedPerson(serviceObject,client=client)
         self.Service_ReadLinkedInteractions(serviceObject)
         self.Service_ReadLinkedOrders(serviceObject)
@@ -998,12 +997,12 @@ class TMADriver():
         return True
     # EQUIPMENT : Reads basic information about any linked equipment. Does NOT open the equipment -
     # only reads what is visible from the linked equipment tab.
-    def Service_ReadSimpleEquipmentInfo(self,serviceObject : Service = None):
+    def Service_ReadSimpleEquipmentInfo(self, serviceObject : TMAService = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         if(serviceObject is None):
-            serviceObject = Service()
-        serviceObject.info_LinkedEquipment = Equipment()
+            serviceObject = TMAService()
+        serviceObject.info_LinkedEquipment = TMAEquipment()
 
         self.Service_NavToServiceTab("links")
         self.Service_NavToLinkedTab("equipment")
@@ -1024,7 +1023,7 @@ class TMADriver():
     # (info that's displayed on the top part of the service entry) If a serviceObject is
     # given, it'll write from the given serviceObject. Otherwise, they take a raw value
     # as well.
-    def Service_WriteServiceNumber(self,serviceObject : Service = None,rawValue = None):
+    def Service_WriteServiceNumber(self, serviceObject : TMAService = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         if(serviceObject is None):
@@ -1041,7 +1040,7 @@ class TMADriver():
         serviceNumberInput.clear()
         serviceNumberInput.send_keys(valueToWrite)
         log.debug(f"Successfully wrote: {valueToWrite}")
-    def Service_WriteUserName(self,serviceObject : Service = None,rawValue = None):
+    def Service_WriteUserName(self, serviceObject : TMAService = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         if (serviceObject is None):
@@ -1058,7 +1057,7 @@ class TMADriver():
         userNameInput.clear()
         userNameInput.send_keys(valueToWrite)
         log.debug(f"Successfully wrote: {valueToWrite}")
-    def Service_WriteAlias(self,serviceObject : Service = None,rawValue = None):
+    def Service_WriteAlias(self, serviceObject : TMAService = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         if (serviceObject is None):
@@ -1075,7 +1074,7 @@ class TMADriver():
         aliasInput.clear()
         aliasInput.send_keys(valueToWrite)
         log.debug(f"Successfully wrote: {valueToWrite}")
-    def Service_WriteContractStartDate(self,serviceObject : Service = None,rawValue = None):
+    def Service_WriteContractStartDate(self, serviceObject : TMAService = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         if (serviceObject is None):
@@ -1092,7 +1091,7 @@ class TMADriver():
         contractStartDateInput.clear()
         contractStartDateInput.send_keys(valueToWrite)
         log.debug(f"Successfully wrote: {valueToWrite}")
-    def Service_WriteContractEndDate(self,serviceObject : Service = None,rawValue = None):
+    def Service_WriteContractEndDate(self, serviceObject : TMAService = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         if (serviceObject is None):
@@ -1109,7 +1108,7 @@ class TMADriver():
         contractEndDateInput.clear()
         contractEndDateInput.send_keys(valueToWrite)
         log.debug(f"Successfully wrote: {valueToWrite}")
-    def Service_WriteUpgradeEligibilityDate(self,serviceObject : Service = None,rawValue = None):
+    def Service_WriteUpgradeEligibilityDate(self, serviceObject : TMAService = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         if (serviceObject is None):
@@ -1126,7 +1125,7 @@ class TMADriver():
         upgradeEligibilityDateInput.clear()
         upgradeEligibilityDateInput.send_keys(valueToWrite)
         log.debug(f"Successfully wrote: {valueToWrite}")
-    def Service_WriteServiceType(self,serviceObject : Service = None,rawValue = None):
+    def Service_WriteServiceType(self, serviceObject : TMAService = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         if (serviceObject is None):
@@ -1143,7 +1142,7 @@ class TMADriver():
         targetValueElement = self.browser.searchForElement(by=By.XPATH,value=targetValueXPath,timeout=1,raiseError=True)
         targetValueElement.click()
         log.debug(f"Successfully wrote: {valueToWrite}")
-    def Service_WriteCarrier(self,serviceObject : Service = None,rawValue = None):
+    def Service_WriteCarrier(self, serviceObject : TMAService = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         if (serviceObject is None):
@@ -1160,7 +1159,7 @@ class TMADriver():
         targetValueElement = self.browser.searchForElement(by=By.XPATH,value=targetValueXPath,timeout=1,raiseError=True)
         targetValueElement.click()
         log.debug(f"Successfully wrote: {valueToWrite}")
-    def Service_WriteMainInformation(self,serviceObject : Service,client : str = None):
+    def Service_WriteMainInformation(self, serviceObject : TMAService, client : str = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         if(client is None):
@@ -1185,7 +1184,7 @@ class TMADriver():
     # Write methods for each of the "Line Info" values. If a serviceObject is
     # given, it'll write from the given serviceObject. Otherwise, they take a raw value
     # as well.
-    def Service_WriteInstalledDate(self,serviceObject : Service = None,rawValue = None):
+    def Service_WriteInstalledDate(self, serviceObject : TMAService = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         if (serviceObject is None):
@@ -1202,7 +1201,7 @@ class TMADriver():
         installedDateInput.clear()
         installedDateInput.send_keys(valueToWrite)
         log.debug(f"Successfully wrote: {valueToWrite}")
-    def Service_WriteDisconnectedDate(self,serviceObject : Service = None,rawValue = None):
+    def Service_WriteDisconnectedDate(self, serviceObject : TMAService = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         if (serviceObject is None):
@@ -1219,7 +1218,7 @@ class TMADriver():
         disconnectedDateInput.clear()
         disconnectedDateInput.send_keys(valueToWrite)
         log.debug(f"Successfully wrote: {valueToWrite}")
-    def Service_WriteIsInactiveService(self,serviceObject : Service = None,rawValue : bool = None):
+    def Service_WriteIsInactiveService(self, serviceObject : TMAService = None, rawValue : bool = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         if(rawValue is None):
@@ -1240,7 +1239,7 @@ class TMADriver():
     # Method for writing/building base and feature costs onto a service entry. If a serviceObject
     # is given, it will prioritize building the cost objects associated with that serviceObject.
     # Otherwise, if a raw costObject is given, it'll simply build that cost object.
-    def Service_WriteCosts(self,serviceObject : Service = None,costObjects : (Cost,list) = None,isBase : bool = True):
+    def Service_WriteCosts(self, serviceObject : TMAService = None, costObjects : (TMACost, list) = None, isBase : bool = True):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
         if(costObjects is None):
             if(serviceObject is None):
@@ -1278,20 +1277,21 @@ class TMADriver():
             self.browser.safeClick(by=By.XPATH,value=createNewButtonXPath,retryClicks=True,timeout=30,
                                    successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=newItemTestForXPath))
             featureSelectionXPath = f"{XPathPrefix}/div/div/select[contains(@name,'$ddlFeature$ddlFeature_ddl')]"
-            featureSelectionDropdown = Select(self.browser.find_element(by=By.XPATH,value=featureSelectionXPath))
+            featureSelectionDropdown = Select(self.browser.searchForElement(by=By.XPATH,value=featureSelectionXPath,timeout=30,
+                                                                            minSearchTime=3,testClickable=True))
             featureSelectionDropdown.select_by_visible_text(costToWrite.info_FeatureString)
 
             if(costToWrite.info_Gross is not None):
-                grossForm = self.browser.find_element(by=By.XPATH, value=grossFormXPath)
+                grossForm = self.browser.searchForElement(by=By.XPATH, value=grossFormXPath,testClickable=True,testLiteralClick=True,timeout=5)
                 grossForm.send_keys(costToWrite.info_Gross)
             if(costToWrite.info_DiscountPercentage is not None):
-                discountPercentForm = self.browser.find_element(by=By.XPATH, value=discountPercentFormXPath)
+                discountPercentForm = self.browser.searchForElement(by=By.XPATH, value=discountPercentFormXPath,testClickable=True,testLiteralClick=True,timeout=5)
                 discountPercentForm.send_keys(costToWrite.info_DiscountPercentage)
             if(costToWrite.info_DiscountFlat is not None):
-                discountFlatForm = self.browser.find_element(by=By.XPATH, value=discountFlatFormXPath)
+                discountFlatForm = self.browser.searchForElement(by=By.XPATH, value=discountFlatFormXPath,testClickable=True,testLiteralClick=True,timeout=5)
                 discountFlatForm.send_keys(costToWrite.info_DiscountFlat)
 
-            self.browser.safeClick(by=None, value=insertButtonXPath,jsClick=True)
+            self.browser.safeClick(by=By.XPATH, value=insertButtonXPath,jsClick=True)
 
             # Wait until the new cost appears, just in case of TMAfuckery.
             finishedCostXPath = f"//table[contains(@id,'sgvFeatures')]/tbody/tr[contains(@class,'sgvitems')]/td[text()='{costToWrite.info_FeatureString}']"
@@ -1308,11 +1308,11 @@ class TMADriver():
         insertButtonXPath = "//span[@class='buttons']/div[@class='buttons']/input[contains(@name,'ButtonControl1$ctl')][@value='Insert']"
         updateButtonXPath = "//span[@class='buttons']/div[@class='buttons']/input[contains(@name,'ButtonControl1$ctl')][@value='Update']"
         if (self.browser.searchForElement(by=By.XPATH, value=updateButtonXPath,timeout=1)):
-            self.browser.safeClick(by=By.XPATH,value=updateButtonXPath,minClicks=2,clickDelay=1)
+            self.browser.safeClick(by=By.XPATH,value=updateButtonXPath,clickDelay=1,timeout=5)
             log.debug("Updated service.")
             return True
         elif(self.browser.searchForElement(by=By.XPATH,value=insertButtonXPath,timeout=1)):
-            self.browser.safeClick(by=By.XPATH,value=insertButtonXPath,minClicks=2,clickDelay=1)
+            self.browser.safeClick(by=By.XPATH,value=insertButtonXPath,clickDelay=1,timeout=5)
             # Tests for whether the service might already exist and handles it.
             # TODO come back here to determine how to actually intercept this.
             serviceAlreadyExistsString = "//span[text()='The Service already exists in the database.']"
@@ -1411,10 +1411,10 @@ class TMADriver():
 
 
     # Read methods for each part of the Order entry.
-    def Order_ReadMainInfo(self,orderObject : Order = None):
+    def Order_ReadMainInfo(self, orderObject : TMAOrder = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
         if(orderObject is None):
-            orderObject = Order()
+            orderObject = TMAOrder()
 
         orderObject.info_PortalOrderNumber = self.browser.find_element(by=By.XPATH,value="//span[text()='Portal Order Number']/following-sibling::input").text
         orderObject.info_VendorOrderNumber = self.browser.find_element(by=By.XPATH,value="//span[text()='Vendor Order #:']/following-sibling::input").text
@@ -1437,26 +1437,26 @@ class TMADriver():
         orderObject.info_RefundAmount = self.browser.find_element(by=By.XPATH,value="//span[text()='Refund Amount:']/following-sibling::input").text
 
         return orderObject
-    def Order_ReadOrderNotes(self,orderObject : Order = None):
+    def Order_ReadOrderNotes(self, orderObject : TMAOrder = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
         if(orderObject is None):
-            orderObject = Order()
+            orderObject = TMAOrder()
 
         self.Order_NavToOrderTab("notes")
         orderObject.info_OrderNotes = self.browser.find_element(by=By.XPATH,value="//textarea[contains(@id,'txtSummary')]").text
         return orderObject
     # TODO hehe this function doesn't actually work. Make it work.
-    def Order_ReadLinkedService(self,orderObject : Order = None):
+    def Order_ReadLinkedService(self, orderObject : TMAOrder = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
         if(orderObject is None):
-            orderObject = Order()
+            orderObject = TMAOrder()
 
         self.Order_NavToOrderTab("links")
         self.Order_NavToLinkedTab("services")
 
     # Write methods for each part of the Order entry.
     # Main Info
-    def Order_WritePortalOrderNumber(self,orderObject : Order = None,rawValue = None):
+    def Order_WritePortalOrderNumber(self, orderObject : TMAOrder = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
         if (orderObject is None):
             valueToWrite = rawValue
@@ -1470,7 +1470,7 @@ class TMADriver():
         portalOrderField = self.browser.find_element(by=By.XPATH,value=portalOrderFieldXPath)
         portalOrderField.clear()
         portalOrderField.send_keys(rawValue)
-    def Order_WriteVendorOrderNumber(self,orderObject : Order = None,rawValue = None):
+    def Order_WriteVendorOrderNumber(self, orderObject : TMAOrder = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
         if (orderObject is None):
             valueToWrite = rawValue
@@ -1484,7 +1484,7 @@ class TMADriver():
         vendorOrderField = self.browser.find_element(by=By.XPATH,value=vendorOrderFieldXPath)
         vendorOrderField.clear()
         vendorOrderField.send_keys(rawValue)
-    def Order_WriteVendorTrackingNumber(self,orderObject : Order = None,rawValue = None):
+    def Order_WriteVendorTrackingNumber(self, orderObject : TMAOrder = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
         if (orderObject is None):
             valueToWrite = rawValue
@@ -1498,7 +1498,7 @@ class TMADriver():
         vendorTrackingField = self.browser.find_element(by=By.XPATH,value=vendorTrackingFieldXPath)
         vendorTrackingField.clear()
         vendorTrackingField.send_keys(rawValue)
-    def Order_WriteContactName(self,orderObject : Order = None,rawValue = None):
+    def Order_WriteContactName(self, orderObject : TMAOrder = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
         if (orderObject is None):
             valueToWrite = rawValue
@@ -1512,7 +1512,7 @@ class TMADriver():
         contactNameField = self.browser.find_element(by=By.XPATH,value=contactNameFieldXPath)
         contactNameField.clear()
         contactNameField.send_keys(rawValue)
-    def Order_WriteSubmittedDate(self,orderObject : Order = None,rawValue = None):
+    def Order_WriteSubmittedDate(self, orderObject : TMAOrder = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
         if (orderObject is None):
             valueToWrite = rawValue
@@ -1526,7 +1526,7 @@ class TMADriver():
         submittedDateField = self.browser.find_element(by=By.XPATH,value=submittedDateFieldXPath)
         submittedDateField.clear()
         submittedDateField.send_keys(rawValue)
-    def Order_WriteCompletedDate(self,orderObject : Order = None,rawValue = None):
+    def Order_WriteCompletedDate(self, orderObject : TMAOrder = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
         if (orderObject is None):
             valueToWrite = rawValue
@@ -1540,7 +1540,7 @@ class TMADriver():
         completedDateField = self.browser.find_element(by=By.XPATH,value=completedDateFieldXPath)
         completedDateField.clear()
         completedDateField.send_keys(rawValue)
-    def Order_WriteDueDate(self,orderObject : Order = None,rawValue = None):
+    def Order_WriteDueDate(self, orderObject : TMAOrder = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
         if (orderObject is None):
             valueToWrite = rawValue
@@ -1554,7 +1554,7 @@ class TMADriver():
         dueDateField = self.browser.find_element(by=By.XPATH,value=dueDateFieldXPath)
         dueDateField.clear()
         dueDateField.send_keys(rawValue)
-    def Order_WriteRecurringCost(self,orderObject : Order = None,rawValue = None):
+    def Order_WriteRecurringCost(self, orderObject : TMAOrder = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
         if (orderObject is None):
             valueToWrite = rawValue
@@ -1568,7 +1568,7 @@ class TMADriver():
         recurringCostField = self.browser.find_element(by=By.XPATH,value=recurringCostFieldXPath)
         recurringCostField.clear()
         recurringCostField.send_keys(rawValue)
-    def Order_WriteRecurringSavings(self,orderObject : Order = None,rawValue = None):
+    def Order_WriteRecurringSavings(self, orderObject : TMAOrder = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
         if (orderObject is None):
             valueToWrite = rawValue
@@ -1582,7 +1582,7 @@ class TMADriver():
         recurringSavingsField = self.browser.find_element(by=By.XPATH,value=recurringSavingsFieldXPath)
         recurringSavingsField.clear()
         recurringSavingsField.send_keys(rawValue)
-    def Order_WriteCredits(self,orderObject : Order = None,rawValue = None):
+    def Order_WriteCredits(self, orderObject : TMAOrder = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
         if (orderObject is None):
             valueToWrite = rawValue
@@ -1596,7 +1596,7 @@ class TMADriver():
         creditsField = self.browser.find_element(by=By.XPATH,value=creditsFieldXPath)
         creditsField.clear()
         creditsField.send_keys(rawValue)
-    def Order_WriteOneTimeCost(self,orderObject : Order = None,rawValue = None):
+    def Order_WriteOneTimeCost(self, orderObject : TMAOrder = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
         if (orderObject is None):
             valueToWrite = rawValue
@@ -1610,7 +1610,7 @@ class TMADriver():
         oneTimeCostField = self.browser.find_element(by=By.XPATH,value=oneTimeCostFieldXPath)
         oneTimeCostField.clear()
         oneTimeCostField.send_keys(rawValue)
-    def Order_WriteRefundAmount(self,orderObject : Order = None,rawValue = None):
+    def Order_WriteRefundAmount(self, orderObject : TMAOrder = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
         if (orderObject is None):
             valueToWrite = rawValue
@@ -1624,7 +1624,7 @@ class TMADriver():
         refundAmountField = self.browser.find_element(by=By.XPATH,value=refundAmountFieldXPath)
         refundAmountField.clear()
         refundAmountField.send_keys(rawValue)
-    def Order_WriteOrderStatus(self, orderObject: Order = None, rawValue=None):
+    def Order_WriteOrderStatus(self, orderObject: TMAOrder = None, rawValue=None):
         self.browser.switchToTab(self.currentTMATab[0], self.currentTMATab[1])
         if (orderObject is None):
             valueToWrite = rawValue
@@ -1637,7 +1637,7 @@ class TMADriver():
         orderStatusDropdownXPath = f"//span[text()='Order Status:']/following-sibling::select/option[text()='{valueToWrite}']"
         orderStatusDropdown = self.browser.find_element(by=By.XPATH,value=orderStatusDropdownXPath)
         orderStatusDropdown.click()
-    def Order_WritePlacedBy(self, orderObject: Order = None, rawValue=None):
+    def Order_WritePlacedBy(self, orderObject: TMAOrder = None, rawValue=None):
         self.browser.switchToTab(self.currentTMATab[0], self.currentTMATab[1])
         if (orderObject is None):
             valueToWrite = rawValue
@@ -1650,7 +1650,7 @@ class TMADriver():
         placedByDropdownXPath = f"//span[text()='Placed By:']/following-sibling::select/option[text()='{valueToWrite}']"
         placedByDropdown = self.browser.find_element(by=By.XPATH,value=placedByDropdownXPath)
         placedByDropdown.click()
-    def Order_WriteOrderClass(self, orderObject: Order = None, rawValue=None):
+    def Order_WriteOrderClass(self, orderObject: TMAOrder = None, rawValue=None):
         self.browser.switchToTab(self.currentTMATab[0], self.currentTMATab[1])
         if (orderObject is None):
             valueToWrite = rawValue
@@ -1663,7 +1663,7 @@ class TMADriver():
         orderClassDropdownXPath = f"//span[text()='Order Class:']/following-sibling::select/option[text()='{valueToWrite}']"
         orderClassDropdown = self.browser.find_element(by=By.XPATH,value=orderClassDropdownXPath)
         orderClassDropdown.click()
-    def Order_WriteOrderType(self, orderObject: Order = None, rawValue=None):
+    def Order_WriteOrderType(self, orderObject: TMAOrder = None, rawValue=None):
         self.browser.switchToTab(self.currentTMATab[0], self.currentTMATab[1])
         if (orderObject is None):
             valueToWrite = rawValue
@@ -1676,7 +1676,7 @@ class TMADriver():
         orderTypeDropdownXPath = f"//span[text()='Order Type:']/following-sibling::select/option[text()='{valueToWrite}']"
         orderTypeDropdown = self.browser.find_element(by=By.XPATH,value=orderTypeDropdownXPath)
         orderTypeDropdown.click()
-    def Order_WriteOrderSubType(self, orderObject: Order = None, rawValue=None):
+    def Order_WriteOrderSubType(self, orderObject: TMAOrder = None, rawValue=None):
         self.browser.switchToTab(self.currentTMATab[0], self.currentTMATab[1])
         if (orderObject is None):
             valueToWrite = rawValue
@@ -1690,7 +1690,7 @@ class TMADriver():
         orderSubTypeDropdown = self.browser.find_element(by=By.XPATH,value=orderSubTypeDropdownXPath)
         orderSubTypeDropdown.click()
     # Other
-    def Order_WriteOrderNotes(self, orderObject: Order = None, rawValue=None):
+    def Order_WriteOrderNotes(self, orderObject: TMAOrder = None, rawValue=None):
         self.browser.switchToTab(self.currentTMATab[0], self.currentTMATab[1])
         if (orderObject is None):
             valueToWrite = rawValue
@@ -1751,11 +1751,11 @@ class TMADriver():
 
     # Reads basic information about a People entry in TMA. If a People object is supplied,
     # it reads the basic info into this object - otherwise, it returns a new People object.
-    def People_ReadBasicInfo(self,peopleObject : People = None):
+    def People_ReadBasicInfo(self, peopleObject : TMAPeople = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         if(peopleObject is None):
-            peopleObject = People()
+            peopleObject = TMAPeople()
         peopleObject.location = self.currentLocation
 
         firstNameString = "//div/div/fieldset/ol/li/span[contains(@id,'Detail_txtFirstName__label')]/following-sibling::span"
@@ -1781,11 +1781,11 @@ class TMADriver():
         return peopleObject
     # Reads an array of linked interactions of a people Object. If a People object is supplied,
     # it reads the info into this object - otherwise, it returns a new People object.
-    def People_ReadLinkedInteractions(self,peopleObject : People = None):
+    def People_ReadLinkedInteractions(self, peopleObject : TMAPeople = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         if(peopleObject is None):
-            peopleObject = People()
+            peopleObject = TMAPeople()
         self.People_NavToLinkedTab("interactions")
 
         pageCountTextXPath = "//table/tbody/tr/td/span[contains(@id,'Detail_associations_link1_lblPages')]"
@@ -1825,11 +1825,11 @@ class TMADriver():
     # Reads an array of linked services of a people Object. If a People object is supplied,
     # it reads the info into this object - otherwise, it returns a new People object.
     # Reads an array of linked service numbers into info_LinkedServices
-    def People_ReadLinkedServices(self,peopleObject : People = None):
+    def People_ReadLinkedServices(self, peopleObject : TMAPeople = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         if(peopleObject is None):
-            peopleObject = People()
+            peopleObject = TMAPeople()
         self.People_NavToLinkedTab("services")
 
         pageCountTextXPath = "//table/tbody/tr/td/span[contains(@id,'Detail_associations_link1_lblPages')]"
@@ -1852,7 +1852,7 @@ class TMADriver():
 
             if ((i + 1) < pageCount):
                 while True:
-                    self.browser.safeClick(by=None, value=nextButtonXPath)
+                    self.browser.safeClick(by=By.XPATH, value=nextButtonXPath)
                     self.waitForTMALoader()
                     pageCountText = self.browser.find_element(by=By.XPATH, value=pageCountTextXPath).text
                     pageCountMatch = re.search(r'Page (\d+)', pageCountText)
@@ -1868,11 +1868,11 @@ class TMADriver():
         return peopleObject
     # Simply reads in all information about a single People Entry. If a People object is supplied,
     # it reads the info into this object - otherwise, it returns a new People object.
-    def People_ReadAllInformation(self,peopleObject : People = None):
+    def People_ReadAllInformation(self, peopleObject : TMAPeople = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         if(peopleObject is None):
-            peopleObject = People()
+            peopleObject = TMAPeople()
 
         self.People_ReadBasicInfo(peopleObject)
         self.People_ReadLinkedInteractions(peopleObject)
@@ -1901,7 +1901,9 @@ class TMADriver():
         log.debug("Successfully clicked on Create New Linked Service.")
     # This method opens up a service, given by a serviceID, turning the currently open tab
     # from a TMA people tab to a TMA service tab. Assumes we're currently on a people entry.
-    def People_OpenServiceFromPeople(self, serviceID):
+    # ExtraWaitTime is provided, because after a new service is created, TMA likes to be a little bitch
+    # and take sometimes 15+seconds for it to appear.
+    def People_OpenServiceFromPeople(self, serviceID,extraWaitTime=0):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         self.People_NavToLinkedTab("services")
@@ -1913,7 +1915,7 @@ class TMADriver():
         # Try to find the created service, including support for flipping through pages (max 50)
         for i in range(50):
             pagesChecked += 1
-            openServiceButton = self.browser.searchForElement(by=By.XPATH, value=openServiceButtonXPath)
+            openServiceButton = self.browser.searchForElement(by=By.XPATH, value=openServiceButtonXPath,timeout=3+extraWaitTime)
             if(not openServiceButton):
                 nextPageButton = self.browser.find_element(by=By.XPATH,value=nextPageButtonXPath)
                 if(nextPageButton.get_attribute("disabled") != "true"):
@@ -1944,11 +1946,11 @@ class TMADriver():
 
     # Reads main information about an Equipment entry in TMA. If an Equipment object is supplied,
     # it reads the info into this object - otherwise, it returns a new Equipment object.
-    def Equipment_ReadMainInfo(self,equipmentObject : Equipment = None):
+    def Equipment_ReadMainInfo(self, equipmentObject : TMAEquipment = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         if(equipmentObject is None):
-            equipmentObject = Equipment()
+            equipmentObject = TMAEquipment()
         xpathPrefix = "//div/fieldset/ol/li"
 
         equipmentObject.info_MainType = self.browser.find_element(by=By.XPATH, value=
@@ -1973,7 +1975,7 @@ class TMADriver():
     # it pulls the info to write from this object. If not, it uses the "literalValue" object to write
     # instead.
     # TODO handle linked services better - no methods exist, just kinda assume its configured correctly in TMA
-    def Equipment_WriteSubType(self,equipmentObject : Equipment = None,literalValue = None):
+    def Equipment_WriteSubType(self, equipmentObject : TMAEquipment = None, literalValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         if (literalValue is None):
@@ -1988,9 +1990,9 @@ class TMADriver():
 
         subTypeDropdownXPath = f"//div/fieldset/div/fieldset/ol/li/select[contains(@id,'ddlEquipmentTypeComposite_ddlSubType')][contains(@name,'$ddlEquipmentTypeComposite_ddlSubType')]/option[text()='{valToWrite}']"
         self.browser.safeClick(by=By.XPATH,value=subTypeDropdownXPath)
-        log.debug(f"Successfully wrote '{literalValue}'")
+        log.debug(f"Successfully wrote '{valToWrite}'")
         return True
-    def Equipment_WriteMake(self,equipmentObject : Equipment = None,literalValue = None):
+    def Equipment_WriteMake(self, equipmentObject : TMAEquipment = None, literalValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         if (literalValue is None):
@@ -2005,9 +2007,9 @@ class TMADriver():
 
         makeDropdownXPath = f"//div/fieldset/div/fieldset/ol/li/select[contains(@id,'ddlEquipmentTypeComposite_ddlMake')][contains(@name,'$ddlEquipmentTypeComposite_ddlMake')]/option[text()='{valToWrite}']"
         self.browser.safeClick(by=By.XPATH, value=makeDropdownXPath,timeout=10)
-        log.debug(f"Successfully wrote '{literalValue}'")
+        log.debug(f"Successfully wrote '{valToWrite}'")
         return True
-    def Equipment_WriteModel(self,equipmentObject : Equipment = None,literalValue = None):
+    def Equipment_WriteModel(self, equipmentObject : TMAEquipment = None, literalValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         if (literalValue is None):
@@ -2022,9 +2024,9 @@ class TMADriver():
 
         modelDropdownXPath = f"//div/fieldset/div/fieldset/ol/li/select[contains(@id,'ddlEquipmentTypeComposite_ddlModel')][contains(@name,'$ddlEquipmentTypeComposite_ddlModel')]/option[text()='{valToWrite}']"
         self.browser.safeClick(by=By.XPATH, value=modelDropdownXPath,timeout=10)
-        log.debug(f"Successfully wrote '{literalValue}'")
+        log.debug(f"Successfully wrote '{valToWrite}'")
         return True
-    def Equipment_WriteIMEI(self,equipmentObject : Equipment = None,literalValue = None):
+    def Equipment_WriteIMEI(self, equipmentObject : TMAEquipment = None, literalValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         if (literalValue is None):
@@ -2038,12 +2040,12 @@ class TMADriver():
             valToWrite = literalValue
 
         IMEIXPath = "//div/fieldset/div/fieldset/fieldset/ol/li/input[contains(@id,'txtimei')]"
-        IMEIElement = self.browser.find_element(by=By.XPATH, value=IMEIXPath)
+        IMEIElement = self.browser.searchForElement(by=By.XPATH, value=IMEIXPath,testClickable=True,timeout=3)
         IMEIElement.clear()
         IMEIElement.send_keys(valToWrite)
-        log.debug(f"Successfully wrote '{literalValue}'")
+        log.debug(f"Successfully wrote '{valToWrite}'")
         return True
-    def Equipment_WriteSIM(self,equipmentObject : Equipment = None,literalValue = None):
+    def Equipment_WriteSIM(self, equipmentObject : TMAEquipment = None, literalValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         if (literalValue is None):
@@ -2064,7 +2066,7 @@ class TMADriver():
         return True
     # Helper method to write ALL possible writeable info for this Equipment entry. Must specify
     # an Equipment object to pull information from - if any info is None, it will error out.
-    def Equipment_WriteAll(self,equipmentObject : Equipment):
+    def Equipment_WriteAll(self, equipmentObject : TMAEquipment,writeIMEI=True,writeSIM=True):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         errorMessage = "Can't writeAll from given equipment object, as it is missing "
@@ -2087,8 +2089,10 @@ class TMADriver():
         self.Equipment_WriteSubType(equipmentObject)
         self.Equipment_WriteMake(equipmentObject)
         self.Equipment_WriteModel(equipmentObject)
-        self.Equipment_WriteSIM(equipmentObject)
-        self.Equipment_WriteIMEI(equipmentObject)
+        if(writeSIM):
+            self.Equipment_WriteSIM(equipmentObject)
+        if(writeIMEI):
+            self.Equipment_WriteIMEI(equipmentObject)
     # Simply clicks on either "insert" or "update" on this equipment.
     def Equipment_InsertUpdate(self):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
@@ -2096,12 +2100,12 @@ class TMADriver():
         insertButtonXPath = "//span/div/input[contains(@name,'ButtonControl1')][@value = 'Insert']"
         updateButtonXPath = "//span/div/input[contains(@name,'ButtonControl1')][@value = 'Update']"
         if(self.browser.searchForElement(by=By.XPATH,value=insertButtonXPath,timeout=1)):
-            self.browser.safeClick(by=By.XPATH,value=insertButtonXPath)
+            self.browser.safeClick(by=By.XPATH,value=insertButtonXPath,timeout=5)
             self.waitForTMALoader()
             self.browser.safeClick(by=By.XPATH,value=updateButtonXPath,timeout=5)
             log.info("Successfully inserted equipment.")
         elif(self.browser.searchForElement(by=By.XPATH,value=updateButtonXPath,timeout=1)):
-            self.browser.safeClick(by=By.XPATH,value=updateButtonXPath,minClicks=2,timeout=5)
+            self.browser.safeClick(by=By.XPATH,value=updateButtonXPath,minClicks=1,timeout=5)
             log.debug("Successfully updated equipment.")
         else:
             error = RuntimeError("Couldn't InsertUpdate, as neither Insert nor Update were found.")
@@ -2191,7 +2195,7 @@ class TMADriver():
             log.error(f"Incorrect vendor selected to make assignment: {vendor}")
         self.browser.safeClick(element=vendorDropdownSelection)
         # Now select the appropriate account as found based on the vendor.
-        accountNumber = clientConfig[client]["Accounts"][vendor]
+        accountNumber = clients[client]["Accounts"][vendor]
         accountNumberDropdownSelectionXPath = f"//tr/td/div/fieldset/ol/li/select[contains(@id,'wizFindExistingAssigment_ddlAccount')]/option[text()='{accountNumber}']"
         accountNumberDropdownSelection = self.browser.searchForElement(by=By.XPATH,value=accountNumberDropdownSelectionXPath,timeout=10)
         self.browser.safeClick(element=accountNumberDropdownSelection)
@@ -2310,8 +2314,8 @@ class TMADriver():
         #endregion === Misc Sidetabs ===
 
         yesMakeAssignmentButtonXPath = "//table/tbody/tr/td/div/ol/li/a[contains(@id,'wizFindExistingAssigment_lnkLinkAssignment')][text()='Yes, make the assignment.']"
-        #self.browser.safeClick(by=By.XPATH,value=yesMakeAssignmentButtonXPath,retryClicks=True,timeout=60,clickDelay=5,
-        #                       successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=yesMakeAssignmentButtonXPath,invertedSearch=True))
+        self.browser.safeClick(by=By.XPATH,value=yesMakeAssignmentButtonXPath,retryClicks=True,timeout=60,clickDelay=5,
+                               successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=yesMakeAssignmentButtonXPath,invertedSearch=True))
         log.info("Successfully created assignment.")
 
     # endregion === Assignment Navigation ===

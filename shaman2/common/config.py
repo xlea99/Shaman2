@@ -3,7 +3,8 @@ import os
 from shaman2.common.paths import paths
 from shaman2.common.logger import log
 
-
+# This parent class provides a template for reloadable config objects, that essentially extend a
+# tomlkit.TOMLDocument but allow for live reloading.
 class ReloadableConfig():
 
     def __init__(self):
@@ -176,3 +177,5 @@ class AccessoryCimplMappingsConfig(ReloadableConfig):
             log.error(error)
             raise error
 accessoryCimplMappings = AccessoryCimplMappingsConfig()
+
+

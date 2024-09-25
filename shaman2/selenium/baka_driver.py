@@ -1,17 +1,8 @@
-import selenium.common.exceptions
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-import time
-import os
-import re
 from datetime import datetime
 from shaman2.selenium.browser import Browser
 from shaman2.common.config import mainConfig
 from shaman2.common.logger import log
-
-# TODO dynamic checking for Verizon logging out. Cause yeah, it does that.
 
 class BakaDriver:
 
@@ -118,10 +109,3 @@ class BakaDriver:
         return returnDict
 
     #endregion === Orders and History ===
-
-br = Browser()
-baka = BakaDriver(br)
-baka.logInToBaka()
-baka.navToOrderHistory()
-baka.openOrder("N27218993")
-readOrder = baka.readOrder()
