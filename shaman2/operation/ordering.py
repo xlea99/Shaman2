@@ -9,7 +9,7 @@ from shaman2.operation import maintenance
 from shaman2.common.config import mainConfig,clients,devices,accessories
 from shaman2.common.logger import log
 from shaman2.common.paths import paths
-from shaman2.utilities.shaman_utils import convertServiceIDFormat
+from shaman2.utilities.shaman_utils import convertServiceIDFormat,convertStateFormat
 from shaman2.utilities.async_sound import playsoundAsync
 
 #region === Carrier Order Reading ===
@@ -49,106 +49,54 @@ def readBakaOrder(bakaDriver : BakaDriver,bakaOrderNumber):
 #region === Carrier Order Placing ===
 
 # Places an entire Verizon new install.
-def placeVerizonNewInstall(drivers,deviceID : str,accessoryIDs : list,
+def placeVerizonNewInstall(verizonDriver : VerizonDriver,deviceID : str,accessoryIDs : list,
                            firstName,lastName,userEmail,
-                           address1,city,state,zipCode,contactEmails : str | list,address2="",reviewMode = True,emptyCart=True):
+                           address1,city,state,zipCode,contactEmails : str | list,
+                           address2="",reviewMode = True,emptyCart=True,deviceColor=None):
+    maintenance.validateVerizon(verizonDriver)
 
-    state = b.convertStateFormat(stateString=state,targetFormat="abbreviation")
-    if(type(contactEmails) is str):
-        contactEmails = [contactEmails]
-
-    verizonVerify(drivers)
     if(emptyCart):
-        drivers["Verizon"].emptyCart()
+        verizonDriver.emptyCart()
 
-    drivers["Verizon"].shopNewDevice()
-    drivers["Verizon"].DeviceSelection_SearchForDevice(deviceID,orderPath="NewInstall")
-    drivers["Verizon"].DeviceSelection_SelectDeviceQuickView(deviceID,orderPath="NewInstall")
-    drivers["Verizon"].DeviceSelection_QuickView_Select2YearContract(orderPath="NewInstall")
-    drivers["Verizon"].DeviceSelection_QuickView_AddToCart(orderPath="NewInstall")
-    drivers["Verizon"].DeviceSelection_Continue(orderPath="NewInstall")
+    # Search for the device, click on it, select contract, and add to cart.
+    verizonDriver.shopNewDevice()
+    verizonDriver.DeviceSelection_SearchForDevice(deviceID=deviceID,orderPath="NewInstall")
+    verizonDriver.DeviceSelection_SelectDevice(deviceID=deviceID,orderPath="NewInstall")
+    verizonDriver.DeviceSelection_DeviceView_SelectColor(deviceID=deviceID,colorName=deviceColor,orderPath="NewInstall")
+    verizonDriver.DeviceSelection_DeviceView_Select2YearContract(orderPath="NewInstall")
+    verizonDriver.DeviceSelection_DeviceView_AddToCartAndContinue(orderPath="NewInstall")
+    # This should send us to the Accessories shopping screen.
 
-    for accessoryID in accessoryIDs:
-        drivers["Verizon"].AccessorySelection_SearchForAccessory(accessoryID)
-        drivers["Verizon"].AccessorySelection_SelectAccessoryQuickView(accessoryID)
-        drivers["Verizon"].AccessorySelection_QuickView_AddToCart()
-        drivers["Verizon"].AccessorySelection_QuickView_Close()
-    drivers["Verizon"].AccessorySelection_Continue()
 
-    deviceType = b.equipment[deviceID]["subType"]
-    drivers["Verizon"].PlanSelection_SelectPlan(planID=b.clients["Sysco"]["Plans"][deviceType]["Verizon Wireless"][0]["planCode"], planType=b.clients["Sysco"]["Plans"][deviceType]["Verizon Wireless"][0]["planType"])
-    drivers["Verizon"].PlanSelection_Continue()
 
-    drivers["Verizon"].DeviceProtection_Decline(orderPath="NewInstall")
-
-    drivers["Verizon"].NumberSelection_SelectAreaCode(zipCode=zipCode)
-    drivers["Verizon"].NumberSelection_NavToAddUserInformation()
-    drivers["Verizon"].UserInformation_EnterBasicInfo(firstName=firstName, lastName=lastName, email=userEmail)
-    drivers["Verizon"].UserInformation_EnterAddressInfo(address1=address1, address2=address2, city=city, stateAbbrev=state,zipCode=zipCode)
-    drivers["Verizon"].UserInformation_SaveInfo()
-    drivers["Verizon"].NumberSelection_Continue()
-
-    drivers["Verizon"].ShoppingCart_ContinueToCheckOut()
-
-    drivers["Verizon"].Checkout_AddAddressInfo(company="Sysco", attention=f"{firstName} {lastName}",
-                                               address1=address1, address2=address2, city=city, stateAbbrev=state,zipCode=zipCode,
-                                               contactPhone="7084341121", notificationEmails=contactEmails)
-
-    if(reviewMode):
-        b.playsoundAsync(f"{b.paths.media}/shaman_order_ready.mp3")
-        userInput = input("Please review order details, and press enter to confirm. Type anything else to cancel.")
-        if(userInput != ""):
-            print("Request cancelled.")
-            return False
-    return drivers["Verizon"].Checkout_PlaceOrder()
 # Places an entire Verizon new install.
-def placeVerizonUpgrade(drivers,serviceID,deviceID : str,accessoryIDs : list,
+def placeVerizonUpgrade(verizonDriver : VerizonDriver,serviceID,deviceID : str,accessoryIDs : list,
                            firstName,lastName,
-                           address1,city,state,zipCode,contactEmails : str | list,address2="",reviewMode = True,emptyCart=True):
+                           address1,city,state,zipCode,contactEmails : str | list,
+                        address2="",reviewMode = True,emptyCart=True,deviceColor=None):
+    maintenance.validateVerizon(verizonDriver)
 
-    state = b.convertStateFormat(stateString=state,targetFormat="abbreviation")
-    if(type(contactEmails) is str):
-        contactEmails = [contactEmails]
-
-    verizonVerify(drivers)
     if(emptyCart):
-        drivers["Verizon"].emptyCart()
+        verizonDriver.emptyCart()
 
-    drivers["Verizon"].pullUpLine(b.convertServiceIDFormat(serviceID=serviceID,targetFormat="raw"))
-    upgradeReturnCode = drivers["Verizon"].LineViewer_UpgradeLine()
-    if(upgradeReturnCode == "MTNPending"):
-        return "MTNPending"
-    elif(upgradeReturnCode == "NotETFEligible"):
-        return "NotETFEligible"
+    # Pull up the line and click "upgrade"
+    verizonDriver.pullUpLine(serviceID=serviceID)
+    verizonDriver.LineViewer_UpgradeLine()
+    # This should send us to the device selection page.
 
-    drivers["Verizon"].DeviceSelection_SearchForDevice(deviceID,orderPath="Upgrade")
-    drivers["Verizon"].DeviceSelection_SelectDeviceQuickView(deviceID,orderPath="Upgrade")
-    drivers["Verizon"].DeviceSelection_QuickView_Select2YearContract(orderPath="Upgrade")
-    drivers["Verizon"].DeviceSelection_QuickView_AddToCart(orderPath="Upgrade")
-    drivers["Verizon"].DeviceSelection_Continue(orderPath="Upgrade")
+    # Search for the device, click on it, select contract, and add to cart.
+    verizonDriver.DeviceSelection_SearchForDevice(deviceID=deviceID,orderPath="Upgrade")
+    verizonDriver.DeviceSelection_SelectDevice(deviceID=deviceID,orderPath="Upgrade")
+    verizonDriver.DeviceSelection_DeviceView_SelectColor(deviceID=deviceID, colorName=deviceColor,orderPath="Upgrade")
+    verizonDriver.DeviceSelection_DeviceView_Select2YearContract(orderPath="Upgrade")
+    verizonDriver.DeviceSelection_DeviceView_DeclineDeviceProtection()
+    verizonDriver.DeviceSelection_DeviceView_AddToCartAndContinue(orderPath="Upgrade")
+    # This should send us straight to the shopping cart.
 
-    drivers["Verizon"].DeviceProtection_Decline(orderPath="Upgrade")
+    # We immediately go back to add accessories from the shopping cart.
+    verizonDriver.ShoppingCart_AddAccessories()
+    # This should send us to the Accessories shopping screen.
 
-    for accessoryID in accessoryIDs:
-        drivers["Verizon"].AccessorySelection_SearchForAccessory(accessoryID)
-        drivers["Verizon"].AccessorySelection_SelectAccessoryQuickView(accessoryID)
-        drivers["Verizon"].AccessorySelection_QuickView_AddToCart()
-        drivers["Verizon"].AccessorySelection_QuickView_Close()
-    drivers["Verizon"].AccessorySelection_Continue(orderPath="Upgrade")
-
-    drivers["Verizon"].ShoppingCart_ContinueToCheckOut()
-
-    drivers["Verizon"].Checkout_AddAddressInfo(company="Sysco", attention=f"{firstName} {lastName}",
-                                               address1=address1, address2=address2, city=city, stateAbbrev=state,zipCode=zipCode,
-                                               contactPhone="7084341121", notificationEmails=contactEmails)
-
-    if(reviewMode):
-        b.playsoundAsync(f"{b.paths.media}/shaman_order_ready.mp3")
-        userInput = input("Please review order details, and press enter to confirm. Type anything else to cancel.")
-        if(userInput != ""):
-            print("Request cancelled.")
-            return False
-    return drivers["Verizon"].Checkout_PlaceOrder()
 
 # Adds service information to Cimpl (service num, install date, account) and applies it.
 def writeServiceToCimplWorkorder(cimplDriver : CimplDriver,serviceNum,carrier,installDate):
@@ -588,10 +536,20 @@ cimpl = CimplDriver(br)
 vzw = VerizonDriver(br)
 baka = BakaDriver(br)
 
+if(True):
+    placeVerizonNewInstall(verizonDriver=vzw,
+                           deviceID="iPhone14_128GB",accessoryIDs=["VerizonWallAdapter"],
+                           firstName="John",lastName="Sysco",userEmail="john.sysco@test.com",
+                           address1="1370 Enclave Parkway",city="Houston",state="Texas",zipCode="77077",
+                           contactEmails="asomheil@uplandsoftware.com")
+if(False):
+    placeVerizonUpgrade(verizonDriver=vzw,serviceID="281-961-7581",
+                        deviceID="iPhone14_128GB",accessoryIDs=["VerizonWallAdapter"],
+                        firstName="John",lastName="Sysco",
+                        address1="1370 Enclave Parkway",city="Houston",state="Texas",zipCode="77077",
+                        contactEmails="asomheil@uplandsoftware.com")
 
-wosToProcess = [48286,48288,48291,48296,48297,
-                48299,48300]
-
+wosToProcess = []
 for wo in wosToProcess:
     try:
         processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,

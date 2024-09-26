@@ -445,7 +445,7 @@ class VerizonDriver:
             # Now we test to ensure that the proper device card has fully loaded.
             targetDeviceCardXPath = f"//div/div[contains(@class,'device-title')][text()='{devices[deviceID]['vzwUpgradeCardName']}']"
             self.browser.searchForElement(by=By.XPATH,value=targetDeviceCardXPath,timeout=60,testClickable=True)
-    def DeviceSelection_SelectDeviceQuickView(self,deviceID,orderPath="NewInstall"):
+    def DeviceSelection_SelectDevice(self,deviceID,orderPath="NewInstall"):
         if(orderPath == "NewInstall"):
             targetDeviceCardXPath = f"//div/div[contains(@class,'device-name')][contains(text(),'{devices[deviceID]['vzwNewInstallCardName']}')]"
             deviceDetailsXPath = f"//div[contains(@class,'pdp-header-section')]/div[contains(@class,'left-top-details')]/div[contains(text(),'{devices[deviceID]['vzwNewInstallCardName']}')]"
@@ -469,16 +469,61 @@ class VerizonDriver:
 
             twoYearContractSelectionXPath = "//div/ul/li/div[contains(text(),'2 Year Contract Required')]/parent::li"
             twoYearContractSelection = self.browser.searchForElement(by=By.XPATH,value=twoYearContractSelectionXPath,timeout=15,testClickable=True)
-            twoYearContractSelection.click()
+            self.browser.safeClick(element=twoYearContractSelection,timeout=10,scrollIntoView=True)
         else:
-            twoYearContractXPath = "//div[contains(text(),'2 year contract')]/ancestor::div[contains(@class,'payment-options')]"
-            twoYearContractSelection = self.browser.searchForElement(by=By.XPATH,value=twoYearContractXPath,timeout=15,testClickable=True)
-            twoYearContractSelection.click()
+            twoYearContractXPath = "//div[contains(@class,'payment-option-each')]//div[contains(text(),'2 year contract')]"
+            twoYearContractSelection = self.browser.searchForElement(by=By.XPATH,value=twoYearContractXPath,timeout=15,testClickable=True,raiseError=True)
+            self.browser.safeClick(element=twoYearContractSelection,timeout=10,scrollIntoView=True)
     def DeviceSelection_DeviceView_DeclineDeviceProtection(self):
-        declineDeviceProtectionOptionXPath = "//div[contains(text(),'Decline Device Protection')]"
-        declineDeviceProtectionOption = self.browser.searchForElement(by=By.XPATH,value=declineDeviceProtectionOptionXPath,timeout=15,testClickable=True)
-        self.browser.safeClick(element=declineDeviceProtectionOption,timeout=10,
-                               successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=f"{declineDeviceProtectionOption}[contains(@class,'bold')]"))
+        declineDeviceProtectionOptionBaseXPath = "//div[contains(text(),'Decline Device Protection')]"
+        declineDeviceProtectionOption = self.browser.searchForElement(by=By.XPATH,value=f"{declineDeviceProtectionOptionBaseXPath}/parent::div/parent::div",timeout=15,testClickable=True)
+        self.browser.safeClick(element=declineDeviceProtectionOption,timeout=10,scrollIntoView=True,
+                               successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=f"{declineDeviceProtectionOptionBaseXPath}[contains(@class,'bold')]"))
+    def DeviceSelection_DeviceView_SelectColor(self,deviceID=None,colorName=None,orderPath="NewInstall"):
+        if(colorName is None):
+            if(deviceID):
+                colorName = devices[deviceID]["vzwDefaultColor"]
+            else:
+                error = ValueError("Specified to select a Default color, but no deviceID was specified!")
+                log.error(error)
+                raise error
+
+        # For newInstalls, Verizon, in its infinite wisdom, has absolutely no labels on which color is which
+        # other than literal RGB values. Therefore, we have to "guess and check" if we aren't currently selected
+        # on the color we want.
+        if(orderPath == "NewInstall"):
+            currentColorHeaderXPath = "//div[contains(text(),'What color do you want?')]/following-sibling::div"
+            allColorboxOptionsXPath = "//div[contains(@class,'colorbox')]//div[@class='colorbox-button']"
+            allColorboxOptions = self.browser.find_elements(by=By.XPATH,value=allColorboxOptionsXPath)
+
+            foundColor = False
+            for colorboxOption in allColorboxOptions:
+                # First, test if the previous selected color was correct:
+                currentlySelectedColor = self.browser.searchForElement(by=By.XPATH,value=currentColorHeaderXPath,timeout=20,testClickable=True).text.strip().lower()
+                if(currentlySelectedColor == colorName.lower()):
+                    foundColor = True
+                    break
+                # If not, click on this new color and test it out.
+                else:
+                    self.browser.safeClick(element=colorboxOption,timeout=20)
+                    continue
+
+            if(not foundColor):
+                error = ValueError(f"Supplied color '{colorName}' does not seem to exist in Verizon Wireless for the searched device!")
+                log.error(error)
+                raise error
+        # Color selection for upgrades is much easier, as the radio buttons are labeled with the actual color name.
+        else:
+            colorboxXPath = "//div[@class='colorbox']"
+
+            colorSelectionXPath = f"{colorboxXPath}/div[@title='{colorName}']"
+            colorSelection = self.browser.searchForElement(by=By.XPATH,value=colorSelectionXPath,timeout=5)
+            if(colorSelection):
+                self.browser.safeClick(element=colorSelection,timeout=15)
+            else:
+                error = ValueError(f"Supplied color '{colorName}' does not seem to exist in Verizon Wireless for the searched device!")
+                log.error(error)
+                raise error
     def DeviceSelection_DeviceView_AddToCartAndContinue(self,orderPath="NewInstall"):
         if(orderPath == "NewInstall"):
             addToCartButtonXPath = "//button[@id='dtm_addcart']"
@@ -492,7 +537,7 @@ class VerizonDriver:
             # Click continue
             continueButtonXPath = "//nav[@id='stickyMenubar']//button[contains(text(),'Continue')]"
             continueButton = self.browser.searchForElement(by=By.XPATH,value=continueButtonXPath,timeout=30,testClickable=True)
-            continueButton.click()
+            self.browser.safeClick(element=continueButton,timeout=10,scrollIntoView=True)
 
             # Wait for accessories page to load
             shopAccessoriesHeaderXPath = "//section[contains(@class,'top-section')]//div[contains(text(),'Shop Accessories')]"
@@ -501,7 +546,7 @@ class VerizonDriver:
         else:
             buyNowButtonXPath = "//button[text()='Buy Now']"
             buyNowButton = self.browser.searchForElement(by=By.XPATH,value=buyNowButtonXPath,timeout=10,testClickable=True)
-            buyNowButton.click()
+            self.browser.safeClick(element=buyNowButton,timeout=10,scrollIntoView=True)
 
             # Wait for Shopping Cart page to load to confirm successful device add
             shoppingCartHeaderXPath = "//div[contains(@class,'device-shopping-cart-content-left')]//h1[contains(text(),'Shopping cart')]"
@@ -717,7 +762,29 @@ class VerizonDriver:
             continueButton.click()
             self.waitForPageLoad(by=By.XPATH, value=shoppingCartHeaderString,testClick=True,waitTime=4)
 
-    # Assumes we're on the shopping cart overview screen. Simpl clicks "check out" to continue
+
+    # Helper method verifies that there is only one line listed in the shopping cart, AND that that line
+    # is currently expanded.
+    def ShoppingCart_ValidateSingleLine(self):
+        allCartLinesXPath = "//*[contains(@class,'dsc-line-list')]/*[@class='ng-star-inserted']"
+        allCartLines = self.browser.find_elements(by=By.XPATH,value=allCartLinesXPath)
+        if(len(allCartLines) == 0):
+            error = RuntimeError("Attempted to validate a single line in the shopping cart, but found zero lines instead!")
+            log.error(error)
+            raise error
+        elif(len(allCartLines) == 1):
+            expandLineButtonXPath = f"{allCartLinesXPath}//div[contains(@class,'dsc-line-accordion-icon')]/i"
+
+            # Test to make sure the line is expanded
+            closedExpandLineButton = self.browser.searchForElement(by=By.XPATH,value=f"{expandLineButtonXPath}[contains(@class,'icon-plus')]",timeout=1.5)
+            if(closedExpandLineButton):
+                self.browser.safeClick(element=closedExpandLineButton,timeout=5,
+                                       successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=f"{expandLineButtonXPath}[contains(@class,'icon-minus')]"))
+        else:
+            error = RuntimeError(f"Attempted to validate a single line in the shopping cart, but found {len(allCartLines)} lines instead!")
+            log.error(error)
+            raise error
+    # Assumes we're on the shopping cart overview screen. Simply clicks "check out" to continue
     # to check out screen.
     def ShoppingCart_ContinueToCheckOut(self):
         checkOutButtonString = "//div[contains(@class,'device-shopping-cart-content-right')]/div/button[contains(text(),'Check out')]"
@@ -726,6 +793,21 @@ class VerizonDriver:
 
         checkoutHeaderString = "//div[@class='checkoutBox']//h1[text()='Checkout']"
         self.waitForPageLoad(by=By.XPATH,value=checkoutHeaderString,testClick=True)
+    # From shopping cart, clicks back to add accessories to the given order. For use with upgrades,
+    # which ATM bypass the accessory selection screen by default.
+    def ShoppingCart_AddAccessories(self):
+        # First, validate that they're only one line added.
+        self.ShoppingCart_ValidateSingleLine()
+
+        # Then, click on "Add accessories"
+        addAccessoriesXPath = "//div[contains(@class,'dsc-add-accessories-btn')]/a[contains(text(),'Add accessories')]"
+        addAccessories = self.browser.searchForElement(by=By.XPATH,value=addAccessoriesXPath,timeout=10,testClickable=True)
+        addAccessories.click()
+
+        # Finally, wait for Accessories screen to load.
+        shopAccessoriesHeaderXPath = "//section[contains(@class,'top-section')]//div[contains(text(),'Shop Accessories')]"
+        self.browser.searchForElement(by=By.XPATH, value=shopAccessoriesHeaderXPath, timeout=60,
+                                      testClickable=True, testLiteralClick=True)
 
     # Assumes we're on the checkout screen. Attempts to click on "add address" to add
     # a full address info.
@@ -844,11 +926,4 @@ class VerizonDriver:
     #endregion === Device Ordering ===
 
 
-br = Browser()
-vzw = VerizonDriver(br)
-vzw.logInToVerizon()
-vzw.emptyCart()
-vzw.pullUpLine("281-961-7581")
-vzw.LineViewer_UpgradeLine()
-vzw.DeviceSelection_SearchForDevice(deviceID="iPhone14_128GB",orderPath="Upgrade")
-vzw.DeviceSelection_SelectDeviceQuickView(deviceID="iPhone14_128GB",orderPath="Upgrade")
+"//app-device-cards//div[normalize-space(text())='iPhone 14']"

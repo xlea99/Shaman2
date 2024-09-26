@@ -898,7 +898,6 @@ def classifyHardwareInfo(hardwareInfo : list,carrier,raiseNoEquipmentError=True)
                     #TODO TEMP - get rid of if i ever implement real ordering
                     thisAccessory = "SamsungVehicleCharger"
                     #raise KeyError(f"'{hardware['Name']}' is not a mapped Cimpl accessory.")
-                print(type(thisAccessory))
                 if(isinstance(thisAccessory,(list,tomlkitArray))):
                     allAccessoryIDs.extend(thisAccessory)
                 else:

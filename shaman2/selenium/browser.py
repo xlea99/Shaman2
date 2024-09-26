@@ -297,8 +297,9 @@ class Browser(webdriver.Chrome):
     # minClicks/maxClicks -         Configurable min and max clicks to attempt, regardless of success.
     # testInterval -                Time interval to wait between element searches.
     # clickDelay -                  Time to wait between successive click attempts.
+    # scrollIntoView -              Attempts to scroll the element into view before each click.
     def safeClick(self,by = None,value : str = None,element : WebElement = None,timeout : float = 0,
-                  successfulClickCondition : Callable = None,prioritizeCondition = True, jsClick=False,raiseError=True,
+                  successfulClickCondition : Callable = None,prioritizeCondition = True, jsClick=False,raiseError=True,scrollIntoView=False,
                   retryClicks = False,minClicks : int = 0,maxClicks : int = 10**10,testInterval=0.5,clickDelay=0.5):
         # Throw error if both a value and an element are given
         if(value and element):
@@ -315,7 +316,6 @@ class Browser(webdriver.Chrome):
                 return True
 
         lastException = None
-        hasEvaluatedConditionThisLoop = False
         clickAttempt = 0
         clickCount = 0
         clickSuccessful = False
@@ -330,6 +330,10 @@ class Browser(webdriver.Chrome):
                     targetElement = element
                 else:
                     targetElement = self.searchForElement(by=by,value=value,timeout=testInterval,raiseError=True)
+
+                # Attempt to scroll into view if specified.
+                if(scrollIntoView):
+                    self.scrollIntoView(targetElement)
 
                 # Attempt to click if we still have clicks left and retryClicks is True.
                 if (clickCount == 0 or (retryClicks and clickCount < maxClicks)):
@@ -450,6 +454,10 @@ class Browser(webdriver.Chrome):
         log.debug(f"Screenshot saved to '{screenshotFilePath}'")
 
         return htmlFilePath, screenshotFilePath
+
+    # Simply scrolls the given element into view.
+    def scrollIntoView(self,element : WebElement):
+        self.execute_script("arguments[0].scrollIntoView({block: 'center'});", element)
 
     #endregion === Utilities ===
 
