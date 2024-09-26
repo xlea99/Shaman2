@@ -67,6 +67,13 @@ def placeVerizonNewInstall(verizonDriver : VerizonDriver,deviceID : str,accessor
     verizonDriver.DeviceSelection_DeviceView_AddToCartAndContinue(orderPath="NewInstall")
     # This should send us to the Accessories shopping screen.
 
+    # Search for each requested accessory, add it to the cart, then continue.
+    for accessoryID in accessoryIDs:
+        verizonDriver.AccessorySelection_SearchForAccessory(accessoryID=accessoryID)
+        verizonDriver.AccessorySelection_AddAccessoryToCart(accessoryID=accessoryID)
+    verizonDriver.AccessorySelection_Continue(orderPath="NewInstall")
+    # This should send us to the plan selection page.
+
 
 
 # Places an entire Verizon new install.
@@ -96,6 +103,13 @@ def placeVerizonUpgrade(verizonDriver : VerizonDriver,serviceID,deviceID : str,a
     # We immediately go back to add accessories from the shopping cart.
     verizonDriver.ShoppingCart_AddAccessories()
     # This should send us to the Accessories shopping screen.
+
+    # Search for each requested accessory, add it to the cart, then continue.
+    for accessoryID in accessoryIDs:
+        verizonDriver.AccessorySelection_SearchForAccessory(accessoryID=accessoryID)
+        verizonDriver.AccessorySelection_AddAccessoryToCart(accessoryID=accessoryID)
+    verizonDriver.AccessorySelection_Continue(orderPath="Upgrade")
+    # This should send us back to the shopping cart.
 
 
 # Adds service information to Cimpl (service num, install date, account) and applies it.

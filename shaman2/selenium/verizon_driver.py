@@ -553,52 +553,41 @@ class VerizonDriver:
             self.browser.searchForElement(by=By.XPATH,value=shoppingCartHeaderXPath,timeout=60,minSearchTime=5)
 
     # Assumes we're on the accessory selection page. Given a Universal Accessory ID, searches
-    # for that accessory (if support) on Verizon.
+    # for that accessory (if supported) on Verizon.
     def AccessorySelection_SearchForAccessory(self,accessoryID):
-        searchBox = self.browser.waitForClickableElement(by=By.XPATH,value="//input[@id='search']",timeout=15)
-        searchButton = self.browser.waitForClickableElement(by=By.XPATH,value="//button[@id='grid-search-button']",timeout=15)
+        searchBox = self.browser.searchForElement(by=By.XPATH,value="//input[@id='search']",timeout=15,testClickable=True)
+        searchButton = self.browser.searchForElement(by=By.XPATH,value="//span[@class='onedicon icon-search']",timeout=15,testClickable=True)
 
         searchBox.clear()
-        searchBox.send_keys(b.accessories["VerizonMappings"][accessoryID]["SearchTerm"])
-        searchButton.click()
+        searchBox.send_keys(accessories[accessoryID]["vzwSearchTerm"])
+        self.browser.safeClick(element=searchButton,timeout=10)
 
         # Now we test to ensure that the proper device card has fully loaded.
-        targetAccessoryCard = f"//app-accessory-tile/div/div/div[contains(@class,'product-name')][contains(text(),'{b.accessories['VerizonMappings'][accessoryID]['CardName']}')]"
-        self.waitForPageLoad(by=By.XPATH,value=targetAccessoryCard)
-    def AccessorySelection_SelectAccessoryQuickView(self,accessoryID):
-        targetAccessoryCardString = f"//app-accessory-tile/div/div/div[contains(@class,'product-name')][contains(text(),'{b.accessories['VerizonMappings'][accessoryID]['CardName']}')]"
-        targetAccessoryCard = self.browser.find_element(by=By.XPATH,value=targetAccessoryCardString,timeout=5)
-        self.browser.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", targetAccessoryCard)
-        targetAccessoryQuickViewButton = self.browser.waitForClickableElement(by=By.XPATH, value=f"{targetAccessoryCardString}/parent::div/following-sibling::div/button[contains(@class,'quick-view-btn')]", timeout=15)
-        self.browser.simpleSafeClick(element=targetAccessoryQuickViewButton,timeout=20)
+        targetAccessoryCardXPath = f"//app-accessory-tile/div/div/div[contains(@class,'product-name')][contains(text(),'{accessories[accessoryID]['vzwCardName']}')]"
+        self.browser.searchForElement(by=By.XPATH,value=targetAccessoryCardXPath,timeout=60)
+    def AccessorySelection_AddAccessoryToCart(self,accessoryID):
+        targetAccessoryCardXPath = f"//app-accessory-tile/div/div/div[contains(@class,'product-name')][contains(text(),'{accessories[accessoryID]['vzwCardName']}')]//ancestor::div[contains(@class,'accessory-card')]"
+        targetAccessoryAddToCartButtonXPath = f"{targetAccessoryCardXPath}//button[contains(@class,'add-cart-btn')]"
+        targetAccessoryAddToCartButton = self.browser.searchForElement(by=By.XPATH,value=targetAccessoryAddToCartButtonXPath,timeout=60)
+        self.browser.safeClick(element=targetAccessoryAddToCartButton,timeout=60)
 
-        productNameHeaderString = "//div[@class='product-name']/h2/span"
-        self.waitForPageLoad(by=By.XPATH,value=productNameHeaderString,testClick=True)
-    # Assumes we're in the quick view menu for an accessory. Various options for this menu.
-    def AccessorySelection_QuickView_AddToCart(self):
-        addToCartButtonString = "//a[contains(text(),'Add to cart')]"
-        addToCartButton = self.browser.waitForClickableElement(by=By.XPATH,value=addToCartButtonString)
-        addToCartButton.click()
-
-        self.browser.waitForClickableElement(by=By.XPATH,value="//div/div/div[contains(text(),'Nice choice! Your new accessory has been added to your cart.')]",testClick=True)
-    def AccessorySelection_QuickView_Close(self):
-        closeQuickViewButtonString = "//mat-dialog-container//span[contains(@class,'icon-close')]"
-        closeQuickViewButton = self.browser.waitForClickableElement(by=By.XPATH,value=closeQuickViewButtonString)
-        closeQuickViewButton.click()
-
-        self.waitForPageLoad(by=By.XPATH,value="//div[text()='Shop Accessories']",testClick=True)
-    # Method to continue to the next page after the accessory selection.
+        # Wait for confirmation that it was added to the cart.
+        addedToCartConfirmationXPath = "//div[contains(text(),'Your new accessory has been added to your cart.')]"
+        self.browser.searchForElement(by=By.XPATH,value=addedToCartConfirmationXPath,timeout=120)
+    # Method to manually continue to the next page after the accessory selection.
     def AccessorySelection_Continue(self,orderPath="NewInstall"):
-        continueButtonString = "//div/div/section/div/button[text()='Continue']"
-        continueButton = self.browser.waitForClickableElement(by=By.XPATH,value=continueButtonString)
-        continueButton.click()
+        continueButtonString = "//div[contains(@class,'mobile-button')]/button[contains(@class,'continue-btn')]"
+        continueButton = self.browser.searchForElement(by=By.XPATH,value=continueButtonString,timeout=60)
+        self.browser.safeClick(element=continueButton,timeout=60)
 
         if(orderPath == "NewInstall"):
-            choosePlanHeaderString = "//div/div/div/h1[contains(text(),'Select your new plans')]"
-            self.waitForPageLoad(by=By.XPATH,value=choosePlanHeaderString,testClick=True)
+            # If this is a NewInstall, the next page should be the Plan Selection page.
+            selectPlanHeaderXPath = "//div[contains(@class,'select-plan-container')]//h1[contains(text(),'Select plan')]"
+            self.browser.searchForElement(by=By.XPATH,value=selectPlanHeaderXPath,timeout=120,testClickable=True,testLiteralClick=True)
         else:
-            shoppingCartHeaderString = "//div/div/h1[contains(text(),'Shopping cart')]"
-            self.waitForPageLoad(by=By.XPATH, value=shoppingCartHeaderString, testClick=True)
+            # If this is an upgrade, the next page should be back on the shopping cart.
+            shoppingCartHeaderXPath = "//div[contains(@class,'device-shopping-cart-content-left')]//h1[contains(text(),'Shopping cart')]"
+            self.browser.searchForElement(by=By.XPATH,value=shoppingCartHeaderXPath,timeout=60,minSearchTime=5)
 
     # Assumes we're on the plan selection page. Given a Plan ID and a plan type,
     # selects it from this page.
