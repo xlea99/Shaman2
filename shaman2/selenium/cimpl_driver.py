@@ -178,9 +178,9 @@ class CimplDriver:
         self.waitForLoadingScreen()
         # Clear all filters.
         clearAllButtonString = "//div/div/cimpl-button[@class='ng-isolate-scope']/button[@automation-id='__button']/div[@class='button-content']/span[@class='button-label ng-binding uppercase'][text()='Clear All']/parent::div/parent::button"
-        clearAllButton = self.browser.searchForElement(by=By.XPATH,value=clearAllButtonString)
+        clearAllButton = self.browser.searchForElement(by=By.XPATH,value=clearAllButtonString,timeout=3,testClickable=True)
         if(clearAllButton):
-            clearAllButton.click()
+            self.browser.safeClick(element=clearAllButton,timeout=10)
             self.waitForLoadingScreen()
 
     # Methods to add specific filters, along with their status and value.
@@ -937,6 +937,3 @@ def classifyHardwareInfo(hardwareInfo : list,carrier,raiseNoEquipmentError=True)
         finalAccessoryIDs = finalAccessoryIDs | set(extraAccessoriesToOrder)
 
     return {"DeviceID" : deviceID, "AccessoryIDs" : finalAccessoryIDs}
-
-hw = [{'Name': 'IPhone XR Accessory Bundle (Otterbox defender and Lightning Veh. Charger)', 'Type': 'Accessory', 'Serial Number': 'n/a', 'Cost': 'USD$ 33.99', 'Date of Purchase': 'n/a', 'Primary': False}, {'Name': 'Car Charger for iPhone 12 64 GB', 'Type': 'Accessory', 'Serial Number': 'n/a', 'Cost': 'USD$ 25.99', 'Date of Purchase': 'n/a', 'Primary': False}, {'Name': 'iPhone Otterbox Defender Case for iPhone 12', 'Type': 'Accessory', 'Serial Number': 'n/a', 'Cost': 'USD$ 38.99', 'Date of Purchase': 'n/a', 'Primary': False}, {'Name': 'iPhone 13 128GB - Midnight', 'Type': 'Equipment', 'Serial Number': 'n/a', 'Cost': 'USD$ 0.01', 'Date of Purchase': 'n/a', 'Primary': True}, {'Name': 'Blue Light Filter w/ Privacy: iPhone 13', 'Type': 'Accessory', 'Serial Number': 'n/a', 'Cost': 'USD$ 19.99', 'Date of Purchase': 'n/a', 'Primary': False}, {'Name': 'Car Charger for iPhone 14', 'Type': 'Accessory', 'Serial Number': 'n/a', 'Cost': 'USD$ 22.99', 'Date of Purchase': 'n/a', 'Primary': False}, {'Name': 'Otterbox Defender case for iPhone 13', 'Type': 'Accessory', 'Serial Number': 'n/a', 'Cost': 'USD$ 38.99', 'Date of Purchase': 'n/a', 'Primary': False}, {'Name': 'Otterbox Symmetry with MagSafe for iPhone 13', 'Type': 'Accessory', 'Serial Number': 'n/a', 'Cost': 'USD$ 18.50', 'Date of Purchase': 'n/a', 'Primary': False}]
-classHW = classifyHardwareInfo(hardwareInfo=hw,carrier="Verizon Wireless")

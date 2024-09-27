@@ -1,11 +1,6 @@
-import selenium.common.exceptions
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.action_chains import ActionChains
-import time
 import re
 from shaman2.selenium.browser import Browser
 from shaman2.common.logger import log
@@ -455,7 +450,7 @@ class VerizonDriver:
 
         targetDeviceCard = self.browser.searchForElement(by=By.XPATH,value=targetDeviceCardXPath,timeout=5)
         self.browser.execute_script("arguments[0].scrollIntoView({block: 'center'});", targetDeviceCard)
-        self.browser.safeClick(element=targetDeviceCard,timeout=10)
+        self.browser.safeClick(element=targetDeviceCard,timeout=120)
 
         # Test for device details to confirm device has been successfully pulled up.
         self.browser.searchForElement(by=By.XPATH,value=deviceDetailsXPath,timeout=60,minSearchTime=5,
@@ -591,166 +586,231 @@ class VerizonDriver:
 
     # Assumes we're on the plan selection page. Given a Plan ID and a plan type,
     # selects it from this page.
-    def PlanSelection_SelectPlan(self,planID,planType):
-        targetPlanTypeTabString = f"//ul[@class='Tabs-list']/li[contains(@class,'Tab')]/button[@id='{planType}']"
-        targetPlanTypeTab = self.browser.waitForClickableElement(by=By.XPATH,value=targetPlanTypeTabString)
-        targetPlanTypeTab.click()
+    def PlanSelection_SelectPlan(self,planID):
+        # Should start on the Plan selection page. #TODO get into the habit of checking the page before every function.
+        selectPlanHeaderXPath = "//div[contains(@class,'select-plan-container')]//h1[contains(text(),'Select plan')]"
+        self.browser.searchForElement(by=By.XPATH, value=selectPlanHeaderXPath, timeout=120, testClickable=True,
+                                      testLiteralClick=True)
 
-        choosePlanHeaderString = "//div/div/div/h1[text()='Select your plan']"
-        self.waitForPageLoad(by=By.XPATH,value=choosePlanHeaderString,testClick=True)
+        targetPlanCardXPath = f"//div[contains(@class,'plan-card')][contains(@title,'Plan ID - {planID}')]/div[@class='plan-card-inner']//button[contains(text(),'Select plan')]"
+        targetPlanCard = self.browser.searchForElement(by=By.XPATH,value=targetPlanCardXPath,timeout=60,testClickable=True)
+        self.browser.scrollIntoView(targetPlanCard)
+        self.browser.safeClick(element=targetPlanCard,timeout=60)
 
-        needHelpChoosingPlanBoxString = "//div[@aria-label='Click for assistance via chat.']//img[@title='dismiss chat']"
-        needHelpChoosingPlanBox = self.browser.elementExists(by=By.XPATH, value=needHelpChoosingPlanBoxString,timeout=5)
-        if (needHelpChoosingPlanBox):
-            needHelpChoosingPlanBox.click()
-            time.sleep(1)
-        targetPlanCardString = f"//div[contains(@class,'plan-card')][@title='Plan ID - {planID}']/div[@class='plan-card-inner']//button[contains(text(),'Select plan')]"
-        targetPlanCard = self.browser.find_element(by=By.XPATH,value=targetPlanCardString)
-        self.browser.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", targetPlanCard)
-        self.browser.simpleSafeClick(element=targetPlanCard,timeout=5)
-
-
-        self.browser.waitForClickableElement(by=By.XPATH,value="//div[contains(text(),'Continue to the next step.')]")
+        # Wait for confirmation that the plan has been selected.
+        self.browser.searchForElement(by=By.XPATH,value="//div[contains(text(),'Continue to the next step.')]",timeout=60)
     # Method to continue to the next page after the plan selection.
     def PlanSelection_Continue(self):
         continueButtonString = "//div/div/button[@id='stickybutton'][contains(text(),'Continue')]"
-        continueButton = self.browser.waitForClickableElement(by=By.XPATH,value=continueButtonString)
-        continueButton.click()
+        continueButton = self.browser.searchForElement(by=By.XPATH,value=continueButtonString,timeout=60)
+        self.browser.scrollIntoView(continueButton)
+        self.browser.safeClick(element=continueButton,timeout=60)
 
-        deviceProtectionHeader = "//app-equipment-protection-landing-mobile-evolution//div[contains(text(),'Select your device protection')]"
-        self.waitForPageLoad(by=By.XPATH,value=deviceProtectionHeader,testClick=True)
+        # We wait until the device protection header is found, meaning we went to the next page.
+        deviceProtectionHeaderXPath = "//app-equipment-protection-landing-mobile-evolution//h1[contains(text(),'Select device protection')]"
+        self.browser.searchForElement(by=By.XPATH,value=deviceProtectionHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True,raiseError=True)
 
     # Assumes we're on the device protection page. Clicks on "decline". Note that this also serves
     # as the "continue" button for this page.
-    def DeviceProtection_Decline(self,orderPath="NewInstall"):
-        declineDeviceProtectionString = "//button[contains(text(),'Decline device protection')]"
-        declineDeviceProtection = self.browser.waitForClickableElement(by=By.XPATH,value=declineDeviceProtectionString)
-        declineDeviceProtection.click()
+    def DeviceProtection_DeclineAndContinue(self):
+        # Check that the device protection header is found, meaning we're on the right page.
+        deviceProtectionHeaderXPath = "//app-equipment-protection-landing-mobile-evolution//h1[contains(text(),'Select device protection')]"
+        self.browser.searchForElement(by=By.XPATH,value=deviceProtectionHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True,raiseError=True)
 
-        if(orderPath.lower() == "newinstall"):
-            numberAssignPageHeader = "//div/div/div/div[contains(text(),'Assign numbers and users to your new devices.')]"
-            self.waitForPageLoad(by=By.XPATH,value=numberAssignPageHeader,testClick=True)
-        else:
-            accessoriesPageHeader = "//section/div/div[text()='Shop Accessories']"
-            self.waitForPageLoad(by=By.XPATH,value=accessoriesPageHeader,testClick=True)
+        declineDeviceProtectionXPath = "//button[contains(text(),'Decline and continue')]"
+        declineDeviceProtection = self.browser.searchForElement(by=By.XPATH,value=declineDeviceProtectionXPath,timeout=60,testClickable=True)
+        self.browser.safeClick(element=declineDeviceProtection,timeout=60)
 
-    # Assumes we're on the number selection page. Given an initial zip code, tests that zip code and sequential
-    # zip codes to determine the first available.
+        # We wait for the number assignment page header to load, meaning we've successfully navigated to the next page.
+        numberAssignPageHeaderXPath = "//div[contains(text(),'Assign numbers and users to your new devices.')]"
+        self.browser.searchForElement(by=By.XPATH,value=numberAssignPageHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True,raiseError=True)
+
+    # Assumes we're on the number selection page. Given an initial zip code, tests zip code and sequential
+    # zip codes to determine, select, and apply the first available.
     def NumberSelection_SelectAreaCode(self,zipCode):
-        zipCode = zipCode.split("-")[0]
-        zipCodeFormString = "//input[@id='zip']"
-        zipCodeForm = self.browser.waitForClickableElement(by=By.XPATH,value=zipCodeFormString)
-        areaCodeFormString = "//div[contains(@class,'area-dropdown')]"
+        # First we check for the number assignment page header to load, meaning we're on the right page.
+        numberAssignPageHeaderXPath = "//div[contains(text(),'Assign numbers and users to your new devices.')]"
+        self.browser.searchForElement(by=By.XPATH,value=numberAssignPageHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True,raiseError=True)
+
+        # Then, we check to ensure the spinner is gone, to make sure the page has "settled" before interacting with it.
+        zipCodeSpinnerXPath = "//div[contains(@class,'spinner')]"
+        self.browser.searchForElement(by=By.XPATH, value=zipCodeSpinnerXPath, timeout=30, invertedSearch=True,minSearchTime=3)
+
+        zipCode = zipCode.split("-")[0].strip()
+        zipCodeFormXPath = "//input[@id='zip']"
+        zipCodeForm = self.browser.searchForElement(by=By.XPATH,value=zipCodeFormXPath,timeout=60,testClickable=True)
+        areaCodeDropdownXPath = "//div[contains(@class,'area-dropdown')]"
+        areaCodeResultsXPath = f"{areaCodeDropdownXPath}//div/ul/li[@class='ng-star-inserted'][1]"
+        noNumbersAvailableXPath = "//div[contains(text(),'The city or zip code you entered has no numbers available')]"
+
 
         zipCodeToTry = int(zipCode)
         foundAreaCode = False
         for i in range(20):
+            # Wait for the spinner to disappear if it's there again.
+            self.browser.searchForElement(by=By.XPATH,value=zipCodeSpinnerXPath,timeout=30,invertedSearch=True,minSearchTime=3)
+            zipCodeSpinnerXPath = ""
             zipCodeForm.clear()
-            if(zipCodeToTry < 10000):
-                zipCodeForm.send_keys(f"0{zipCodeToTry}")
-            else:
-                zipCodeForm.send_keys(str(zipCodeToTry))
+            zipCodeForm.send_keys(f"{zipCodeToTry:05}")
 
-            areaCodeForm = self.browser.waitForClickableElement(by=By.XPATH,value=areaCodeFormString)
-            self.browser.simpleSafeClick(element=areaCodeForm)
+            # Open the dropdown
+            areaCodeDropdown = self.browser.searchForElement(by=By.XPATH,value=areaCodeDropdownXPath,timeout=60,testClickable=True)
+            clickResult = self.browser.safeClick(element=areaCodeDropdown,timeout=30)
 
-            self.browser.waitForClickableElement(by=By.XPATH,value="//i[contains(@class,'icon-up-caret')]")
-
-            firstAreaCodeResult = self.browser.elementExists(by=By.XPATH,value=f"{areaCodeFormString}//div/ul/li[@class='ng-star-inserted'][1]",timeout=20)
-            if(firstAreaCodeResult):
-                firstAreaCodeResult.click()
+            # Again, wait for the spinner.
+            self.browser.searchForElement(by=By.XPATH, value=zipCodeSpinnerXPath, timeout=30, invertedSearch=True,minSearchTime=3)
+            if(clickResult):
+                areaCodeResults = self.browser.find_elements(by=By.XPATH,value=areaCodeResultsXPath)
+                self.browser.safeClick(element=areaCodeResults[0],timeout=10)
+                # Wait for the spinner one final time
+                self.browser.searchForElement(by=By.XPATH, value=zipCodeSpinnerXPath, timeout=30, invertedSearch=True,minSearchTime=1)
                 foundAreaCode = True
                 break
             else:
-                noNumbersAvailable = self.browser.elementExists(by=By.XPATH,value="//div[contains(text(),'The city or zip code you entered has no numbers available')]")
-                if(noNumbersAvailable):
-                    zipCode += 10
+                if(self.browser.searchForElement(by=By.XPATH,value=noNumbersAvailableXPath,timeout=5,testClickable=True)):
+                    zipCodeToTry += 20
                     continue
                 else:
-                    raise ValueError("No zip codes found, but Verizon isn't raising the expected 'No zip codes found' error. Review order flow to ensure process hasn't changed.")
-        if(not foundAreaCode):
-            raise ValueError("Couldn't find a valid area code after 20 tries!")
+                    error = ValueError("No zip codes found, but Verizon isn't raising the expected 'No zip codes found' error. Review order flow to ensure process hasn't changed.")
+                    log.error(error)
+                    raise error
+        if(foundAreaCode):
+            assignNumbersButtonXPath = "//button[text()='Assign numbers to all']"
+            assignNumbersButton = self.browser.searchForElement(by=By.XPATH, value=assignNumbersButtonXPath, timeout=30,
+                                                                testClickable=True)
+            self.browser.safeClick(element=assignNumbersButton, timeout=30)
 
-        assignNumbersButtonString = "//button[text()='Assign numbers to all']"
-        assignNumbersButton = self.browser.waitForClickableElement(by=By.XPATH,value=assignNumbersButtonString)
-        assignNumbersButton.click()
-
-        numberHasBeenAssignedHeaderString = "//div[contains(text(),'You assigned numbers to all your devices. Next, add user information.')]"
-        self.waitForPageLoad(by=By.XPATH,value=numberHasBeenAssignedHeaderString,testClick=True)
-    # Assumes a number has been selected, as navigates to the add user information page.
+            # Test to see the Verizon recognizes the number as assigned.
+            numberHasBeenAssignedHeaderXPath = "//div[contains(text(),'You assigned numbers to all your devices.')]"
+            self.browser.searchForElement(by=By.XPATH, value=numberHasBeenAssignedHeaderXPath, timeout=30,testClickable=True)
+        else:
+            error = ValueError("Couldn't find a valid area code after 20 tries!")
+            log.error(error)
+            raise error
+    # Assumes a number has been selected, and navigates to the add user information page.
     def NumberSelection_NavToAddUserInformation(self):
-        addUserInfoButtonString = "//button[text()='Add user information']"
-        addUserInfoButton = self.browser.waitForClickableElement(by=By.XPATH,value=addUserInfoButtonString)
-        addUserInfoButton.click()
+        addUserInfoButtonXPath = "//button[text()='Add user information']"
+        addUserInfoButton = self.browser.searchForElement(by=By.XPATH,value=addUserInfoButtonXPath,timeout=30,testClickable=True)
+        self.browser.safeClick(element=addUserInfoButton,timeout=30)
 
-        userInfoHeaderString = "//div[contains(text(),'Add user information to your selected device.')]"
-        self.waitForPageLoad(by=By.XPATH,value=userInfoHeaderString,testClick=True)
+        # Wait for user info page to load.
+        userInfoHeaderXPath = "//div[contains(text(),'Add user information to your selected device.')]"
+        self.browser.searchForElement(by=By.XPATH,value=userInfoHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True,raiseError=True)
     # Assumes we're on the user information page. Enters in basic user information.
     def UserInformation_EnterBasicInfo(self,firstName,lastName,email):
-        firstNameField = self.browser.waitForClickableElement(by=By.XPATH,value="//input[@id='firstName']")
+        # Check to ensure we're actually on the info page.
+        userInfoHeaderXPath = "//div[contains(text(),'Add user information to your selected device.')]"
+        self.browser.searchForElement(by=By.XPATH,value=userInfoHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True,raiseError=True)
+
+        # Write first name
+        firstNameField = self.browser.searchForElement(by=By.XPATH,value="//input[@id='firstName']",timeout=30,testClickable=True)
         firstNameField.clear()
         firstNameField.send_keys(firstName)
 
-        lastNameField = self.browser.waitForClickableElement(by=By.XPATH,value="//input[@formcontrolname='lastName']")
+        # Writ last name
+        lastNameField = self.browser.searchForElement(by=By.XPATH,value="//input[@formcontrolname='lastName']",timeout=30,testClickable=True)
         lastNameField.clear()
         lastNameField.send_keys(lastName)
 
-        emailField = self.browser.waitForClickableElement(by=By.XPATH,value="//input[@type='email']")
+        # Write email
+        emailField = self.browser.searchForElement(by=By.XPATH,value="//input[@type='email']",timeout=30,testClickable=True)
         emailField.clear()
         emailField.send_keys(email)
 
-        time.sleep(1)
-        if(self.browser.elementExists(by=By.XPATH,value="//span[contains(text(),'Please enter a valid email address.')]")):
-            raise ValueError(f"Verizon believes that email '{email}' is invalid.")
+        if(self.browser.searchForElement(by=By.XPATH,value="//span[contains(text(),'Please enter a valid email address.')]",timeout=3)):
+            error = ValueError(f"Verizon believes that email '{email}' is invalid.")
+            log.error(error)
+            raise error
     # Assumes we're on the user information page. Enters in address information.
     def UserInformation_EnterAddressInfo(self,address1,address2,city,stateAbbrev,zipCode):
-        editAddressButton = self.browser.waitForClickableElement(by=By.XPATH,value="//span[@class='edit-add-label']")
-        editAddressButton.click()
+        # First, click on "edit address"
+        editAddressButtonXPath = "//span[contains(@class,'edit-add-label')][contains(text(),'Edit address')]"
+        editAddressButton = self.browser.searchForElement(by=By.XPATH,value=editAddressButtonXPath,timeout=30,testClickable=True)
+        self.browser.safeClick(element=editAddressButton,timeout=30)
 
-        address1Field = self.browser.waitForClickableElement(by=By.XPATH,value="//input[@formcontrolname='addressLine1']")
+        # Write Address 1
+        address1FieldXPath = "//input[@formcontrolname='addressLine1']"
+        address1Field = self.browser.searchForElement(by=By.XPATH,value=address1FieldXPath,timeout=30,testClickable=True)
         address1Field.clear()
         address1Field.send_keys(address1)
 
+        # Write Address 2 (if applicable)
         if(address2 is not None and address2 != ""):
-            address2Field = self.browser.waitForClickableElement(by=By.XPATH,value="//input[@formcontrolname='addressLine2']")
+            address2FieldXPath = "//input[@formcontrolname='addressLine2']"
+            address2Field = self.browser.searchForElement(by=By.XPATH,value=address2FieldXPath,timeout=30,testClickable=True)
             address2Field.clear()
             address2Field.send_keys(address2)
 
-        cityField = self.browser.waitForClickableElement(by=By.XPATH,value="//input[@formcontrolname='city']")
+        # Write City
+        cityFieldXPath = "//input[@formcontrolname='city']"
+        cityField = self.browser.searchForElement(by=By.XPATH,value=cityFieldXPath,timeout=30,testClickable=True)
         cityField.clear()
         cityField.send_keys(city)
 
+        # Write State
         stateFieldString = "//select[@formcontrolname='state']"
-        stateField = Select(self.browser.find_element(by=By.XPATH, value=stateFieldString))
+        stateField = Select(self.browser.searchForElement(by=By.XPATH, value=stateFieldString,timeout=30))
         stateField.select_by_visible_text(stateAbbrev)
 
-        zipCodeField = self.browser.waitForClickableElement(by=By.XPATH,value="//input[@formcontrolname='zipCode']")
+        # Write Zip
+        zipCodeFieldXPath = "//input[@formcontrolname='zipCode']"
+        zipCodeField = self.browser.searchForElement(by=By.XPATH,value=zipCodeFieldXPath,timeout=30,testClickable=True)
         zipCodeField.clear()
         zipCodeField.send_keys(zipCode)
     # Saves the user information inputted, which takes us back to the NumberSelection
     def UserInformation_SaveInfo(self):
-        saveButtonString = "//div/div/button[text()='Save']"
-        saveButton = self.browser.waitForClickableElement(by=By.XPATH,value=saveButtonString)
+        saveButtonXPath = "//button[contains(text(),'Save')]"
+        saveButton = self.browser.searchForElement(by=By.XPATH,value=saveButtonXPath,timeout=30)
         saveButton.click()
 
-        userInfoUpdatedSuccessfullyHeaderString = "//div[contains(@class,'colorBackgroundSuccess')]//div[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'user information')]"
-        self.waitForPageLoad(by=By.XPATH,value=userInfoUpdatedSuccessfullyHeaderString,testClick=True)
+        # Now we wait to see that the user info has been successfully updated.
+        yourDevicesHeaderXPath = "//div[contains(text(),'Your devices')]"
+        self.browser.searchForElement(by=By.XPATH,value=yourDevicesHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True,raiseError=True)
     # Continues to the next screen from the Number Selection screen, assuming a number has been
     # selected and all user inputted.
     def NumberSelection_Continue(self):
-        continueButtonString = "//div[contains(@class,'AS-header')]/button[text()='Continue'][contains(@class,'continue-btn')]"
-        continueButton = self.browser.waitForClickableElement(by=By.XPATH,value=continueButtonString)
-        continueButton.click()
+        continueButtonXPath = "//app-nse-multistep-progress-bar/following-sibling::div/button[contains(@class,'continue-btn')]"
+        continueButton = self.browser.searchForElement(by=By.XPATH,value=continueButtonXPath,timeout=30,testClickable=True)
+        self.browser.safeClick(element=continueButton,timeout=30)
 
-        shoppingCartHeaderString = "//div/div/h1[contains(text(),'Shopping cart')]"
-        self.waitForPageLoad(by=By.XPATH,value=shoppingCartHeaderString,testClick=True,waitTime=3,timeout=3,raiseError=False)
+        # Test for the next page, which should be on the shopping cart.
+        shoppingCartHeaderXPath = "//div[contains(@class,'device-shopping-cart-content-left')]//h1[contains(text(),'Shopping cart')]"
+        foundCartHeader = self.browser.searchForElement(by=By.XPATH, value=shoppingCartHeaderXPath, timeout=60, minSearchTime=5)
 
-        # Test if Verizon believes the address can't be validated.
-        if(self.browser.elementExists(by=By.XPATH,value="//div[contains(text(),'The address could not be validated. Please review and correct.')]")):
-            continueButton = self.browser.waitForClickableElement(by=By.XPATH, value=continueButtonString)
-            continueButton.click()
-            self.waitForPageLoad(by=By.XPATH, value=shoppingCartHeaderString,testClick=True,waitTime=4)
+        if(not foundCartHeader):
+            addressDoesntExistXPath = "//div[contains(text(),'The address you entered could not be validated.')]"
+            if(self.browser.searchForElement(by=By.XPATH,value=addressDoesntExistXPath,timeout=15)):
+                error = ValueError("Verizon Wireless reports that the given address cannot be validated.")
+                log.error(error)
+                raise error
+            else:
+                error = RuntimeError("VerizonDriver halted after entering in user information, for unclear reasons.")
+                log.error(error)
+                raise error
 
+    # Assumes we're currently on the feature selection page, and attempts to toggle ON the given feature.
+    def FeatureSelection_SelectFeature(self,featureName):
+        featureFormXPathPrefix = "//app-choose-feature-single-line//div[contains(@class,'inner-grid-header')]"
+        specificFeatureTitleXPathPrefix = f"{featureFormXPathPrefix}//span[text()='{featureName}']"
+        specificFeatureToggleXPath = f"{specificFeatureTitleXPathPrefix}/parent::span/parent::div/label[contains(@class,'Form-toggle')]"
+        specificFeatureIsActiveXPath = f"{specificFeatureTitleXPathPrefix}/parent::span/parent::div/parent::div/parent::div//div[contains(@class,'feature-status')]/p[contains(text(),'Added')]"
+
+        # Click the selected feature
+        specificFeatureToggle = self.browser.searchForElement(by=By.XPATH,value=specificFeatureToggleXPath,timeout=30,testClickable=True)
+        self.browser.scrollIntoView(specificFeatureToggle)
+        self.browser.safeClick(element=specificFeatureToggle,timeout=30)
+
+        # Wait for it to show as "added"
+        self.browser.searchForElement(by=By.XPATH,value=specificFeatureIsActiveXPath,timeout=30)
+    # Simply continues from the FeatureSelection screen
+    def FeatureSelection_Continue(self):
+        continueButtonXPath = "//div[contains(@class,'header-button')]/button[contains(text(),'Continue')]"
+        continueButton = self.browser.searchForElement(by=By.XPATH,value=continueButtonXPath,timeout=30,testClickable=True)
+        self.browser.safeClick(element=continueButton,timeout=30)
+
+        # Test to make sure we've arrived back at the shopping cart.
+        shoppingCartHeaderXPath = "//div[contains(@class,'device-shopping-cart-content-left')]//h1[contains(text(),'Shopping cart')]"
+        self.browser.searchForElement(by=By.XPATH, value=shoppingCartHeaderXPath, timeout=60, minSearchTime=5)
 
     # Helper method verifies that there is only one line listed in the shopping cart, AND that that line
     # is currently expanded.
@@ -773,15 +833,6 @@ class VerizonDriver:
             error = RuntimeError(f"Attempted to validate a single line in the shopping cart, but found {len(allCartLines)} lines instead!")
             log.error(error)
             raise error
-    # Assumes we're on the shopping cart overview screen. Simply clicks "check out" to continue
-    # to check out screen.
-    def ShoppingCart_ContinueToCheckOut(self):
-        checkOutButtonString = "//div[contains(@class,'device-shopping-cart-content-right')]/div/button[contains(text(),'Check out')]"
-        checkOutButton = self.browser.waitForClickableElement(by=By.XPATH,value=checkOutButtonString)
-        self.browser.simpleSafeClick(element=checkOutButton)
-
-        checkoutHeaderString = "//div[@class='checkoutBox']//h1[text()='Checkout']"
-        self.waitForPageLoad(by=By.XPATH,value=checkoutHeaderString,testClick=True)
     # From shopping cart, clicks back to add accessories to the given order. For use with upgrades,
     # which ATM bypass the accessory selection screen by default.
     def ShoppingCart_AddAccessories(self):
@@ -797,122 +848,160 @@ class VerizonDriver:
         shopAccessoriesHeaderXPath = "//section[contains(@class,'top-section')]//div[contains(text(),'Shop Accessories')]"
         self.browser.searchForElement(by=By.XPATH, value=shopAccessoriesHeaderXPath, timeout=60,
                                       testClickable=True, testLiteralClick=True)
+    # From shopping cart, clicks back to add features to the given order.
+    def ShoppingCart_AddFeatures(self):
+        # First, validate that they're only one line added.
+        self.ShoppingCart_ValidateSingleLine()
+
+        # Then, click on "Manage features"
+        addFeaturesXPath = "//div[contains(@class,'dsc-features-actions')]//span[contains(text(),'Manage Features')]"
+        addFeatures = self.browser.searchForElement(by=By.XPATH,value=addFeaturesXPath,timeout=10,testClickable=True)
+        self.browser.safeClick(element=addFeatures,timeout=30)
+
+        # Finally, wait for Accessories screen to load.
+        selectFeaturesHeaderXPath = "//h3[contains(text(),'Select features')]"
+        self.browser.searchForElement(by=By.XPATH, value=selectFeaturesHeaderXPath, timeout=60,
+                                      testClickable=True, testLiteralClick=True)
+    # Assumes we're on the shopping cart overview screen. Simply clicks "check out" to continue
+    # to check out screen.
+    def ShoppingCart_ContinueToCheckOut(self):
+        checkOutButtonXPath = "//div[contains(@class,'device-shopping-cart-content-right')]/div/button[contains(text(),'Check out')]"
+        checkOutButton = self.browser.searchForElement(by=By.XPATH,value=checkOutButtonXPath,timeout=30,testClickable=True)
+        self.browser.safeClick(element=checkOutButton,timeout=30)
+
+        # Test to ensure we've arrived at the checkout screen.
+        checkoutHeaderXPath = "//div[@class='checkoutBox']//h1[text()='Checkout']"
+        self.browser.searchForElement(by=By.XPATH,value=checkoutHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True)
 
     # Assumes we're on the checkout screen. Attempts to click on "add address" to add
     # a full address info.
     def Checkout_AddAddressInfo(self,company,attention,address1,city,stateAbbrev,zipCode,contactPhone,
                                 notificationEmails : list = None,address2 = ""):
-        addNewAddressButtonString = "//div[contains(@class,'new-address')]"
-        addNewAddressButton = self.browser.waitForClickableElement(by=By.XPATH,value=addNewAddressButtonString)
-        addNewAddressButton.click()
+        # Test to ensure we're on the checkout screen.
+        checkoutHeaderXPath = "//div[@class='checkoutBox']//h1[text()='Checkout']"
+        self.browser.searchForElement(by=By.XPATH,value=checkoutHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True)
 
-        companyField = self.browser.waitForClickableElement(by=By.XPATH,value="//input[@id='firmName']")
+        addNewAddressButtonXPath = "//div[contains(@class,'new-address')]"
+        addNewAddressButton = self.browser.searchForElement(by=By.XPATH,value=addNewAddressButtonXPath,timeout=30,testClickable=True)
+        self.browser.safeClick(element=addNewAddressButton,timeout=30)
+
+        # Write company name
+        companyFieldXPath = "//input[@id='firmName']"
+        companyField = self.browser.searchForElement(by=By.XPATH,value=companyFieldXPath,timeout=30,testClickable=True)
         companyField.clear()
         companyField.send_keys(company)
 
-        attentionField = self.browser.waitForClickableElement(by=By.XPATH,value="//input[@id='attention']")
+        # Write attention
+        attentionFieldXPath = "//input[@id='attention']"
+        attentionField = self.browser.searchForElement(by=By.XPATH,value=attentionFieldXPath,timeout=30,testClickable=True)
         attentionField.clear()
         attentionField.send_keys(attention)
 
-        address1Field = self.browser.waitForClickableElement(by=By.XPATH,value="//input[@id='add1']")
+        # Write address1
+        address1FieldXPath = "//input[@id='add1']"
+        address1Field = self.browser.searchForElement(by=By.XPATH,value=address1FieldXPath,timeout=30,testClickable=True)
         address1Field.clear()
         address1Field.send_keys(address1)
 
+        # Write address2
         if(address2 is not None and address2 != ""):
-            address2Field = self.browser.waitForClickableElement(by=By.XPATH,value="//input[@id='add2']")
+            address2FieldXPath = "//input[@id='add2']"
+            address2Field = self.browser.searchForElement(by=By.XPATH,value=address2FieldXPath,timeout=30,testClickable=True)
             address2Field.clear()
             address2Field.send_keys(address2)
 
-        cityField = self.browser.waitForClickableElement(by=By.XPATH,value="//input[@id='city']")
+        # Write City
+        cityFieldXPath = "//input[@id='city']"
+        cityField = self.browser.searchForElement(by=By.XPATH,value=cityFieldXPath,timeout=30,testClickable=True)
         cityField.clear()
         cityField.send_keys(city)
 
-        stateSelect = Select(self.browser.waitForClickableElement(by=By.XPATH,value="//select[@id='states']"))
+        # Write state
+        stateSelectXPath = "//select[@id='states']"
+        stateSelect = Select(self.browser.searchForElement(by=By.XPATH,value=stateSelectXPath,timeout=30,testClickable=True))
         stateSelect.select_by_visible_text(stateAbbrev)
 
-        contactPhoneField = self.browser.waitForClickableElement(by=By.XPATH, value="//input[@name='phoneNumber']")
+        # Write contact phone
+        contactPhoneFieldXPath = "//input[@name='phoneNumber']"
+        contactPhoneField = self.browser.searchForElement(by=By.XPATH, value=contactPhoneFieldXPath,timeout=30,testClickable=True)
         contactPhoneField.clear()
         contactPhoneField.send_keys(contactPhone)
 
-        # First, we remove all existing emails if present.
-        existingOldEmails = self.browser.find_elements(by=By.XPATH,value="//input[@type='email']/parent::div/following-sibling::div[@class='remove-btn']")
+        # To add emails, first, we remove all existing emails if present.
+        existingOldEmailsXPath = "//input[@type='email']/parent::div/following-sibling::div[@class='remove-btn']"
+        existingOldEmails = self.browser.find_elements(by=By.XPATH,value=existingOldEmailsXPath)
         for existingOldEmail in existingOldEmails:
-            existingOldEmail.click()
-
+            self.browser.safeClick(element=existingOldEmail,timeout=10)
         # Now, we add all emails specified as arguments.
         for newEmail in notificationEmails:
-            addNewNotifyButtonString = "//div[contains(@class,'add-notify')]/div[contains(text(),'Add new notification')]/parent::div"
-            addNewNotifyButton = self.browser.waitForClickableElement(by=By.XPATH,value=addNewNotifyButtonString)
-            allOldEmailFields = self.browser.find_elements(by=By.XPATH, value="//input[@type='email']")
-            allNewEmailFields = None
-            for i in range(5):
-                addNewNotifyButton.click()
-                allNewEmailFields = self.browser.find_elements(by=By.XPATH, value="//input[@type='email']")
-                if(len(allNewEmailFields) > len(allOldEmailFields)):
-                    break
-                else:
-                    time.sleep(1)
-                    continue
+            addNewNotifyButtonXPath = "//div[contains(@class,'add-notify')]/div[contains(text(),'Add new notification')]/parent::div"
+            addNewNotifyButton = self.browser.searchForElement(by=By.XPATH,value=addNewNotifyButtonXPath,timeout=30,testClickable=True)
+            self.browser.safeClick(element=addNewNotifyButton,timeout=30)
 
+            allNewEmailFields = self.browser.find_elements(by=By.XPATH, value="//input[@type='email']")
             allNewEmailFields[-1].clear()
             allNewEmailFields[-1].send_keys(newEmail)
 
-        zipCodeField = self.browser.waitForClickableElement(by=By.XPATH, value="//input[@name='zipCode']")
+        # Write zip code last, as this triggers a load
+        zipCodeFieldXPath = "//input[@name='zipCode']"
+        zipCodeField = self.browser.searchForElement(by=By.XPATH, value=zipCodeFieldXPath,timeout=30,testClickable=True)
         zipCodeField.clear()
         zipCodeField.send_keys(zipCode)
 
-        checkoutHeaderString = "//div[@class='checkoutBox']//h1[text()='Checkout']"
-        self.waitForPageLoad(by=By.XPATH,value=checkoutHeaderString,testClick=True)
+        # Test again for the clickable checkout header, to ensure all loading is done
+        checkoutHeaderXPath = "//div[@class='checkoutBox']//h1[text()='Checkout']"
+        self.browser.searchForElement(by=By.XPATH,value=checkoutHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True,minSearchTime=3)
 
         # Finally, we continue back to payment.
-        continueToPaymentButtonString = "//button[contains(text(),'Continue to Payment')]"
-        continueToPaymentButton = self.browser.waitForClickableElement(by=By.XPATH,value=continueToPaymentButtonString)
-        continueToPaymentButton.click()
+        continueToPaymentButtonXPath = "//button[contains(text(),'Continue to Payment')]"
+        continueToPaymentButton = self.browser.searchForElement(by=By.XPATH,value=continueToPaymentButtonXPath,testClickable=True)
+        self.browser.safeClick(element=continueToPaymentButton,timeout=60)
 
-        self.waitForPageLoad(by=By.XPATH,value="//div[@class='shipdisplay-method']/h4[text()='Shipping method']",waitTime=3,timeout=3,raiseError=False)
-        if(self.browser.elementExists(by=By.XPATH,value="//div[contains(@class,'error-notification')][contains(text(),'Address could not be validated. Please review and correct.')]")):
-            continueToPaymentButton = self.browser.waitForClickableElement(by=By.XPATH,value=continueToPaymentButtonString)
-            continueToPaymentButton.click()
-#
-            self.waitForPageLoad(by=By.XPATH, value="//div[@class='shipdisplay-method']/h4[text()='Shipping method']")
-        else:
-            self.waitForPageLoad(by=By.XPATH, value="//div[@class='shipdisplay-method']/h4[text()='Shipping method']")
+        # Wait for static shipping method label to confirm that the page is done loading.
+        staticShippingMethodLabelXPath = "//div[@class='shipdisplay-method']/h4[text()='Shipping method']"
+        staticShippingMethodLabel = self.browser.searchForElement(by=By.XPATH,value=staticShippingMethodLabelXPath,timeout=30,testClickable=True,testLiteralClick=True)
+        if(not staticShippingMethodLabel):
+            # We test to see if it failed due to Verizon believing the shipping address to be invalid.
+            addressCouldNotBeValidatedXPath = "//div[contains(text(),'Address could not be validated.')]"
+            addressCouldNotBeValidated = self.browser.searchForElement(by=By.XPATH,value=addressCouldNotBeValidatedXPath,timeout=15,testClickable=True)
+            if(addressCouldNotBeValidated):
+                error = ValueError("Verizon believes that the given address could not be validated.")
+                log.error(error)
+                raise error
+            else:
+                error = RuntimeError("Verizon is halting after inputting address on checkout screen due to an unknown reason!")
+                log.error(error)
+                raise error
 
-        shippingAddressFullString = "//div[@class='shipdisplay-left']/p[contains(@class,'collapse-shipping')]"
-        shippingAddressFull = self.browser.waitForClickableElement(by=By.XPATH,value=shippingAddressFullString,testClick=True).text
-
+        # Now, we test to make sure that Verizon Wireless didn't ninja-edit the shipping address into something else.
+        shippingAddressFullXPath = "//div[@class='shipdisplay-left']/p[contains(@class,'collapse-shipping')]"
+        shippingAddressFull = self.browser.searchForElement(by=By.XPATH,value=shippingAddressFullXPath,timeout=30,testClickable=True,testLiteralClick=True).text
         if(address2 != ""):
             expectedShippingAddressString = f"{company} ATTN: {attention}\n{address1},{address2}\n{city}, {stateAbbrev} - {zipCode}\nTel: {contactPhone}".lower()
         else:
             expectedShippingAddressString = f"{company} ATTN: {attention}\n{address1}\n{city}, {stateAbbrev} - {zipCode}\nTel: {contactPhone}".lower()
-
-
         if(shippingAddressFull.lower().strip() == expectedShippingAddressString.strip()):
             return True
         else:
-            return False
+            error = ValueError(f"Verizon ninja-edited the shipping address. Expected value to be:\n\n{expectedShippingAddressString}\n\nHowever, value was actually:\n\n{shippingAddressFull.lower().strip()}")
+            log.error(error)
+            raise error
     # Assumes address info has been filled, and places the order, returning the order info.
-    def Checkout_PlaceOrder(self):
-        # TODO only sysco support for rn
-        # TODO some glue here, trunactes the -00007 from account. Fine or nah?
-        billToAccountButtonString = f"//label[contains(@class,'payment-radio-container')][contains(text(),'Bill to Account')]/span[contains(text(),'{b.clients['Sysco']['Accounts']['Verizon Wireless'].split('-')[0]}')]"
-        billToAccountButton = self.browser.waitForClickableElement(by=By.XPATH,value=billToAccountButtonString)
-        billToAccountButton.click()
+    def Checkout_PlaceOrder(self,billingAccountNum):
+        #TODO some glue here. Truncates the second half of
+        billToAccountButtonXPath = f"//div[@id='billToAccount']//span[contains(text(),'{billingAccountNum}')]/parent::label/span[@class='checkmark']"
+        billToAccountButton = self.browser.searchForElement(by=By.XPATH,value=billToAccountButtonXPath,timeout=30,testClickable=True)
+        self.browser.safeClick(element=billToAccountButton,timeout=30)
 
-        submitOrderButtonString = "//app-order-total//button[text()='Submit Order']"
-        submitOrderButton = self.browser.waitForClickableElement(by=By.XPATH,value=submitOrderButtonString)
-        submitOrderButton.click()
+        # Click submit
+        submitOrderButtonXPath = "//app-order-total//button[contains(text(),'Submit Order')]"
+        submitOrderButton = self.browser.searchForElement(by=By.XPATH,value=submitOrderButtonXPath,timeout=30,testClickable=True)
+        self.browser.safeClick(element=submitOrderButton,timeout=30)
 
         orderSummaryHeaderString = "//h2[text()='Order summary']"
-        self.waitForPageLoad(by=By.XPATH,value=orderSummaryHeaderString,testClick=True)
+        self.browser.searchForElement(by=By.XPATH,value=orderSummaryHeaderString,timeout=60,testClickable=True,testLiteralClick=True)
 
         fullOrderInfoString = "//div[contains(@class,'order-number')]/parent::div"
-        return self.browser.waitForClickableElement(by=By.XPATH,value=fullOrderInfoString).text
-
-
-
+        return self.browser.searchForElement(by=By.XPATH,value=fullOrderInfoString,timeout=30,testClickable=True).text
 
     #endregion === Device Ordering ===
-
-
-"//app-device-cards//div[normalize-space(text())='iPhone 14']"
