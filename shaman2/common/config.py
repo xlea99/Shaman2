@@ -178,4 +178,20 @@ class AccessoryCimplMappingsConfig(ReloadableConfig):
             raise error
 accessoryCimplMappings = AccessoryCimplMappingsConfig()
 
+class EmailTemplatesConfig(ReloadableConfig):
+    def reload(self):
+        emailTemplatesConfigPath = paths["config"] / "emailTemplates.toml"
+        if (os.path.exists(emailTemplatesConfigPath)):
+            with open(emailTemplatesConfigPath, "r") as f:
+                self.tomlDoc = tomlkit.parse(f.read())
+        else:
+            newEmailTemplatesConfigToml = tomlkit.document()
+            with open(emailTemplatesConfigPath, "w") as newEmailTemplatesConfigTomlFile:
+                newEmailTemplatesConfigTomlFile.write(tomlkit.dumps(newEmailTemplatesConfigToml))
+
+            error = ValueError("emailTemplates.toml file did not exist. File created, but needs to be filled with accessory data before proceeding.")
+            log.error(error)
+            raise error
+emailTemplatesConfig = AccessoriesConfig()
+
 

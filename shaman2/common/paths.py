@@ -120,6 +120,7 @@ paths["chromedriver"] = paths["bin"] / "chromedriver.exe"
 # Setup assets
 paths["assets"] = paths["root"] / "assets"
 paths["media"] = paths["assets"] / "media"
+paths["emailTemplates"] = paths["assets"] / "email_templates"
 
 # Setup workspace folder and subfolders, using setup.toml. Create a new setup.toml if it doesn't exist, defaulting
 # workspace folder to appdata folder.

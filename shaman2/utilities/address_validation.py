@@ -109,7 +109,27 @@ def gptValidateAddress(_originalAddress, _osmnAddress):
 def extractGPTAddressFromResponse(gptResponseString):
     pattern = r'\$\$\$(.*?)\$\$\$'
     match = re.findall(pattern, gptResponseString, re.DOTALL)
-    return json.loads(match[0].strip())
+    rawAddressDict = json.loads(match[0].strip())
+
+    cleanedAddressDict = {}
+    cleanedAddressDict["Address1"] = rawAddressDict["Address1"]
+    cleanedAddressDict["Address2"] = rawAddressDict["Address2"]
+    cleanedAddressDict["City"] = rawAddressDict["City"]
+    cleanedAddressDict["State"] = rawAddressDict["State"]
+
+    # Zip Code cleaning
+    if(rawAddressDict.get("ZipCode")):
+        cleanedAddressDict["ZipCode"] = rawAddressDict["ZipCode"]
+    elif(rawAddressDict.get("Zip")):
+        cleanedAddressDict["ZipCode"] = rawAddressDict["Zip"]
+    elif(rawAddressDict.get("Zip Code")):
+        cleanedAddressDict["ZipCode"] = rawAddressDict["Zip Code"]
+    elif(rawAddressDict.get("Zip code")):
+        cleanedAddressDict["ZipCode"] = rawAddressDict["Zip code"]
+    elif(rawAddressDict.get("Zipcode")):
+        cleanedAddressDict["ZipCode"] = rawAddressDict["Zipcode"]
+
+    return cleanedAddressDict
 
 #endregion === ChatGPT Validation ===
 
@@ -130,3 +150,4 @@ def validateAddress(addressString : str):
         error = ValueError(f"OSMN did not find multiple addresses that look like user's address \"{addressString}\":\n\n{osmnAddress}")
         log.error(error)
         raise error
+

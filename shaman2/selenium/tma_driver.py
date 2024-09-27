@@ -537,11 +537,19 @@ class TMADriver():
     def waitForLocationLoad(self,location : TMALocation, timeout=120, fuzzyPageDetection=False):
         endTime = time.time() + timeout
         while time.time() < endTime:
-            newLocationData = self.readPage(storeAsCurrent=False)
-            if(newLocationData == location and ((newLocationData.activeLinkTab == location.activeLinkTab and newLocationData.activeInfoTab == location.activeInfoTab) or fuzzyPageDetection)):
-                return True
-            else:
-                time.sleep(0.5)
+            try:
+                newLocationData = self.readPage(storeAsCurrent=False)
+                if(newLocationData == location and ((newLocationData.activeLinkTab == location.activeLinkTab and newLocationData.activeInfoTab == location.activeInfoTab) or fuzzyPageDetection)):
+                    return True
+                else:
+                    time.sleep(0.5)
+            # A bit gluey or nah?
+            except Exception as e:
+                if(time.time() >= endTime):
+                    raise e
+                else:
+                    time.sleep(0.5)
+                    continue
         error = ValueError(f"waitForLocationLoad never loaded the targeted page:\n{location}")
         log.error(error)
         raise error
