@@ -4,6 +4,7 @@ import json
 import time
 from openai import OpenAI
 from shaman2.common.logger import log
+from shaman2.common.config import mainConfig
 
 #region === OSM Nominatim Validation ===
 
@@ -31,7 +32,7 @@ def osmnValidateAddress(_address):
 
 # Uses ChatGPT to check for any oddities in the address compared to the OSMN address (unit numbers in Address1,
 # for example) and refines it.
-client = OpenAI(api_key="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",)
+client = OpenAI(api_key=mainConfig["authentication"]["openAIKey"],)
 chatGPTAddressQuery = """
     You are an address validation assistant. You are a part of a program called "Shaman2" which automates
     phone orders for a carrier. As a part of the phone ordering process, users submit address to us, which 
