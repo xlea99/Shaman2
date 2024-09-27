@@ -1018,7 +1018,7 @@ class VerizonDriver:
     # Assumes address info has been filled, and places the order, returning the order info.
     def Checkout_PlaceOrder(self,billingAccountNum):
         #TODO some glue here. Truncates the second half of
-        billToAccountButtonXPath = f"//div[@id='billToAccount']//span[contains(text(),'{billingAccountNum}')]/parent::label/span[@class='checkmark']"
+        billToAccountButtonXPath = f"//div[@id='billToAccount']//span[contains(text(),'{billingAccountNum.split('-')[0]}')]/parent::label/span[@class='checkmark']"
         billToAccountButton = self.browser.searchForElement(by=By.XPATH,value=billToAccountButtonXPath,timeout=30,testClickable=True)
         self.browser.safeClick(element=billToAccountButton,timeout=30)
 
@@ -1034,3 +1034,5 @@ class VerizonDriver:
         return self.browser.searchForElement(by=By.XPATH,value=fullOrderInfoString,timeout=30,testClickable=True).text
 
     #endregion === Device Ordering ===
+
+

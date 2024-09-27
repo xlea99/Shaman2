@@ -163,6 +163,7 @@ def placeVerizonUpgrade(verizonDriver : VerizonDriver,serviceID,deviceID : str,a
 
     # Search for each requested accessory, add it to the cart, then continue.
     for accessoryID in accessoryIDs:
+        print(f"Searching for accessory '{accessoryID}'")
         verizonDriver.AccessorySelection_SearchForAccessory(accessoryID=accessoryID)
         verizonDriver.AccessorySelection_AddAccessoryToCart(accessoryID=accessoryID)
     verizonDriver.AccessorySelection_Continue(orderPath="Upgrade")
@@ -419,17 +420,12 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
     userID = getNetworkIDFromActions(workorder["Actions"])
     classifiedHardware = classifyHardwareInfo(workorder["HardwareInfo"],carrier=workorder["Carrier"])
     accessoryIDs = classifiedHardware["AccessoryIDs"]
-    rawDeviceID = classifiedHardware["DeviceID"]
-    deviceSuperType = devices[rawDeviceID]["tmaServiceType"]
-    if(workorder["Carrier"].lower() == "verizon wireless"):
-        deviceCarrierSubstring = "vzw"
+    if("EyeSafeFilter" in accessoryIDs):
+        accessoryIDs.remove("EyeSafeFilter")
+        orderEyeSafe = True
     else:
-        print(f"Cimpl WO {workorderNumber}: Can't complete WO, as carrier is not Verizon ({workorder['Carrier']})")
-        return False
-    if(mainConfig["sysco"]["defaults"]["devices"][f"{deviceCarrierSubstring}Override{deviceSuperType}WithDefault"]):
-        deviceID = mainConfig["sysco"]["defaults"]["devices"][f"{deviceCarrierSubstring}{deviceSuperType}"]
-    else:
-        deviceID = rawDeviceID
+        orderEyeSafe = False
+    deviceID = classifiedHardware["DeviceID"]
 
     # Check to make sure no existing comments/notes interfere with the request.
     if(workorder["Comment"] != ""):

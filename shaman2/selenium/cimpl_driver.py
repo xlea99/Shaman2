@@ -945,6 +945,3 @@ def classifyHardwareInfo(hardwareInfo : list,carrier,raiseNoEquipmentError=True)
         finalAccessoryIDs = finalAccessoryIDs | set(extraAccessoriesToOrder)
 
     return {"DeviceID" : deviceID, "AccessoryIDs" : finalAccessoryIDs}
-
-hwi = [{'Name': 'iPhone 13 128GB - Midnight', 'Type': 'Equipment', 'Serial Number': 'n/a', 'Cost': '0.00', 'Date of Purchase': 'n/a', 'Primary': True}, {'Name': 'Blue Light Filter w/ Privacy: iPhone 13', 'Type': 'Accessory', 'Serial Number': 'n/a', 'Cost': 'USD$ 19.99', 'Date of Purchase': 'n/a', 'Primary': False}, {'Name': 'Car Charger for iPhone 14', 'Type': 'Accessory', 'Serial Number': 'n/a', 'Cost': 'USD$ 22.99', 'Date of Purchase': 'n/a', 'Primary': False}, {'Name': 'Otterbox Defender case for iPhone 13', 'Type': 'Accessory', 'Serial Number': 'n/a', 'Cost': 'USD$ 38.99', 'Date of Purchase': 'n/a', 'Primary': False}]
-classified = classifyHardwareInfo(hardwareInfo=hwi,carrier="Verizon Wireless")
