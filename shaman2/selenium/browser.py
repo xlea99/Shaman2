@@ -298,7 +298,7 @@ class Browser(webdriver.Chrome):
     # testInterval -                Time interval to wait between element searches.
     # clickDelay -                  Time to wait between successive click attempts.
     # scrollIntoView -              Attempts to scroll the element into view before each click.
-    def safeClick(self,by = None,value : str = None,element : WebElement = None,timeout : float = 0,
+    def safeClick(self,element : WebElement = None,by = None,value : str = None,timeout : float = 0,
                   successfulClickCondition : Callable = None,prioritizeCondition = True, jsClick=False,raiseError=True,scrollIntoView=False,
                   retryClicks = False,minClicks : int = 0,maxClicks : int = 10**10,testInterval=0.5,clickDelay=0.5):
         # Throw error if both a value and an element are given
