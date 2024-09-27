@@ -895,9 +895,17 @@ def classifyHardwareInfo(hardwareInfo : list,carrier,raiseNoEquipmentError=True)
                 try:
                     thisAccessory = accessoryCimplMappings[hardware["Name"]]
                 except KeyError:
-                    #TODO TEMP - get rid of if i ever implement real ordering
-                    thisAccessory = "SamsungVehicleCharger"
-                    #raise KeyError(f"'{hardware['Name']}' is not a mapped Cimpl accessory.")
+                    playsoundAsync(paths["media"] / "shaman_attention.mp3")
+                    # TODO pretty duct-tapey, huh?
+                    response = input(f"Unknown Cimpl accessory detected: '{hardware['Name']}'. If this is a valid Cimpl accessory, add it to the accessory_cimpl_mappings.toml and press enter to reload the config. Type anything else to exit.")
+                    if (response):
+                        error = KeyError(f"'{hardware['Name']}' is not a mapped Cimpl accessory.")
+                        log.error(error)
+                        raise error
+                    else:
+                        # If the user makes changes, reload the cimpl mappings program-wide to accommodate new changes.
+                        accessoryCimplMappings.reload()
+                        thisAccessory = accessoryCimplMappings[hardware["Name"].strip().strip('"')]
                 if(isinstance(thisAccessory,(list,tomlkitArray))):
                     allAccessoryIDs.extend(thisAccessory)
                 else:
@@ -937,3 +945,6 @@ def classifyHardwareInfo(hardwareInfo : list,carrier,raiseNoEquipmentError=True)
         finalAccessoryIDs = finalAccessoryIDs | set(extraAccessoriesToOrder)
 
     return {"DeviceID" : deviceID, "AccessoryIDs" : finalAccessoryIDs}
+
+hwi = [{'Name': 'iPhone 13 128GB - Midnight', 'Type': 'Equipment', 'Serial Number': 'n/a', 'Cost': '0.00', 'Date of Purchase': 'n/a', 'Primary': True}, {'Name': 'Blue Light Filter w/ Privacy: iPhone 13', 'Type': 'Accessory', 'Serial Number': 'n/a', 'Cost': 'USD$ 19.99', 'Date of Purchase': 'n/a', 'Primary': False}, {'Name': 'Car Charger for iPhone 14', 'Type': 'Accessory', 'Serial Number': 'n/a', 'Cost': 'USD$ 22.99', 'Date of Purchase': 'n/a', 'Primary': False}, {'Name': 'Otterbox Defender case for iPhone 13', 'Type': 'Accessory', 'Serial Number': 'n/a', 'Cost': 'USD$ 38.99', 'Date of Purchase': 'n/a', 'Primary': False}]
+classified = classifyHardwareInfo(hardwareInfo=hwi,carrier="Verizon Wireless")

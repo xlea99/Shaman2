@@ -7,6 +7,7 @@ from shaman2.common.logger import log
 from shaman2.common.paths import paths
 from shaman2.common.config import mainConfig, devices, accessories
 from shaman2.utilities.async_sound import playsoundAsync
+from shaman2.utilities.shaman_utils import convertServiceIDFormat
 
 class VerizonDriver:
 
@@ -424,13 +425,17 @@ class VerizonDriver:
 
     # Assumes we're on the device selection page. Given a Universal Device ID, searches for that
     # device (if supported) on Verizon.
-    def DeviceSelection_SearchForDevice(self,deviceID,orderPath="NewInstall"):
+    def DeviceSelection_SearchForDevice(self,deviceID,orderPath="NewInstall",clearFilters=False):
+        if(clearFilters):
+            clearFiltersButtonXPath = "//div[contains(@class,'filter-badges')]/span[contains(text(),'Clear all')]"
+            clearFiltersButton = self.browser.searchForElement(by=By.XPATH,value=clearFiltersButtonXPath,timeout=60,testClickable=True)
+            self.browser.safeClick(element=clearFiltersButton,timeout=60)
+
         searchBox = self.browser.searchForElement(by=By.XPATH,value="//input[@id='search']",timeout=15,testClickable=True)
         searchButton = self.browser.searchForElement(by=By.XPATH,value="//span[contains(@class,'icon-search')]",timeout=15,testClickable=True)
-
         searchBox.clear()
         searchBox.send_keys(devices[deviceID]["vzwSearchTerm"])
-        searchButton.click()
+        self.browser.safeClick(element=searchButton,timeout=60)
 
         if(orderPath == "NewInstall"):
             # Now we test to ensure that the proper device card has fully loaded.
@@ -439,7 +444,28 @@ class VerizonDriver:
         else:
             # Now we test to ensure that the proper device card has fully loaded.
             targetDeviceCardXPath = f"//div/div[contains(@class,'device-title')][text()='{devices[deviceID]['vzwUpgradeCardName']}']"
-            self.browser.searchForElement(by=By.XPATH,value=targetDeviceCardXPath,timeout=60,testClickable=True)
+            targetDeviceCard = self.browser.searchForElement(by=By.XPATH,value=targetDeviceCardXPath,timeout=20,testClickable=True)
+
+            if (targetDeviceCard):
+                return True
+            else:
+                # If a targetDevice is not immediately found, we check if Verizon thinks that there's no results found.
+                noResultsFoundXPath = "//span[contains(text(),'Sorry, no results found. Please try again with other key words.')]"
+                noResultsFound = self.browser.searchForElement(by=By.XPATH, value=noResultsFoundXPath, timeout=5)
+                # If no results were found, we first try to clear all filters and rerun with clearFilters on.
+                if (noResultsFound and not clearFilters):
+                    return self.DeviceSelection_SearchForDevice(deviceID=deviceID, orderPath=orderPath, clearFilters=True)
+                # Otherwise, we just raise an error.
+                elif(noResultsFound):
+                    error = ValueError(f"Verizon is report that no device with id '{deviceID}' can be found.")
+                    log.error(error)
+                    raise error
+                else:
+                    error = ValueError(f"Verizon is halting on the device selection screen for an unknown reason!")
+                    log.error(error)
+                    raise error
+
+
     def DeviceSelection_SelectDevice(self,deviceID,orderPath="NewInstall"):
         if(orderPath == "NewInstall"):
             targetDeviceCardXPath = f"//div/div[contains(@class,'device-name')][contains(text(),'{devices[deviceID]['vzwNewInstallCardName']}')]"
@@ -877,6 +903,9 @@ class VerizonDriver:
     # a full address info.
     def Checkout_AddAddressInfo(self,company,attention,address1,city,stateAbbrev,zipCode,contactPhone,
                                 notificationEmails : list = None,address2 = ""):
+        # First, convert contactPhone to the correct format.
+        contactPhone = convertServiceIDFormat(serviceID=contactPhone,targetFormat="raw")
+
         # Test to ensure we're on the checkout screen.
         checkoutHeaderXPath = "//div[@class='checkoutBox']//h1[text()='Checkout']"
         self.browser.searchForElement(by=By.XPATH,value=checkoutHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True)

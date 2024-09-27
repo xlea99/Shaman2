@@ -151,4 +151,3 @@ def validateAddress(addressString : str):
         error = ValueError(f"OSMN did not find multiple addresses that look like user's address \"{addressString}\":\n\n{osmnAddress}")
         log.error(error)
         raise error
-

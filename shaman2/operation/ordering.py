@@ -426,8 +426,8 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
     else:
         print(f"Cimpl WO {workorderNumber}: Can't complete WO, as carrier is not Verizon ({workorder['Carrier']})")
         return False
-    if(mainConfig["sysco"]["defaults"][f"{deviceCarrierSubstring}Override{deviceSuperType}WithDefault"]):
-        deviceID = mainConfig["sysco"]["defaults"][f"{deviceCarrierSubstring}{deviceSuperType}"]
+    if(mainConfig["sysco"]["defaults"]["devices"][f"{deviceCarrierSubstring}Override{deviceSuperType}WithDefault"]):
+        deviceID = mainConfig["sysco"]["defaults"]["devices"][f"{deviceCarrierSubstring}{deviceSuperType}"]
     else:
         deviceID = rawDeviceID
 
