@@ -192,6 +192,6 @@ class EmailTemplatesConfig(ReloadableConfig):
             error = ValueError("emailTemplates.toml file did not exist. File created, but needs to be filled with accessory data before proceeding.")
             log.error(error)
             raise error
-emailTemplatesConfig = AccessoriesConfig()
+emailTemplatesConfig = EmailTemplatesConfig()
 
 

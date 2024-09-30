@@ -389,7 +389,7 @@ def documentTMAUpgrade(tmaDriver : TMADriver,client,serviceNum,installDate,devic
 
 # Given a workorderNumber, this method examines it, tries to figure out the type of workorder it is, and whether
 # it is valid to submit automatically through the respective carrier.
-def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,verizonDriver : VerizonDriver,workorderNumber,reviewMode=True,referenceNumber=None,subjectLine : str = None):
+def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,verizonDriver : VerizonDriver,workorderNumber,reviewMode=True,referenceNumber=None,subjectLine : str = None,verifyAddress=True):
     maintenance.validateCimpl(cimplDriver)
     print(f"Cimpl WO {workorderNumber}: Beginning automation")
     workorder = readCimplWorkorder(cimplDriver=cimplDriver,workorderNumber=workorderNumber)
@@ -474,7 +474,15 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
 
     # Validate the shipping address
     rawUserAddress = f"{workorder['Shipping']['Address1']}, {workorder['Shipping']['Address2']}, {workorder['Shipping']['City']}, {workorder['Shipping']['State']}, {workorder['Shipping']['ZipCode']}, {workorder['Shipping']['Country']}"
-    validatedAddress = validateAddress(addressString=rawUserAddress)
+    if(verifyAddress):
+        validatedAddress = validateAddress(addressString=rawUserAddress)
+    else:
+        validatedAddress = {"Address1":workorder['Shipping']['Address1'],
+                            "Address2":workorder['Shipping']['Address2'],
+                            "City":workorder['Shipping']['City'],
+                            "State":workorder['Shipping']['State'],
+                            "ZipCode":workorder['Shipping']['ZipCode'],
+                            "Country":workorder['Shipping']['Country']}
     print(validatedAddress)
 
     # If operation type is a New Install
@@ -649,11 +657,11 @@ cimpl = CimplDriver(br)
 vzw = VerizonDriver(br)
 baka = BakaDriver(br)
 
-preProcessWOs = [48383]
+preProcessWOs = [48433]
 for wo in preProcessWOs:
     try:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,
-                          workorderNumber=wo,referenceNumber="Alex")
+                          workorderNumber=wo,referenceNumber="Alex",verifyAddress=False)
     except Exception as e:
         playsoundAsync(paths["media"] / "shaman_error.mp3")
         raise e

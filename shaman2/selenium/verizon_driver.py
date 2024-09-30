@@ -316,7 +316,8 @@ class VerizonDriver:
         upgradeDeviceEligibleButtonXPath = "//button[contains(text(),'Upgrade device')]"
         upgradeDeviceEligibleButton = self.browser.searchForElement(by=By.XPATH,value=upgradeDeviceEligibleButtonXPath,timeout=2)
         if(upgradeDeviceEligibleButton):
-            upgradeDeviceEligibleButton.click()
+            self.browser.scrollIntoView(upgradeDeviceEligibleButton)
+            self.browser.safeClick(element=upgradeDeviceEligibleButton,timeout=60)
             # Handle cases where clicking the "upgrade" button fails.
             if(not self.browser.searchForElement(by=By.XPATH,value="//div[@id='page-header']//h1[contains(text(),'Shop Devices')]",
                                                  testClickable=True,testLiteralClick=True,timeout=20)):
@@ -331,7 +332,7 @@ class VerizonDriver:
             upgradeDeviceIneligibleButtonXPath = "//a[@type='button'][contains(text(),'Upgrade Options')]"
             upgradeDeviceIneligibleButton = self.browser.searchForElement(by=By.XPATH,value=upgradeDeviceIneligibleButtonXPath,timeout=2)
             if(upgradeDeviceIneligibleButton):
-                upgradeDeviceIneligibleButton.click()
+                self.browser.safeClick(element=upgradeDeviceIneligibleButton,timeout=60)
                 # Handle cases where clicking the "upgrade" button fails.
                 upgradeOptionsXPath = "//div/*[contains(text(),'Choose upgrade options for non-eligible lines')]"
                 if(not self.browser.searchForElement(by=By.XPATH,value=upgradeOptionsXPath,timeout=15)):
@@ -1005,14 +1006,43 @@ class VerizonDriver:
         # Now, we test to make sure that Verizon Wireless didn't ninja-edit the shipping address into something else.
         shippingAddressFullXPath = "//div[@class='shipdisplay-left']/p[contains(@class,'collapse-shipping')]"
         shippingAddressFull = self.browser.searchForElement(by=By.XPATH,value=shippingAddressFullXPath,timeout=30,testClickable=True,testLiteralClick=True).text
-        if(address2 != ""):
-            expectedShippingAddressString = f"{company} ATTN: {attention}\n{address1},{address2}\n{city}, {stateAbbrev} - {zipCode}\nTel: {contactPhone}".lower()
-        else:
-            expectedShippingAddressString = f"{company} ATTN: {attention}\n{address1}\n{city}, {stateAbbrev} - {zipCode}\nTel: {contactPhone}".lower()
-        if(shippingAddressFull.lower().strip() == expectedShippingAddressString.strip()):
+        rawVerizonAddressString = shippingAddressFull.lower().strip()
+        # Helper function for helping to compare the expected address and verizon's final address
+        def classifyVerizonFinalAddress(verizonAddressString):
+            addressLines = verizonAddressString.strip().split("\n")
+
+            streetLine = addressLines[1]
+            cityStateZipLine = addressLines[2]
+
+            addresses = streetLine.strip().split(",")
+            address1 = addresses[0].strip()
+            if (len(addresses) >= 2):
+                address2 = addresses[1].strip()
+            else:
+                address2 = None
+
+            city, stateZipCode = cityStateZipLine.split(",")
+            city = city.strip()
+            state, zipCode = stateZipCode.split("-")
+            state = state.strip()
+            zipCode = zipCode.strip()
+
+            return {"Address1": address1, "Address2": address2, "City": city, "State": state, "ZipCode": zipCode}
+        classifiedVerizonAddress = classifyVerizonFinalAddress(rawVerizonAddressString)
+        print(f"Address1 : {address1.lower().strip()}")
+        print(f"Address2 : {address2.lower().strip()}")
+        print(f"City : {city.lower().strip()}")
+        print(f"State : {stateAbbrev.lower().strip()}")
+        print(f"ZipCode : {zipCode.lower().split('-')[0].strip()}")
+        # Test the expected address against the classifiedVerizonAddress
+        if(classifiedVerizonAddress["Address1"] == address1.lower().strip() and
+           classifiedVerizonAddress["City"] == city.lower().strip() and
+           classifiedVerizonAddress["State"] == stateAbbrev.lower().strip() and
+           classifiedVerizonAddress["ZipCode"] == zipCode.lower().split('-')[0].strip() and
+                ((address2 == "" and classifiedVerizonAddress["Address2"] is None) or (classifiedVerizonAddress["Address2"] == address2.lower().strip()))):
             return True
         else:
-            error = ValueError(f"Verizon ninja-edited the shipping address. Expected value to be:\n\n{expectedShippingAddressString}\n\nHowever, value was actually:\n\n{shippingAddressFull.lower().strip()}")
+            error = ValueError(f"Verizon ninja-edited the shipping address. Verizon's final address was :\n\n{classifiedVerizonAddress}")
             log.error(error)
             raise error
     # Assumes address info has been filled, and places the order, returning the order info.
