@@ -1737,7 +1737,7 @@ class TMADriver():
 
         targetTabXPath = f"//div[contains(@id,'divTabButtons')][@class='tabButtons']/input[translate(@value, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')='{orderTab.lower()}']"
         orderTabTestForXPath = f"{targetTabXPath}[contains(@class,'selected')]"
-        self.browser.safeClick(by=By.XPATH,value=targetTabXPath,retryClicks=True,timeout=60,clickDelay=3,
+        self.browser.safeClick(by=By.XPATH,value=targetTabXPath,retryClicks=True,timeout=120,clickDelay=10,
                                successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=orderTabTestForXPath))
     def Order_GetCurrentOrderTab(self):
         targetTabXPath = f"//div[contains(@id,'divTabButtons')][@class='tabButtons']/input[contains(@class,'selected')]"
@@ -1748,7 +1748,7 @@ class TMADriver():
 
         targetTabXPath = f"//table[contains(@id,'Detail_ucassociations_link_gvTable2')]/tbody/tr[contains(@class,'gridviewbuttons')]/td/span[contains(text(),'{linkedTabName.lower()}')]"
         targetTabTestForXPath = f"//span[contains(text(),'{linkedTabName.lower()}')]/parent::td/parent::tr[contains(@class,'gridviewbuttonsSelected')]"
-        self.browser.safeClick(by=By.XPATH,value=targetTabXPath,retryClicks=True,timeout=60,clickDelay=3,
+        self.browser.safeClick(by=By.XPATH,value=targetTabXPath,retryClicks=True,timeout=120,clickDelay=10,
                                successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=targetTabTestForXPath))
         log.debug(f"Successfully navigated to linkedTab '{linkedTabName}'")
 
