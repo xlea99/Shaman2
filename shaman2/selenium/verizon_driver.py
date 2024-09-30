@@ -680,11 +680,13 @@ class VerizonDriver:
 
             # Open the dropdown
             areaCodeDropdown = self.browser.searchForElement(by=By.XPATH,value=areaCodeDropdownXPath,timeout=60,testClickable=True)
-            clickResult = self.browser.safeClick(element=areaCodeDropdown,timeout=30)
+            self.browser.safeClick(element=areaCodeDropdown,timeout=30)
 
             # Again, wait for the spinner.
             self.browser.searchForElement(by=By.XPATH, value=zipCodeSpinnerXPath, timeout=30, invertedSearch=True,minSearchTime=3)
-            areaCodeResults = self.browser.find_elements(by=By.XPATH,value=areaCodeResultsXPath)
+
+            # Get and examine the area code results
+            areaCodeResults = self.browser.searchForElements(by=By.XPATH,value=areaCodeResultsXPath,timeout=40,raiseError=True)
             # Check if any area code results are found, if not, try another zip code.
             if(len(areaCodeResults) > 0):
                 self.browser.safeClick(element=areaCodeResults[0],timeout=10)
@@ -910,12 +912,13 @@ class VerizonDriver:
         checkoutHeaderXPath = "//div[@class='checkoutBox']//h1[text()='Checkout']"
         self.browser.searchForElement(by=By.XPATH,value=checkoutHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True)
 
+        companyFieldXPath = "//input[@id='firmName']"
         addNewAddressButtonXPath = "//div[contains(@class,'new-address')]"
-        addNewAddressButton = self.browser.searchForElement(by=By.XPATH,value=addNewAddressButtonXPath,timeout=30,testClickable=True)
-        self.browser.safeClick(element=addNewAddressButton,timeout=30)
+        self.browser.safeClick(by=By.XPATH,value=addNewAddressButtonXPath,timeout=30,retryClicks=True,clickDelay=3,scrollIntoView=True,
+                               successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=companyFieldXPath))
 
         # Write company name
-        companyFieldXPath = "//input[@id='firmName']"
+
         companyField = self.browser.searchForElement(by=By.XPATH,value=companyFieldXPath,timeout=30,testClickable=True)
         companyField.clear()
         companyField.send_keys(company)
