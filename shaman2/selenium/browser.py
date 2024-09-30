@@ -315,7 +315,7 @@ class Browser(webdriver.Chrome):
                 # Otherwise, we consider the search successful.
                 else:
                     if (time.time() >= minTestTime):
-                        searchSuccessful = True
+                        searchSuccessful = targetElements
                         break
                     else:
                         time.sleep(pollInterval)
@@ -323,7 +323,7 @@ class Browser(webdriver.Chrome):
 
         # If timeout expires without success, return False or raise an error
         if (searchSuccessful):
-            return True
+            return searchSuccessful
         else:
             if(raiseError):
                 error = ValueError(f"Failed to successfully{" inverted" if invertedSearch else ""} search for elements after {searchAttempt} search attempts.")
