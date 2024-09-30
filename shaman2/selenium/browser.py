@@ -181,14 +181,14 @@ class Browser(webdriver.Chrome):
     # value -   Search term to search for using the method specified by "by" (a literal xpath or CSS selector)
     # element - An existing WebElement to test on. Can't use with by/value
     # timeout - How long to search for, at minimum. Defaults to zero to run exactly one test.
-    # minSearchTime -       Ensures that, even if the test initially passes, it keeps searching for the element until this time has been reached. If the search fails even after first succeeding, the whole search is considered failed.
-    # testNotStale -        Tests that the element is not considered "stale"
-    # testClickable -       Tests that the element is considered "clickable"
-    # testScrolledInView -  Tests that the element is scrolled into view
-    # testLiteralClick -    ACTUALLY attempts to click the element, for when certain elements report as clickable but still somehow aren't.
-    # invertedSearch -      Inverts the search - instead of searching for presence of element, searches for LACK of element on page
-    # raiseError -          Whether to raise an error when the test fails, or simply return "False"
-    # singleTestInterval -  How long to perform each single test for, defaulting at 0.2 seconds per test.
+    # minSearchTime -           Ensures that, even if the test initially passes, it keeps searching for the element until this time has been reached. If the search fails even after first succeeding, the whole search is considered failed.
+    # testNotStale -            Tests that the element is not considered "stale"
+    # testClickable -           Tests that the element is considered "clickable"
+    # testScrolledInView -      Tests that the element is scrolled into view
+    # testLiteralClick -        ACTUALLY attempts to click the element, for when certain elements report as clickable but still somehow aren't.
+    # invertedSearch -          Inverts the search - instead of searching for presence of element, searches for LACK of element on page
+    # raiseError -              Whether to raise an error when the test fails, or simply return "False"
+    # singleTestInterval -      How long to perform each single test for, defaulting at 0.2 seconds per test.
     # TODO is this enough to defeat Verizon's weird elements that selenium believes are clickable, but secretly aren't yet?
     def searchForElement(self,by = None,value : str = None,element : WebElement = None,timeout : float = 0, minSearchTime : float = 0,
                          testNotStale = True,testClickable = False,testScrolledInView = False,testLiteralClick = False,
@@ -278,6 +278,60 @@ class Browser(webdriver.Chrome):
             if(debug):
                 log.debug(f"Failed to successfully{" inverted" if invertedSearch else ""} search for element after {searchAttempt} search attempts.")
             return False
+
+    # Similar, but much simpler searchForElements which searches for multiple elements at once and is only concerned
+    # with the amount of elements returned.
+    def searchForElements(self, by, value, timeout : float = 0, minSearchTime : float = 0,
+                          invertedSearch = False, raiseError = False, pollInterval = 0.1):
+        minTestTime = time.time() + minSearchTime
+        endTestTime = time.time() + timeout
+        searchAttempt = 0
+        searchSuccessful = False
+        while (searchAttempt < 1 or time.time() < endTestTime):
+            searchAttempt += 1
+            # Try to find elements
+            targetElements = self.find_elements(by=by, value=value)
+
+            # Do this if no elements are present in the return.
+            if(len(targetElements) == 0):
+                # If this is an inverted search, since we found no elements we consider the search successful.
+                if (invertedSearch):
+                    if(time.time() >= minTestTime):
+                        searchSuccessful = True
+                        break
+                    else:
+                        time.sleep(pollInterval)
+                        continue
+                # Otherwise, we keep testing.
+                else:
+                    time.sleep(pollInterval)
+                    continue
+            # Do this if elements are present in the return
+            else:
+                # If this is an inverted search, we keep looking since elements are still found.
+                if (invertedSearch):
+                    time.sleep(pollInterval)
+                    continue
+                # Otherwise, we consider the search successful.
+                else:
+                    if (time.time() >= minTestTime):
+                        searchSuccessful = True
+                        break
+                    else:
+                        time.sleep(pollInterval)
+                        continue
+
+        # If timeout expires without success, return False or raise an error
+        if (searchSuccessful):
+            return True
+        else:
+            if(raiseError):
+                error = ValueError(f"Failed to successfully{" inverted" if invertedSearch else ""} search for elements after {searchAttempt} search attempts.")
+                log.error(error)
+                raise error
+            else:
+                return False
+
 
     # This advanced element clicker method provides the ability to "soft" or "fuzzy" click on an element that
     # may be highly volatile (thanks TMA), using various methods and condition testing to do so. Any condition
@@ -376,6 +430,7 @@ class Browser(webdriver.Chrome):
             else:
                 log.warning(lastException)
                 return False
+
 
     #endregion === Element Manipulation ===
 
