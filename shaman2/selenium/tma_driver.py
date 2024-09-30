@@ -1896,7 +1896,7 @@ class TMADriver():
 
         targetTabXPath = f"//table[contains(@id,'Detail_associations_link1_gvTable2')]/tbody/tr[contains(@class,'gridviewbuttons')]/td/span[contains(text(),'{linkedTabName.lower()}')]"
         targetTabTestForXPath = f"//span[contains(text(),'{linkedTabName.lower()}')]/parent::td/parent::tr[contains(@class,'gridviewbuttonsSelected')]"
-        self.browser.safeClick(by=By.XPATH,value=targetTabXPath,retryClicks=True,clickDelay=3,timeout=30,
+        self.browser.safeClick(by=By.XPATH,value=targetTabXPath,retryClicks=True,clickDelay=10,timeout=120,
                                successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=targetTabTestForXPath))
         log.debug(f"Successfully navigated to linkedTabName '{linkedTabName}'")
     # Assuming that TMA is currently on a "People" page, this function navigates to
