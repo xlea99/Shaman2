@@ -465,8 +465,6 @@ class VerizonDriver:
                     error = ValueError(f"Verizon is halting on the device selection screen for an unknown reason!")
                     log.error(error)
                     raise error
-
-
     def DeviceSelection_SelectDevice(self,deviceID,orderPath="NewInstall"):
         if(orderPath == "NewInstall"):
             targetDeviceCardXPath = f"//div/div[contains(@class,'device-name')][contains(text(),'{devices[deviceID]['vzwNewInstallCardName']}')]"
@@ -686,8 +684,9 @@ class VerizonDriver:
 
             # Again, wait for the spinner.
             self.browser.searchForElement(by=By.XPATH, value=zipCodeSpinnerXPath, timeout=30, invertedSearch=True,minSearchTime=3)
-            if(clickResult):
-                areaCodeResults = self.browser.find_elements(by=By.XPATH,value=areaCodeResultsXPath)
+            areaCodeResults = self.browser.find_elements(by=By.XPATH,value=areaCodeResultsXPath)
+            # Check if any area code results are found, if not, try another zip code.
+            if(len(areaCodeResults) > 0):
                 self.browser.safeClick(element=areaCodeResults[0],timeout=10)
                 # Wait for the spinner one final time
                 self.browser.searchForElement(by=By.XPATH, value=zipCodeSpinnerXPath, timeout=30, invertedSearch=True,minSearchTime=1)
@@ -1064,5 +1063,3 @@ class VerizonDriver:
         return self.browser.searchForElement(by=By.XPATH,value=fullOrderInfoString,timeout=30,testClickable=True).text
 
     #endregion === Device Ordering ===
-
-
