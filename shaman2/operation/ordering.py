@@ -425,6 +425,8 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
         orderEyeSafe = True
     else:
         orderEyeSafe = False
+    if(orderEyeSafe):
+        print(f"Cimpl {workorderNumber} - EYESAFE ORDER")
     deviceID = classifiedHardware["DeviceID"]
 
     # Check to make sure no existing comments/notes interfere with the request.
