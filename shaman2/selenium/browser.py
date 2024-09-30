@@ -360,7 +360,7 @@ class Browser(webdriver.Chrome):
     # scrollIntoView -              Attempts to scroll the element into view before each click.
     def safeClick(self,element : WebElement = None,by = None,value : str = None,timeout : float = 0,
                   successfulClickCondition : Callable = None,prioritizeCondition = True, jsClick=False,raiseError=True,scrollIntoView=False,
-                  retryClicks = False,minClicks : int = 0,maxClicks : int = 10**10,testInterval=0.5,clickDelay=0.5):
+                  retryClicks = False,minClicks : int = 0,maxClicks : int = 10**10,testInterval=0.5,clickDelay=0):
         # Throw error if both a value and an element are given
         if(value and element):
             error = ValueError("Both a value and an element cannot be specified together in safeClick.")
@@ -376,14 +376,15 @@ class Browser(webdriver.Chrome):
                 return True
 
         lastException = None
-        clickAttempt = 0
+        testAttempt = 0
         clickCount = 0
         clickSuccessful = False
         endTime = time.time() + timeout
+        nextClickTime = time.time()
         # Begin the click loop
-        while (clickAttempt < 1 or time.time() < endTime):
+        while (testAttempt < 1 or time.time() < endTime):
             hasEvaluatedConditionThisLoop = False
-            clickAttempt += 1
+            testAttempt += 1
             try:
                 # Get the element, searching for it if necessary
                 if(element):
@@ -397,12 +398,13 @@ class Browser(webdriver.Chrome):
                     time.sleep(1)
 
                 # Attempt to click if we still have clicks left and retryClicks is True.
-                if (clickCount == 0 or (retryClicks and clickCount < maxClicks)):
+                if ((clickCount == 0 or (retryClicks and clickCount < maxClicks)) and time.time() >= nextClickTime):
                     if(jsClick):
                         self.execute_script("arguments[0].click();", targetElement)
                     else:
                         targetElement.click()
                     clickCount += 1
+                    nextClickTime = time.time() + clickDelay
 
                 if (clickCount >= minClicks):
                     hasEvaluatedConditionThisLoop = True
@@ -413,7 +415,7 @@ class Browser(webdriver.Chrome):
 
                 # This means that a click was "made", but considered unsuccessful. We raise an error, to be caught
                 # and potentially handled further in our except block.
-                raise TimeoutError(f"safeClick on element '{element if element else value}' unsuccessful after {clickAttempt} click attempts and {clickCount} actual clicks.")
+                raise TimeoutError(f"safeClick on element '{element if element else value}' unsuccessful after {testAttempt} click attempts and {clickCount} actual clicks.")
 
 
             except Exception as e:
@@ -425,7 +427,7 @@ class Browser(webdriver.Chrome):
                             if(clickCount >= minClicks):
                                 clickSuccessful = True
                                 break
-                time.sleep(clickDelay)
+                time.sleep(testInterval)
 
         # Return a boolean or raise error depending on whether the click was successful or not.
         if(clickSuccessful):

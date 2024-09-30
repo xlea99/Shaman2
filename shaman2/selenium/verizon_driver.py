@@ -665,6 +665,7 @@ class VerizonDriver:
         zipCodeFormXPath = "//input[@id='zip']"
         zipCodeForm = self.browser.searchForElement(by=By.XPATH,value=zipCodeFormXPath,timeout=60,testClickable=True)
         areaCodeDropdownXPath = "//div[contains(@class,'area-dropdown')]"
+        areaCodeScrollAreaXPath = "//div[contains(@class,'dropdown-scroll')]"
         areaCodeResultsXPath = f"{areaCodeDropdownXPath}//div/ul/li[@class='ng-star-inserted'][1]"
         noNumbersAvailableXPath = "//div[contains(text(),'The city or zip code you entered has no numbers available')]"
 
@@ -678,9 +679,11 @@ class VerizonDriver:
             zipCodeForm.clear()
             zipCodeForm.send_keys(f"{zipCodeToTry:05}")
 
-            # Open the dropdown
+            # Open the dropdown. This part is HIGHLY temperamental, as Verizon behaves in one of multiple ways.
             areaCodeDropdown = self.browser.searchForElement(by=By.XPATH,value=areaCodeDropdownXPath,timeout=60,testClickable=True)
-            self.browser.safeClick(element=areaCodeDropdown,timeout=30)
+            self.browser.safeClick(element=areaCodeDropdown,timeout=60,retryClicks=True,clickDelay=15,
+                                   successfulClickCondition=lambda b:
+                                   (b.searchForElement(by=By.XPATH,value=areaCodeScrollAreaXPath) or b.searchForElement(by=By.XPATH,value=noNumbersAvailableXPath)))
 
             # Again, wait for the spinner.
             self.browser.searchForElement(by=By.XPATH, value=zipCodeSpinnerXPath, timeout=30, invertedSearch=True,minSearchTime=3)
