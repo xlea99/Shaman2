@@ -1044,9 +1044,14 @@ class VerizonDriver:
                 ((address2 == "" and classifiedVerizonAddress["Address2"] is None) or (classifiedVerizonAddress["Address2"] == address2.lower().strip()))):
             return True
         else:
-            error = ValueError(f"Verizon ninja-edited the shipping address. Verizon's final address was :\n\n{classifiedVerizonAddress}")
-            log.error(error)
-            raise error
+            playsoundAsync(paths["media"] / "shaman_attention.mp3")
+            userResponse = input(f"Verizon ninja-edited the shipping address. Verizon's final address was :\n\n{classifiedVerizonAddress}. Press enter to proceed anyways (you may make a change in the shipping if you prefer), type anything else to cancel.")
+            if(userResponse):
+                error = ValueError(f"Verizon ninja-edited the shipping address. Verizon's final address was :\n\n{classifiedVerizonAddress}")
+                log.error(error)
+                raise error
+            else:
+                return True
     # Assumes address info has been filled, and places the order, returning the order info.
     def Checkout_PlaceOrder(self,billingAccountNum):
         #TODO some glue here. Truncates the second half of
