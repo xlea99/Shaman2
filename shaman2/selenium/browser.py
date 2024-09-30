@@ -1,5 +1,6 @@
 from selenium import webdriver
 import selenium.common.exceptions
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -187,17 +188,20 @@ class Browser(webdriver.Chrome):
     # testScrolledInView -      Tests that the element is scrolled into view
     # testLiteralClick -        ACTUALLY attempts to click the element, for when certain elements report as clickable but still somehow aren't.
     # invertedSearch -          Inverts the search - instead of searching for presence of element, searches for LACK of element on page
-    # raiseError -              Whether to raise an error when the test fails, or simply return "False"
+    # raiseError/logError -     Whether to raise and log the error when the test fails, or simply return "False"
     # singleTestInterval -      How long to perform each single test for, defaulting at 0.2 seconds per test.
     # TODO is this enough to defeat Verizon's weird elements that selenium believes are clickable, but secretly aren't yet?
     def searchForElement(self,by = None,value : str = None,element : WebElement = None,timeout : float = 0, minSearchTime : float = 0,
                          testNotStale = True,testClickable = False,testScrolledInView = False,testLiteralClick = False,
-                         invertedSearch = False,raiseError = False,singleTestInterval = 0.1,debug=False):
+                         invertedSearch = False,raiseError = False,logError = None,singleTestInterval = 0.1,debug=False):
         # Throw error if both a value and an element are given
         if(value and element):
             error = ValueError("Both a value and an element cannot be specified together in searchForElement.")
             log.error(error)
             raise error
+        # Unless logError is specified, we copy the value of raiseError
+        if(logError is None):
+            logError = raiseError
 
         lastException = None
         minTestTime = time.time() + minSearchTime
@@ -269,10 +273,12 @@ class Browser(webdriver.Chrome):
         if(raiseError):
             if(invertedSearch):
                 error = ValueError(f"InvertedSearched for element, but element persisted on page past timeout after {searchAttempt} search attempts.")
-                log.error(error)
+                if(logError):
+                    log.error(error)
                 raise error
             else:
-                log.error(lastException)
+                if (logError):
+                    log.error(lastException)
                 raise lastException
         else:
             if(debug):
@@ -383,11 +389,12 @@ class Browser(webdriver.Chrome):
                 if(element):
                     targetElement = element
                 else:
-                    targetElement = self.searchForElement(by=by,value=value,timeout=testInterval,raiseError=True)
+                    targetElement = self.searchForElement(by=by,value=value,timeout=testInterval,raiseError=True,logError=False)
 
-                # Attempt to scroll into view if specified.
+                # Attempt to scroll into view if specified. Adds a sleep to make sure the action is finished.
                 if(scrollIntoView):
                     self.scrollIntoView(targetElement)
+                    time.sleep(1)
 
                 # Attempt to click if we still have clicks left and retryClicks is True.
                 if (clickCount == 0 or (retryClicks and clickCount < maxClicks)):
@@ -513,6 +520,11 @@ class Browser(webdriver.Chrome):
     # Simply scrolls the given element into view.
     def scrollIntoView(self,element : WebElement):
         self.execute_script("arguments[0].scrollIntoView({block: 'center'});", element)
+
+    # Attempts to hover the given element.
+    def hoverElement(self,element : WebElement):
+        actions = ActionChains(self)
+        actions.move_to_element(element).perform()
 
     #endregion === Utilities ===
 

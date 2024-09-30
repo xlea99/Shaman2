@@ -467,11 +467,11 @@ class VerizonDriver:
                     raise error
     def DeviceSelection_SelectDevice(self,deviceID,orderPath="NewInstall"):
         if(orderPath == "NewInstall"):
-            targetDeviceCardXPath = f"//div/div[contains(@class,'device-name')][contains(text(),'{devices[deviceID]['vzwNewInstallCardName']}')]"
+            targetDeviceCardXPath = f"//div/div[contains(@class,'device-name')][normalize-space(text())='{devices[deviceID]['vzwNewInstallCardName']}']"
             deviceDetailsXPath = f"//div[contains(@class,'pdp-header-section')]/div[contains(@class,'left-top-details')]/div[contains(text(),'{devices[deviceID]['vzwNewInstallCardName']}')]"
         else:
             targetDeviceCardXPath = f"//div/div[contains(@class,'device-title')][text()='{devices[deviceID]['vzwUpgradeCardName']}']"
-            deviceDetailsXPath = f"//div[contains(@class,'pdp-header-section')]//div[contains(text(),'{devices[deviceID]['vzwUpgradeCardName']}')]"
+            deviceDetailsXPath = f"//div[contains(@class,'pdp-header-section')]//div[normalize-space(text())='{devices[deviceID]['vzwUpgradeCardName']}']"
 
         targetDeviceCard = self.browser.searchForElement(by=By.XPATH,value=targetDeviceCardXPath,timeout=5)
         self.browser.execute_script("arguments[0].scrollIntoView({block: 'center'});", targetDeviceCard)
