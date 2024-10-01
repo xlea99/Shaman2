@@ -258,6 +258,32 @@ class VerizonDriver:
         else:
             return False
 
+    # This method sets the "view date" dropdown to the given selection (30, 60, 90, 120, 150, 180 Days and 13 months)
+    def OrderViewer_UpdateOrderViewDropdown(self,viewPeriod : str):
+        viewPeriod = viewPeriod.title()
+        validChoices = ["30 Days","60 Days","90 Days","120 Days","150 Days","180 Days","13 Months"]
+        if(viewPeriod not in validChoices):
+            error = ValueError(f"Invalid choice to select for viewPeriod: '{viewPeriod}'")
+            log.error(error)
+            raise error
+
+        # First, click on the dropdown menu itself
+        viewDropdownMenuXPath = "//div[contains(@class,'selectdropDown')]//label[normalize-space(text())='View']/parent::div/div/button[contains(@class,'dropDownSelect')]"
+        viewDropdownMenu = self.browser.searchForElement(by=By.XPATH,value=viewDropdownMenuXPath,timeout=60,testClickable=True)
+        self.browser.safeClick(element=viewDropdownMenu,timeout=30)
+
+        # Now, locate and click the selected option
+        viewPeriodOptionXPath = f"{viewDropdownMenuXPath}/parent::div/div//span[normalize-space(text())='{viewPeriod}']"
+        self.browser.safeClick(by=By.XPATH,value=viewPeriodOptionXPath,timeout=30)
+
+        # Now, we wait for both the updated dropdown view AND the clickable orders header before continuing.
+        self.browser.searchForElement(by=By.XPATH,value=f"{viewDropdownMenuXPath}[normalize-space(text())='{viewPeriod}']",timeout=60)
+        # Yes, the typo is intentional lmfao
+        viewOrdersHeaderXPath = "//div[contains(@class,'view-orders-conatiner')]//h2[contains(text(),'Orders')]"
+        self.browser.searchForElement(by=By.XPATH, value=viewOrdersHeaderXPath, timeout=120,testClickable=True, testLiteralClick=True)
+
+
+
     #endregion === Order Viewer ===
 
     #region === Line Viewer ===
@@ -1074,3 +1100,10 @@ class VerizonDriver:
         return self.browser.searchForElement(by=By.XPATH,value=fullOrderInfoString,timeout=30,testClickable=True).text
 
     #endregion === Device Ordering ===
+
+
+br = Browser()
+v = VerizonDriver(br)
+v.logInToVerizon()
+v.navToOrderViewer()
+v.OrderViewer_UpdateOrderViewDropdown("90 Days")
