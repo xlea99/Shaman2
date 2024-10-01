@@ -5,8 +5,9 @@ from shaman2.selenium.baka_driver import BakaDriver
 from shaman2.selenium.cimpl_driver import CimplDriver, classifyHardwareInfo,getNetworkIDFromActions,findPlacedCimplOrderNumber
 from shaman2.selenium.tma_driver import TMADriver, TMALocation, TMAPeople, TMAService,TMAEquipment, TMACost
 from shaman2.selenium.verizon_driver import VerizonDriver
+from shaman2.selenium.eyesafe_driver import EyesafeDriver
 from shaman2.operation import maintenance
-from shaman2.common.config import mainConfig,clients,devices,emailTemplatesConfig
+from shaman2.common.config import mainConfig,accessories,clients,devices,emailTemplatesConfig
 from shaman2.common.logger import log
 from shaman2.common.paths import paths
 from shaman2.utilities.shaman_utils import convertServiceIDFormat,convertStateFormat
@@ -192,6 +193,19 @@ def placeVerizonUpgrade(verizonDriver : VerizonDriver,serviceID,deviceID : str,a
 
     return orderInfo
 
+# Places an entire Eyesafe order.
+def placeEyesafeOrder(eyesafeDriver : EyesafeDriver,eyesafeAccessoryName : str,
+                      userFirstName : str, userLastName : str,
+                      address1,city,state,zipCode,address2 = None):
+    maintenance.validateEyesafe(eyesafeDriver)
+
+    eyesafeDriver.navToShop()
+    eyesafeDriver.addItemToCart(itemName=accessories[eyesafeAccessoryName]["eyesafeCardName"])
+    eyesafeDriver.checkOutFromCart()
+    eyesafeDriver.writeShippingInformation(firstName=userFirstName,lastName=userLastName,
+                                           address1=address1,address2=address2,city=city,state=state,zipCode=zipCode)
+    eyesafeDriver.continueFromShipping()
+    return eyesafeDriver.submitOrder()
 
 # Adds service information to Cimpl (service num, install date, account) and applies it.
 def writeServiceToCimplWorkorder(cimplDriver : CimplDriver,serviceNum,carrier,installDate):
@@ -389,7 +403,8 @@ def documentTMAUpgrade(tmaDriver : TMADriver,client,serviceNum,installDate,devic
 
 # Given a workorderNumber, this method examines it, tries to figure out the type of workorder it is, and whether
 # it is valid to submit automatically through the respective carrier.
-def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,verizonDriver : VerizonDriver,workorderNumber,reviewMode=True,referenceNumber=None,subjectLine : str = None,verifyAddress=True):
+def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,verizonDriver : VerizonDriver,eyesafeDriver : EyesafeDriver,
+                             workorderNumber,reviewMode=True,referenceNumber=None,subjectLine : str = None,verifyAddress=True):
     maintenance.validateCimpl(cimplDriver)
     print(f"Cimpl WO {workorderNumber}: Beginning automation")
     workorder = readCimplWorkorder(cimplDriver=cimplDriver,workorderNumber=workorderNumber)
@@ -419,15 +434,9 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
     # Get device model ID from Cimpl
     userID = getNetworkIDFromActions(workorder["Actions"])
     classifiedHardware = classifyHardwareInfo(workorder["HardwareInfo"],carrier=workorder["Carrier"])
-    accessoryIDs = classifiedHardware["AccessoryIDs"]
-    if("EyeSafeFilter" in accessoryIDs):
-        accessoryIDs.remove("EyeSafeFilter")
-        orderEyeSafe = True
-    else:
-        orderEyeSafe = False
-    if(orderEyeSafe):
-        print(f"Cimpl {workorderNumber} - EYESAFE ORDER")
     deviceID = classifiedHardware["DeviceID"]
+    accessoryIDs = classifiedHardware["AccessoryIDs"]
+    eyesafeAccessory = classifiedHardware["Eyesafe"]
 
     # Check to make sure no existing comments/notes interfere with the request.
     if(workorder["Comment"] != ""):
@@ -517,6 +526,16 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
 
     cimplDriver.Workorders_NavToSummaryTab()
     cimplDriver.Workorders_WriteNote(subject="Order Placed",noteType="Information Only",status="Completed",content=orderNumber)
+
+    # Handle ordering Eyesafe, if specified
+    #if(eyesafeAccessory):
+    #    eyesafeOrderNumber = placeEyesafeOrder(eyesafeDriver=eyesafeDriver,eyesafeAccessoryName=eyesafeAccessory,
+    #                            userFirstName=thisPerson.info_FirstName,userLastName=thisPerson.info_LastName,
+    #                            address1=validatedAddress["Address1"],address2=validatedAddress["Address2"],
+    #                            city=validatedAddress["City"],state=validatedAddress["State"],zipCode=validatedAddress["ZipCode"])
+    #    maintenance.validateCimpl(cimplDriver)
+    #    cimplDriver.Workorders_NavToSummaryTab()
+    #    cimplDriver.Workorders_WriteNote(subject="Eyesafe Order Placed", noteType="Information Only", status="Completed",content=eyesafeOrderNumber)
 
     # Confirm workorder, if not already confirmed.
     if(workorder["Status"] == "Pending"):
@@ -653,13 +672,78 @@ def processPostOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,vz
     return True
 
 
+# Does what it says on the tin
+def placeMissingEyesafeOrderFromCimplWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,eyesafeDriver : EyesafeDriver,
+                                               workorderNumber):
+    maintenance.validateCimpl(cimplDriver)
+    print(f"Cimpl WO {workorderNumber}: Beginning automation")
+    workorder = readCimplWorkorder(cimplDriver=cimplDriver,workorderNumber=workorderNumber)
+
+    # Test to ensure the operation type is valid
+    if(workorder["OperationType"] not in ("New Request","Upgrade")):
+        print(f"Cimpl WO {workorderNumber}: Can't complete WO, as order type '{workorder['OperationType']}' is not understood by the Shaman.")
+        return False
+
+    # Test to ensure it hasn't already been placed
+    for note in workorder["Notes"]:
+        if("eyesafe" in note["Subject"].lower()):
+            print(f"Cimpl WO {workorderNumber}: An eyesafe order has already been submitted for this Cimpl WO.")
+            return False
+
+    # Get device model ID from Cimpl
+    userID = getNetworkIDFromActions(workorder["Actions"])
+    classifiedHardware = classifyHardwareInfo(workorder["HardwareInfo"],carrier=workorder["Carrier"])
+    eyesafeAccessory = classifiedHardware["Eyesafe"]
+
+    if(not eyesafeAccessory):
+        print(f"Cimpl WO {workorderNumber}: No eyesafe device was requested.")
+
+    # Read the people object from TMA.
+    maintenance.validateTMA(tmaDriver,"Sysco")
+    tmaDriver.navToLocation(TMALocation(client="Sysco", entryType="People", entryID=userID))
+    thisPerson = tmaDriver.People_ReadAllInformation()
+
+    # Validate the shipping address
+    validatedAddress = {"Address1": workorder['Shipping']['Address1'],
+                        "Address2": workorder['Shipping']['Address2'],
+                        "City": workorder['Shipping']['City'],
+                        "State": workorder['Shipping']['State'],
+                        "ZipCode": workorder['Shipping']['ZipCode'],
+                        "Country": workorder['Shipping']['Country']}
+    print(validatedAddress)
+
+    # Handle ordering Eyesafe
+    eyesafeOrderNumber = placeEyesafeOrder(eyesafeDriver=eyesafeDriver, eyesafeAccessoryName=eyesafeAccessory,
+                                               userFirstName=thisPerson.info_FirstName,
+                                               userLastName=thisPerson.info_LastName,
+                                               address1=validatedAddress["Address1"],
+                                               address2=validatedAddress["Address2"],
+                                               city=validatedAddress["City"], state=validatedAddress["State"],
+                                               zipCode=validatedAddress["ZipCode"])
+
+    maintenance.validateCimpl(cimplDriver)
+    if(workorder["Status"] != "Completed"):
+        cimplDriver.Workorders_NavToSummaryTab()
+        cimplDriver.Workorders_WriteNote(subject="Eyesafe Order Placed", noteType="Information Only",
+                                         status="Completed", content=eyesafeOrderNumber)
+
+    print(f"Cimpl WO {workorderNumber}: Eyesafe Order completed - '{eyesafeOrderNumber}'")
+
+
+
 br = Browser()
 tma = TMADriver(br)
 cimpl = CimplDriver(br)
 vzw = VerizonDriver(br)
 baka = BakaDriver(br)
+eyesafe = EyesafeDriver(br)
 
-preProcessWOs = [48476]
+missingEyesafeWOs = [48403,48404]
+for wo in missingEyesafeWOs:
+    placeMissingEyesafeOrderFromCimplWorkorder(tmaDriver=tma,cimplDriver=cimpl,eyesafeDriver=eyesafe,workorderNumber=wo)
+
+
+preProcessWOs = []
 for wo in preProcessWOs:
     try:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,

@@ -944,4 +944,12 @@ def classifyHardwareInfo(hardwareInfo : list,carrier,raiseNoEquipmentError=True)
             extraAccessoriesToOrder = []
         finalAccessoryIDs = finalAccessoryIDs | set(extraAccessoriesToOrder)
 
-    return {"DeviceID" : deviceID, "AccessoryIDs" : finalAccessoryIDs}
+    # TODO this is such glue it physically hurts. We need to build a system where we assume the customer is always an idiot, and builds accessoires that way
+    # Now we account for any eyesafe
+    eyesafeDevice = None
+    for accessoryID in finalAccessoryIDs:
+        if(accessories[accessoryID]["type"] == "eyesafe"):
+            eyesafeDevice = accessoryID
+
+
+    return {"DeviceID" : deviceID, "AccessoryIDs" : finalAccessoryIDs, "Eyesafe" : eyesafeDevice}

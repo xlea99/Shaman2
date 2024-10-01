@@ -35,32 +35,50 @@ class EyesafeDriver:
     def logInToEyesafe(self):
         self.browser.switchToTab("Eyesafe")
 
-        # Nav to login page
-        self.browser.get("https://shop.eyesafe.com/login.php?from=account.php%3Faction%3D")
+        # Check if we're on any eyesafe page at the moment.
+        if ("eyesafe" in self.browser.current_url):
+            # If we are, test if we're signed in by trying to locate a sign in button.
+            signInButtonXPath = "//span[contains(text(),'Sign in')]"
+            signInButton = self.browser.searchForElement(by=By.XPATH, value=signInButtonXPath, timeout=1)
+            if(signInButton):
+                signedIn = False
+            else:
+                signedIn = True
+        else:
+            signedIn = False
 
-        # We first deliberately take some time to wait for the dumbass coupon to pop up.
-        self.closeCouponPopup(timeout=20)
+        # First, check that we are actually not signed in. We test to see if we can find the "sign in" button and
+        # that we're not on shop.eyesafe to determine this.
+        if(not signedIn):
+            # Nav to login page
+            self.browser.get("https://shop.eyesafe.com/login.php?from=account.php%3Faction%3D")
 
-        # Now, we decline all cookies
-        declineAllCookiesButtonXPath = "//div[@id='hs-eu-cookie-confirmation-button-group']/a[@id='hs-eu-decline-button']"
-        declineAllCookiesButton = self.browser.searchForElement(by=By.XPATH,value=declineAllCookiesButtonXPath,timeout=10)
-        self.browser.safeClick(element=declineAllCookiesButton,timeout=5)
+            # We first deliberately take some time to wait for the dumbass coupon to pop up.
+            self.closeCouponPopup(timeout=20)
 
-        # Enter credentials
-        loginEmailFieldXPath = "//input[@id='login_email']"
-        loginEmailField = self.browser.searchForElement(by=By.XPATH,value=loginEmailFieldXPath,timeout=5,testClickable=True)
-        loginEmailField.clear()
-        loginEmailField.send_keys(mainConfig["authentication"]["eyesafeUser"])
+            # Now, we decline all cookies
+            declineAllCookiesButtonXPath = "//div[@id='hs-eu-cookie-confirmation-button-group']/a[@id='hs-eu-decline-button']"
+            declineAllCookiesButton = self.browser.searchForElement(by=By.XPATH,value=declineAllCookiesButtonXPath,timeout=10)
+            self.browser.safeClick(element=declineAllCookiesButton,timeout=5)
 
-        passwordFieldXPath = "//input[@id='login_pass']"
-        passwordField = self.browser.searchForElement(by=By.XPATH,value=passwordFieldXPath,timeout=5,testClickable=True)
-        passwordField.clear()
-        passwordField.send_keys(mainConfig["authentication"]["eyesafePass"])
-        passwordField.send_keys(Keys.ENTER)
+            # Enter credentials
+            loginEmailFieldXPath = "//input[@id='login_email']"
+            loginEmailField = self.browser.searchForElement(by=By.XPATH,value=loginEmailFieldXPath,timeout=5,testClickable=True)
+            loginEmailField.clear()
+            loginEmailField.send_keys(mainConfig["authentication"]["eyesafeUser"])
 
-        # Search for the "Orders" header to ensure we logged in successfully
-        ordersPageHeaderXPath = "//*[@class='page-heading'][text()='Orders']"
-        self.browser.searchForElement(by=By.XPATH,value=ordersPageHeaderXPath,timeout=30)
+            passwordFieldXPath = "//input[@id='login_pass']"
+            passwordField = self.browser.searchForElement(by=By.XPATH,value=passwordFieldXPath,timeout=5,testClickable=True)
+            passwordField.clear()
+            passwordField.send_keys(mainConfig["authentication"]["eyesafePass"])
+            passwordField.send_keys(Keys.ENTER)
+
+            # Search for the "Orders" header to ensure we logged in successfully
+            ordersPageHeaderXPath = "//*[@class='page-heading'][text()='Orders']"
+            self.browser.searchForElement(by=By.XPATH,value=ordersPageHeaderXPath,timeout=30)
+            return True
+        else:
+            return True
 
     # Simply searches for and closes the coupon popup.
     def closeCouponPopup(self,timeout=1):
@@ -129,6 +147,8 @@ class EyesafeDriver:
     # One giant writeShipping method, as eyesafe's shipping validation is one of the strangest, most inconsistent
     # I've ever seen and needs to be handeled very delicately.
     def writeShippingInformation(self,firstName,lastName,address1,city,state,zipCode,address2=None,maxAttempts=5):
+        # Fix zip code to be just 5 numbers
+        zipCode = zipCode[:5]
 
         # This helper method simply "refreshes" the page by navigating back to the cart first, then back here to
         # check out to try again. Assumes we're on the checkout screen.
@@ -182,12 +202,13 @@ class EyesafeDriver:
             # with our target city and click it.
             allZipCityResultsXPath = "//ul[contains(@class,'ui-autocomplete')]/li[@class='ui-menu-item']/a"
             allZipCityResults = self.browser.searchForElements(by=By.XPATH, value=allZipCityResultsXPath,timeout=10)
-            foundCity = False
-            allCities = []
             # Consider the attempt failed if no zip-cities pop up
             if(not allZipCityResultsXPath):
                 return False
+
             # Otherwise, start looking through each result for our target result
+            foundCity = False
+            allCities = []
             for zipCityResult in allZipCityResults:
                 zipCityResultText = zipCityResult.text
                 thisCity = zipCityResultText[6:].strip().lower()

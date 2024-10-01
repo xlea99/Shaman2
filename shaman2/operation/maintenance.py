@@ -4,6 +4,7 @@ from shaman2.selenium.baka_driver import BakaDriver
 from shaman2.selenium.cimpl_driver import CimplDriver
 from shaman2.selenium.tma_driver import TMADriver, TMALocation
 from shaman2.selenium.verizon_driver import VerizonDriver
+from shaman2.selenium.eyesafe_driver import EyesafeDriver
 from shaman2.utilities.async_sound import playsoundAsync
 from shaman2.common.paths import paths
 from shaman2.common.logger import log
@@ -40,5 +41,10 @@ def validateVerizon(verizonDriver : VerizonDriver):
 def validateBaka(bakaDriver : BakaDriver):
     bakaDriver.browser.switchToTab("Baka")
     bakaDriver.logInToBaka()
+
+# Validates that Eyesafe is logged in and the active tab.
+def validateEyesafe(eyesafeDriver : EyesafeDriver):
+    eyesafeDriver.browser.switchToTab("Eyesafe")
+    eyesafeDriver.logInToEyesafe()
 
 #endregion === DRIVER VALIDATION ===
