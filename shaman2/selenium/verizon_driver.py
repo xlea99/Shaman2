@@ -2,6 +2,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.keys import Keys
 import re
+import time
 from shaman2.selenium.browser import Browser
 from shaman2.common.logger import log
 from shaman2.common.paths import paths
@@ -682,6 +683,8 @@ class VerizonDriver:
     # Assumes we're on the number selection page. Given an initial zip code, tests zip code and sequential
     # zip codes to determine, select, and apply the first available.
     def NumberSelection_SelectAreaCode(self,zipCode):
+        startTime = time.time()
+
         # First we check for the number assignment page header to load, meaning we're on the right page.
         numberAssignPageHeaderXPath = "//div[contains(text(),'Assign numbers and users to your new devices.')]"
         self.browser.searchForElement(by=By.XPATH,value=numberAssignPageHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True,raiseError=True)
@@ -698,55 +701,74 @@ class VerizonDriver:
         areaCodeResultsXPath = f"{areaCodeDropdownXPath}//div/ul/li[@class='ng-star-inserted'][1]"
         noNumbersAvailableXPath = "//div[contains(text(),'The city or zip code you entered has no numbers available')]"
 
+        # Wait for the spinner to disappear if it's there again.
+        self.browser.searchForElement(by=By.XPATH,value=zipCodeSpinnerXPath,timeout=30,invertedSearch=True,minSearchTime=3)
+        zipCodeSpinnerXPath = ""
+        zipCodeForm.clear()
+        zipCodeForm.send_keys(f"{zipCode:05}")
 
-        zipCodeToTry = int(zipCode)
-        foundAreaCode = False
-        for i in range(20):
-            # Wait for the spinner to disappear if it's there again.
-            self.browser.searchForElement(by=By.XPATH,value=zipCodeSpinnerXPath,timeout=30,invertedSearch=True,minSearchTime=3)
-            zipCodeSpinnerXPath = ""
-            zipCodeForm.clear()
-            zipCodeForm.send_keys(f"{zipCodeToTry:05}")
-
-            # Open the dropdown. This part is HIGHLY temperamental, as Verizon behaves in one of multiple ways.
-            areaCodeDropdown = self.browser.searchForElement(by=By.XPATH,value=areaCodeDropdownXPath,timeout=60,testClickable=True)
-            self.browser.safeClick(element=areaCodeDropdown,timeout=60,retryClicks=True,clickDelay=15,
+        # This helper function is used to bring stability to a website that is truly and deeply broken.
+        def selectAreaCode():
+            # First, open the dropdown. Wait until either the scrollArea is found (meaning area codes should be listed)
+            # or Verizon says that there's no area codes available.
+            print(f"Starting the dropdown safeClick at {time.time() - startTime}")
+            self.browser.safeClick(by=By.XPATH,value=areaCodeDropdownXPath,timeout=60,
                                    successfulClickCondition=lambda b:
                                    (b.searchForElement(by=By.XPATH,value=areaCodeScrollAreaXPath) or b.searchForElement(by=By.XPATH,value=noNumbersAvailableXPath)))
-
-            # Again, wait for the spinner.
+            # Wait for the spinner.
+            print(f"Finished dropdown safeClick, waiting for spinner at {time.time() - startTime}")
             self.browser.searchForElement(by=By.XPATH, value=zipCodeSpinnerXPath, timeout=30, invertedSearch=True,minSearchTime=3)
 
-            # Get and examine the area code results
-            areaCodeResults = self.browser.searchForElements(by=By.XPATH,value=areaCodeResultsXPath,timeout=40,raiseError=True)
-            # Check if any area code results are found, if not, try another zip code.
-            if(len(areaCodeResults) > 0):
-                self.browser.safeClick(element=areaCodeResults[0],timeout=10)
-                # Wait for the spinner one final time
-                self.browser.searchForElement(by=By.XPATH, value=zipCodeSpinnerXPath, timeout=30, invertedSearch=True,minSearchTime=1)
-                foundAreaCode = True
-                break
-            else:
-                if(self.browser.searchForElement(by=By.XPATH,value=noNumbersAvailableXPath,timeout=5,testClickable=True)):
-                    zipCodeToTry += 20
-                    continue
-                else:
-                    error = ValueError("No zip codes found, but Verizon isn't raising the expected 'No zip codes found' error. Review order flow to ensure process hasn't changed.")
+            # Handle the case where Verizon says no numbers are available
+            if(self.browser.searchForElement(by=By.XPATH, value=noNumbersAvailableXPath, timeout=3, testClickable=True)):
+                print(f"Found the Verizon 'no numbers available' message {time.time() - startTime}")
+                playsoundAsync(paths["media"] / "shaman_attention.mp3")
+                userResponse = input(f"Verizon is saying there are no area codes available for the given zip '{zipCode}'. Please manually select an area code, and press enter to continue. Press any key to cancel.")
+                if (userResponse):
+                    error = ValueError("No zip codes found, and user cancelled manual input.")
                     log.error(error)
                     raise error
-        if(foundAreaCode):
-            assignNumbersButtonXPath = "//button[text()='Assign numbers to all']"
-            assignNumbersButton = self.browser.searchForElement(by=By.XPATH, value=assignNumbersButtonXPath, timeout=30,
-                                                                testClickable=True)
-            self.browser.safeClick(element=assignNumbersButton, timeout=30)
+                else:
+                    # Assume the user successfully manually selected an areaCode and return True.
+                    return True
+            # Otherwise, try to find the list of area codes.
+            else:
+                print(f"Started searching for areaCode results at {time.time() - startTime}")
+                # Get area code results.
+                areaCodeResults = self.browser.searchForElements(by=By.XPATH, value=areaCodeResultsXPath, timeout=10)
+                print(f"Finished searching for areaCode results at {time.time() - startTime}")
 
-            # Test to see the Verizon recognizes the number as assigned.
-            numberHasBeenAssignedHeaderXPath = "//div[contains(text(),'You assigned numbers to all your devices.')]"
-            self.browser.searchForElement(by=By.XPATH, value=numberHasBeenAssignedHeaderXPath, timeout=30,testClickable=True)
-        else:
-            error = ValueError("Couldn't find a valid area code after 20 tries!")
+                # Check if any area code results are found, if not, try another zip code.
+                if(areaCodeResults):
+                    print(f"Determined that areaCodeResults WERE found at {time.time() - startTime} ({areaCodeResults}). Starting safeClick on the first areaCode.")
+                    self.browser.safeClick(element=areaCodeResults[0],timeout=10)
+                    print(f"Finished safeClick on the first areaCode at {time.time() - startTime}. Starting spinner wait again.")
+                    # Wait for the spinner one final time
+                    self.browser.searchForElement(by=By.XPATH, value=zipCodeSpinnerXPath, timeout=30, invertedSearch=True,minSearchTime=1)
+                    print(f"Finished spinner wait at {time.time() - startTime}")
+                    return True
+                else:
+                    return False
+
+        # Try to select an areaCode 3 times.
+        selectionStatus = False
+        for i in range(3):
+            selectionStatus = selectAreaCode()
+            if(selectionStatus):
+                break
+        if(not selectionStatus):
+            error = RuntimeError(f"Couldn't successfully select an area code after 3 attempts!")
             log.error(error)
             raise error
+
+        assignNumbersButtonXPath = "//button[text()='Assign numbers to all']"
+        assignNumbersButton = self.browser.searchForElement(by=By.XPATH, value=assignNumbersButtonXPath, timeout=30,testClickable=True)
+        self.browser.safeClick(element=assignNumbersButton, timeout=30)
+
+        # Test to see the Verizon recognizes the number as assigned.
+        numberHasBeenAssignedHeaderXPath = "//div[contains(text(),'You assigned numbers to all your devices.')]"
+        self.browser.searchForElement(by=By.XPATH, value=numberHasBeenAssignedHeaderXPath, timeout=30,testClickable=True)
+
     # Assumes a number has been selected, and navigates to the add user information page.
     def NumberSelection_NavToAddUserInformation(self):
         addUserInfoButtonXPath = "//button[text()='Add user information']"

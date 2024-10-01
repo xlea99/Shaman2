@@ -946,10 +946,27 @@ def classifyHardwareInfo(hardwareInfo : list,carrier,raiseNoEquipmentError=True)
 
     # TODO this is such glue it physically hurts. We need to build a system where we assume the customer is always an idiot, and builds accessoires that way
     # Now we account for any eyesafe
-    eyesafeDevice = None
+    eyesafeDevices = []
     for accessoryID in finalAccessoryIDs:
         if(accessories[accessoryID]["type"] == "eyesafe"):
-            eyesafeDevice = accessoryID
+            eyesafeDevices.append(accessoryID)
+
+    for thisEyesafeDevice in eyesafeDevices:
+        finalAccessoryIDs.discard(thisEyesafeDevice)
+
+    if(len(eyesafeDevices) == 0):
+        eyesafeDevice = None
+    elif(len(eyesafeDevices) == 1):
+        eyesafeDevice = eyesafeDevices[0]
+    else:
+        playsoundAsync(paths["media"] / "shaman_attention.mp3")
+        userResponse = input(f"An idiot moron Sysco employee put more than one Eyesafe device in the accessories. Proceeding with the first found: {eyesafeDevices[0]}. Press enter to continue, anything else to cancel.")
+        if(userResponse):
+            error = ValueError("User cancelled accessory classification after a moron Sysco user added more than one eyesafe accessory.")
+            log.error(error)
+            raise error
+        else:
+            eyesafeDevice = eyesafeDevices[0]
 
 
     return {"DeviceID" : deviceID, "AccessoryIDs" : finalAccessoryIDs, "Eyesafe" : eyesafeDevice}
