@@ -30,10 +30,11 @@ def readCimplWorkorder(cimplDriver : CimplDriver,workorderNumber):
     return cimplDriver.Workorders_ReadFullWorkorder()
 
 # Searches up, and reads, a full Verizon order number.
-def readVerizonOrder(verizonDriver : VerizonDriver,verizonOrderNumber):
+def readVerizonOrder(verizonDriver : VerizonDriver,verizonOrderNumber,orderViewPeriod):
     maintenance.validateVerizon(verizonDriver)
     verizonDriver.navToOrderViewer()
 
+    verizonDriver.OrderViewer_UpdateOrderViewDropdown(orderViewPeriod)
     verizonDriver.OrderViewer_SearchOrder(orderNumber=verizonOrderNumber)
 
     return verizonDriver.OrderViewer_ReadDisplayedOrder()
@@ -569,7 +570,8 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
 
 # Given a workorderNumber, this method examines it, tries to figure out the type of workorder it is and whether
 # it has a relevant order number, looks up to see if order is completed, and then closes it in TMA.
-def processPostOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,vzwDriver : VerizonDriver,bakaDriver : BakaDriver,workorderNumber):
+def processPostOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,vzwDriver : VerizonDriver,bakaDriver : BakaDriver,workorderNumber,
+                              orderViewPeriod="180 Days"):
 
     print(f"Cimpl WO {workorderNumber}: Beginning automation")
     workorder = readCimplWorkorder(cimplDriver=cimplDriver,workorderNumber=workorderNumber)
@@ -602,7 +604,7 @@ def processPostOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,vz
     # TODO only supports verizon and bell atm
     # Read Verizon Order
     if(carrier == "Verizon Wireless"):
-        carrierOrder = readVerizonOrder(verizonDriver=vzwDriver,verizonOrderNumber=carrierOrderNumber)
+        carrierOrder = readVerizonOrder(verizonDriver=vzwDriver,verizonOrderNumber=carrierOrderNumber,orderViewPeriod=orderViewPeriod)
         if(carrierOrder is None):
             print(f"Cimpl WO {workorderNumber}: Can't complete WO, as order number '{carrierOrderNumber}' is not yet showing in the Verizon Order Viewer.")
             return False
@@ -738,7 +740,7 @@ vzw = VerizonDriver(br)
 baka = BakaDriver(br)
 eyesafe = EyesafeDriver(br)
 
-missingEyesafeWOs = [48403,48404]
+missingEyesafeWOs = []
 for wo in missingEyesafeWOs:
     placeMissingEyesafeOrderFromCimplWorkorder(tmaDriver=tma,cimplDriver=cimpl,eyesafeDriver=eyesafe,workorderNumber=wo)
 
@@ -746,13 +748,16 @@ for wo in missingEyesafeWOs:
 preProcessWOs = []
 for wo in preProcessWOs:
     try:
-        processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,
+        processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
                           workorderNumber=wo,referenceNumber="Alex",verifyAddress=False)
     except Exception as e:
         playsoundAsync(paths["media"] / "shaman_error.mp3")
         raise e
 
-postProcessWOs = []
+postProcessWOs = [48304,48306,48307,48308,48309,48310,48311,
+                  48312,48313,48314,48315,48316,48318,48319,48320,48368,48374,48376,48377,48379,48380,48381,
+                  48382,48383,48406,48412,48414,48415,48418,48419,48420,48421,48422,48423,48425,48426,48427,
+                  48433,48434,48438,48439,48448,48449,48456,48457,48458,48459,48476]
 for wo in postProcessWOs:
     try:
         processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,

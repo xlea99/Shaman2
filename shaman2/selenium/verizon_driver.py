@@ -267,22 +267,25 @@ class VerizonDriver:
             log.error(error)
             raise error
 
-        # First, click on the dropdown menu itself
         viewDropdownMenuXPath = "//div[contains(@class,'selectdropDown')]//label[normalize-space(text())='View']/parent::div/div/button[contains(@class,'dropDownSelect')]"
-        viewDropdownMenu = self.browser.searchForElement(by=By.XPATH,value=viewDropdownMenuXPath,timeout=60,testClickable=True)
-        self.browser.safeClick(element=viewDropdownMenu,timeout=30)
+        # Check to see if this option is already selected.
+        if(self.browser.searchForElement(by=By.XPATH,value=f"{viewDropdownMenuXPath}[normalize-space(text())='{viewPeriod}']",timeout=3)):
+            return True
+        else:
+            # First, click on the dropdown menu itself
+            viewDropdownMenu = self.browser.searchForElement(by=By.XPATH,value=viewDropdownMenuXPath,timeout=60,testClickable=True)
+            self.browser.safeClick(element=viewDropdownMenu,timeout=30)
 
-        # Now, locate and click the selected option
-        viewPeriodOptionXPath = f"{viewDropdownMenuXPath}/parent::div/div//span[normalize-space(text())='{viewPeriod}']"
-        self.browser.safeClick(by=By.XPATH,value=viewPeriodOptionXPath,timeout=30)
+            # Now, locate and click the selected option
+            viewPeriodOptionXPath = f"{viewDropdownMenuXPath}/parent::div/div//span[normalize-space(text())='{viewPeriod}']"
+            self.browser.safeClick(by=By.XPATH,value=viewPeriodOptionXPath,timeout=30)
 
-        # Now, we wait for both the updated dropdown view AND the clickable orders header before continuing.
-        self.browser.searchForElement(by=By.XPATH,value=f"{viewDropdownMenuXPath}[normalize-space(text())='{viewPeriod}']",timeout=60)
-        # Yes, the typo is intentional lmfao
-        viewOrdersHeaderXPath = "//div[contains(@class,'view-orders-conatiner')]//h2[contains(text(),'Orders')]"
-        self.browser.searchForElement(by=By.XPATH, value=viewOrdersHeaderXPath, timeout=120,testClickable=True, testLiteralClick=True)
-
-
+            # Now, we wait for both the updated dropdown view AND the clickable orders header before continuing.
+            self.browser.searchForElement(by=By.XPATH,value=f"{viewDropdownMenuXPath}[normalize-space(text())='{viewPeriod}']",timeout=60)
+            # Yes, the typo is intentional lmfao
+            viewOrdersHeaderXPath = "//div[contains(@class,'view-orders-conatiner')]//h2[contains(text(),'Orders')]"
+            self.browser.searchForElement(by=By.XPATH, value=viewOrdersHeaderXPath, timeout=120,testClickable=True, testLiteralClick=True)
+            return True
 
     #endregion === Order Viewer ===
 
@@ -1100,10 +1103,3 @@ class VerizonDriver:
         return self.browser.searchForElement(by=By.XPATH,value=fullOrderInfoString,timeout=30,testClickable=True).text
 
     #endregion === Device Ordering ===
-
-
-br = Browser()
-v = VerizonDriver(br)
-v.logInToVerizon()
-v.navToOrderViewer()
-v.OrderViewer_UpdateOrderViewDropdown("90 Days")

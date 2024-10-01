@@ -2247,13 +2247,12 @@ class TMADriver():
             logMessage = "Checking for next page in assignment wizard..."
             currentTab = self.browser.find_element(by=By.XPATH,value=currentSideTabXPath).text.lower()
             # If TMA pops up with "Company" selection. This usually only happens with OpCo 000,in which case
-            # we'd select 000. Since I know of no other scenarios where Company pops up, for now, if it pops up
-            # on an OpCo that's NOT 000, this will throw an error.
+            # we'd select 000. There are a couple other special cases which are handled as well.
             if (currentTab == "company"):
                 log.debug(f"{logMessage} Found company page on assignment wizard")
-                if (siteCode == "000"):
-                    selectorFor000XPath = "//table/tbody/tr/td/div/div/table/tbody/tr[contains(@class,'sgvitems')]/td[text()='000']"
-                    self.browser.safeClick(by=By.XPATH,value=selectorFor000XPath,retryClicks=True,timeout=60,clickDelay=3,
+                if (siteCode in ["000","331"]):
+                    selectorForSiteCodeXPath = f"//table/tbody/tr/td/div/div/table/tbody/tr[contains(@class,'sgvitems')]/td[text()='{siteCode}']"
+                    self.browser.safeClick(by=By.XPATH,value=selectorForSiteCodeXPath,retryClicks=True,timeout=60,clickDelay=3,
                                            successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=sideTabXPathTemplate.format(tabName="company"),invertedSearch=True))
                 else:
                     error = RuntimeError("Company tab is asking for information on a non-000 OpCo! Edits will be required. God help you!")
