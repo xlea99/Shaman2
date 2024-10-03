@@ -674,8 +674,7 @@ class VerizonDriver:
         self.browser.searchForElement(by=By.XPATH,value=deviceProtectionHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True,raiseError=True)
 
         declineDeviceProtectionXPath = "//button[contains(text(),'Decline and continue')]"
-        declineDeviceProtection = self.browser.searchForElement(by=By.XPATH,value=declineDeviceProtectionXPath,timeout=60,testClickable=True)
-        self.browser.safeClick(element=declineDeviceProtection,timeout=60)
+        self.browser.safeClick(by=By.XPATH,value=declineDeviceProtectionXPath,timeout=120)
 
         # We wait for the number assignment page header to load, meaning we've successfully navigated to the next page.
         numberAssignPageHeaderXPath = "//div[contains(text(),'Assign numbers and users to your new devices.')]"
