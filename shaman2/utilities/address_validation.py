@@ -133,10 +133,10 @@ def validateAddress(rawAddressString : str):
                 userResponse = input(f"The user's shipping address is missing a CITY. Please enter a city name, then press enter to continue.")
                 classifiedAddress["City"] = userResponse.strip().capitalize()
             if(classifiedAddress["State"] is None):
-                userResponse = input(f"The user's shipping address is missing a STATE. Please enter a city name, then press enter to continue.")
+                userResponse = input(f"The user's shipping address is missing a STATE. Please enter a state name, then press enter to continue.")
                 classifiedAddress["State"] = userResponse.strip().capitalize()
             if(classifiedAddress["ZipCode"] is None):
-                userResponse = input(f"The user's shipping address is missing a ZIPCODE. Please enter a city name, then press enter to continue.")
+                userResponse = input(f"The user's shipping address is missing a ZIPCODE. Please enter a zipcode name, then press enter to continue.")
                 classifiedAddress["ZipCode"] = userResponse.strip().capitalize()
 
     # Now, we check to see if the original raw address was missing anything/
