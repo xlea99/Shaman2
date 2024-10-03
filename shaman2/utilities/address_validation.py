@@ -127,6 +127,17 @@ def validateAddress(rawAddressString : str):
             error = ValueError(f"User cancelled program due to OSMN not validating the classifiedAddress: '{classifiedAddress}'")
             log.error(error)
             raise error
+        # If the user chooses to proceed, we need to make sure to fill in any missing information.
+        else:
+            if(classifiedAddress["City"] is None):
+                userResponse = input(f"The user's shipping address is missing a CITY. Please enter a city name, then press enter to continue.")
+                classifiedAddress["City"] = userResponse.strip().capitalize()
+            if(classifiedAddress["State"] is None):
+                userResponse = input(f"The user's shipping address is missing a STATE. Please enter a city name, then press enter to continue.")
+                classifiedAddress["State"] = userResponse.strip().capitalize()
+            if(classifiedAddress["ZipCode"] is None):
+                userResponse = input(f"The user's shipping address is missing a ZIPCODE. Please enter a city name, then press enter to continue.")
+                classifiedAddress["ZipCode"] = userResponse.strip().capitalize()
 
     # Now, we check to see if the original raw address was missing anything/
     if(classifiedAddress["City"] is None or classifiedAddress["State"] is None or classifiedAddress["ZipCode"] is None):

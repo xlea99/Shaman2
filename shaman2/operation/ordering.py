@@ -736,7 +736,7 @@ for wo in missingEyesafeWOs:
     placeMissingEyesafeOrderFromCimplWorkorder(tmaDriver=tma,cimplDriver=cimpl,eyesafeDriver=eyesafe,workorderNumber=wo)
 
 beans = []
-preProcessWOs = [48492,48493,48497,48520,48522,48524,48525,48526,48527,48528]
+preProcessWOs = [48525,48526,48527,48528]
 for wo in preProcessWOs:
     try:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
@@ -753,3 +753,17 @@ for wo in postProcessWOs:
     except Exception as e:
         playsoundAsync(paths["media"] / "shaman_error.mp3")
         raise e
+
+
+
+# TEMPLATES
+#
+# ORDERING A NEW PHONE:
+# placeVerizonNewInstall(verizonDriver=vzw,deviceID="iPhone14_128GB",accessoryIDs=["BelkinWallAdapter","iPhone14Defender"],
+#                        firstName="",lastName="",userEmail="",address1="",address2="",city="",state="",zipCode="",companyName="Sysco",contactEmails="")
+# placeVerizonUpgrade(verizonDriver=vzw,serviceID="",deviceID="iPhone14_128GB",accessoryIDs=["BelkinWallAdapter","iPhone14Defender"],
+#                        firstName="",lastName="",address1="",address2="",city="",state="",zipCode="",companyName="Sysco",contactEmails="")
+#
+# DOCUMENTING A PHONE IN TMA:
+# documentTMANewInstall(tmaDriver=tma,client="Sysco",netID="",serviceNum="",installDate="",device="iPhone14_128GB",imei="",carrier="Verizon Wireless")
+# documentTMAUpgrade(tmaDriver=tma,client="Sysco",serviceNum="",installDate="",device="iPhone14_128GB",imei="")

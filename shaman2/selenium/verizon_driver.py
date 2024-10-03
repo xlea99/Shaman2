@@ -712,17 +712,14 @@ class VerizonDriver:
         def selectAreaCode():
             # First, open the dropdown. Wait until either the scrollArea is found (meaning area codes should be listed)
             # or Verizon says that there's no area codes available.
-            print(f"Starting the dropdown safeClick at {time.time() - startTime}")
             self.browser.safeClick(by=By.XPATH,value=areaCodeDropdownXPath,timeout=60,
                                    successfulClickCondition=lambda b:
                                    (b.searchForElement(by=By.XPATH,value=areaCodeScrollAreaXPath) or b.searchForElement(by=By.XPATH,value=noNumbersAvailableXPath)))
             # Wait for the spinner.
-            print(f"Finished dropdown safeClick, waiting for spinner at {time.time() - startTime}")
             self.browser.searchForElement(by=By.XPATH, value=zipCodeSpinnerXPath, timeout=30, invertedSearch=True,minSearchTime=3)
 
             # Handle the case where Verizon says no numbers are available
             if(self.browser.searchForElement(by=By.XPATH, value=noNumbersAvailableXPath, timeout=3, testClickable=True)):
-                print(f"Found the Verizon 'no numbers available' message {time.time() - startTime}")
                 playsoundAsync(paths["media"] / "shaman_attention.mp3")
                 userResponse = input(f"Verizon is saying there are no area codes available for the given zip '{zipCode}'. Please manually select an area code, and press enter to continue. Press any key to cancel.")
                 if (userResponse):
@@ -734,19 +731,14 @@ class VerizonDriver:
                     return True
             # Otherwise, try to find the list of area codes.
             else:
-                print(f"Started searching for areaCode results at {time.time() - startTime}")
                 # Get area code results.
                 areaCodeResults = self.browser.searchForElements(by=By.XPATH, value=areaCodeResultsXPath, timeout=10)
-                print(f"Finished searching for areaCode results at {time.time() - startTime}")
 
                 # Check if any area code results are found, if not, try another zip code.
                 if(areaCodeResults):
-                    print(f"Determined that areaCodeResults WERE found at {time.time() - startTime} ({areaCodeResults}). Starting safeClick on the first areaCode.")
                     self.browser.safeClick(element=areaCodeResults[0],timeout=10)
-                    print(f"Finished safeClick on the first areaCode at {time.time() - startTime}. Starting spinner wait again.")
                     # Wait for the spinner one final time
                     self.browser.searchForElement(by=By.XPATH, value=zipCodeSpinnerXPath, timeout=30, invertedSearch=True,minSearchTime=1)
-                    print(f"Finished spinner wait at {time.time() - startTime}")
                     return True
                 else:
                     return False
