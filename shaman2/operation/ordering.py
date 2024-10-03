@@ -405,7 +405,7 @@ def documentTMAUpgrade(tmaDriver : TMADriver,client,serviceNum,installDate,devic
 # Given a workorderNumber, this method examines it, tries to figure out the type of workorder it is, and whether
 # it is valid to submit automatically through the respective carrier.
 def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,verizonDriver : VerizonDriver,eyesafeDriver : EyesafeDriver,
-                             workorderNumber,reviewMode=True,referenceNumber=None,subjectLine : str = None,verifyAddress=True):
+                             workorderNumber,reviewMode=True,referenceNumber=None,subjectLine : str = None):
     maintenance.validateCimpl(cimplDriver)
     print(f"Cimpl WO {workorderNumber}: Beginning automation")
     workorder = readCimplWorkorder(cimplDriver=cimplDriver,workorderNumber=workorderNumber)
@@ -428,9 +428,9 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
         return False
 
     # Test to ensure it hasn't already been placed
-    if (findPlacedCimplOrderNumber(workorder["Notes"],carrier=carrier) is not None):
-        print(f"Cimpl WO {workorderNumber}: An order has already been submitted for this Cimpl WO. Please review.")
-        return False
+    #if (findPlacedCimplOrderNumber(workorder["Notes"],carrier=carrier) is not None):
+    #    print(f"Cimpl WO {workorderNumber}: An order has already been submitted for this Cimpl WO. Please review.")
+    #    return False
 
     # Get device model ID from Cimpl
     userID = getNetworkIDFromActions(workorder["Actions"])
@@ -485,16 +485,7 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
         cimplDriver.Workorders_ApplyChanges()
 
     # Validate the shipping address
-    rawUserAddress = f"{workorder['Shipping']['Address1']}, {workorder['Shipping']['Address2']}, {workorder['Shipping']['City']}, {workorder['Shipping']['State']}, {workorder['Shipping']['ZipCode']}, {workorder['Shipping']['Country']}"
-    if(verifyAddress):
-        validatedAddress = validateAddress(addressString=rawUserAddress)
-    else:
-        validatedAddress = {"Address1":workorder['Shipping']['Address1'],
-                            "Address2":workorder['Shipping']['Address2'],
-                            "City":workorder['Shipping']['City'],
-                            "State":workorder['Shipping']['State'],
-                            "ZipCode":workorder['Shipping']['ZipCode'],
-                            "Country":workorder['Shipping']['Country']}
+    validatedAddress = validateAddress(rawAddressString=workorder["RawShippingAddress"])
     print(validatedAddress)
 
     # If operation type is a New Install
@@ -744,12 +735,12 @@ missingEyesafeWOs = []
 for wo in missingEyesafeWOs:
     placeMissingEyesafeOrderFromCimplWorkorder(tmaDriver=tma,cimplDriver=cimpl,eyesafeDriver=eyesafe,workorderNumber=wo)
 
-
-preProcessWOs = [48498,48499,48500,48502]
+beans = []
+preProcessWOs = [48492,48493,48497,48520,48522,48524,48525,48526,48527,48528]
 for wo in preProcessWOs:
     try:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
-                          workorderNumber=wo,referenceNumber="Alex",verifyAddress=False,subjectLine="Order Placed 9/30")
+                          workorderNumber=wo,referenceNumber="Alex",subjectLine="Order Placed 10/2")
     except Exception as e:
         playsoundAsync(paths["media"] / "shaman_error.mp3")
         raise e

@@ -435,35 +435,6 @@ class CimplDriver:
                 nextArrowButton = self.browser.find_element(by=By.XPATH, value=nextArrowButtonString)
 
         return allNotes
-    def Workorders_ReadShippingAddress(self):
-        prefix = "//cimpl-collapsible-box[@header='Main Shipping Address']//workorder-summary-address/div/cimpl-form[not(contains(@class,'ng-hide'))]"
-
-        address1 = self.browser.find_element(by=By.XPATH,value=f"{prefix}//div[@ng-bind='vm.addressModel.addressLine1']").text
-        address2 = self.browser.searchForElement(by=By.XPATH,value=f"{prefix}//div[@ng-bind='vm.addressModel.addressLine2']")
-        postalCodeLine = self.browser.find_element(by=By.XPATH,value=f"{prefix}//div[@ng-bind='vm.addressModel.postalCodeLine']").text
-        country = self.browser.find_element(by=By.XPATH,value=f"{prefix}//div[@ng-bind='vm.addressModel.country']").text
-
-        try:
-            city, state, zipCode = postalCodeLine.split(",")
-        except Exception as e:
-            playsoundAsync(paths["media"] / "shaman_attention.mp3")
-            userResponse = input("Strange address detected in Cimpl, causing program to halt. Press enter to continue as usual, and press any key to terminate.")
-            if(userResponse):
-                raise e
-            else:
-                city, state, zipCode = "","",""
-
-        returnDict = {"Address1" : address1.strip(),
-                      "City" : city.strip(),
-                      "State" : state.strip(),
-                      "ZipCode" : zipCode.strip(),
-                      "Country" : country.strip()}
-        if(address2):
-            returnDict["Address2"] = address2.text.strip()
-        else:
-            returnDict["Address2"] = None
-
-        return returnDict
     # Back (Details) page read methods
     def Workorders_ReadServiceID(self):
         self.browser.switchToTab("Cimpl")
@@ -534,7 +505,7 @@ class CimplDriver:
 
         returnList = []
         for actionRow in actionRows:
-            returnList.append(actionRow.text)
+            returnList.append(actionRow.text.strip())
 
         return returnList
     # Combined method for reading a full workorder into a neat dictionary. Assumes
@@ -556,10 +527,6 @@ class CimplDriver:
         returnDict["WorkorderOwner"] = self.Workorders_ReadWorkorderOwner()
         returnDict["Requestor"] = self.Workorders_ReadRequester()
         returnDict["Notes"] = self.Workorders_ReadNotes()
-        if(returnDict["OperationType"] in ["New Request","Upgrade"]):
-            returnDict["Shipping"] = self.Workorders_ReadShippingAddress() # type: ignore
-        else:
-            returnDict["Shipping"] = None
 
         # Read detail info
         self.Workorders_NavToDetailsTab()
@@ -568,6 +535,15 @@ class CimplDriver:
         returnDict["StartDate"] = self.Workorders_ReadStartDate()
         returnDict["HardwareInfo"] = self.Workorders_ReadHardwareInfo()
         returnDict["Actions"] = self.Workorders_ReadActions()
+
+        foundShippingAddress = False
+        for actionString in returnDict["Actions"]:
+            if(actionString.startswith("Shipping Address")):
+                returnDict["RawShippingAddress"] = actionString.split("Shipping Address -")[1].strip()
+                foundShippingAddress = True
+                break
+        if(not foundShippingAddress):
+            returnDict["RawShippingAddress"] = None
 
         return returnDict
 

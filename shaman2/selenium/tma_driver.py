@@ -1,5 +1,7 @@
 import time
 import re
+
+import selenium.common.exceptions
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
 from shaman2.selenium.browser import Browser
@@ -2048,12 +2050,20 @@ class TMADriver():
         else:
             valToWrite = literalValue
 
-        IMEIXPath = "//div/fieldset/div/fieldset/fieldset/ol/li/input[contains(@id,'txtimei')]"
-        IMEIElement = self.browser.searchForElement(by=By.XPATH, value=IMEIXPath,testClickable=True,timeout=3)
-        IMEIElement.clear()
-        IMEIElement.send_keys(valToWrite)
-        log.debug(f"Successfully wrote '{valToWrite}'")
-        return True
+        def writeIMEI():
+            IMEIXPath = "//div/fieldset/div/fieldset/fieldset/ol/li/input[contains(@id,'txtimei')]"
+            IMEIElement = self.browser.searchForElement(by=By.XPATH, value=IMEIXPath,testClickable=True,timeout=10)
+            IMEIElement.clear()
+            IMEIElement.send_keys(valToWrite)
+            log.debug(f"Successfully wrote '{valToWrite}'")
+            return True
+
+        # For some reason, this function was quite unstable. Added a special check to resolve this rare error.
+        try:
+            return writeIMEI()
+        except selenium.common.exceptions.StaleElementReferenceException as e:
+            time.sleep(5)
+            return writeIMEI()
     def Equipment_WriteSIM(self, equipmentObject : TMAEquipment = None, literalValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 

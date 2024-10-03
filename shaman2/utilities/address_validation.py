@@ -3,7 +3,10 @@ import re
 import json
 from openai import OpenAI
 from shaman2.common.logger import log
+from shaman2.common.paths import paths
 from shaman2.common.config import mainConfig
+from shaman2.utilities.async_sound import playsoundAsync
+from shaman2.utilities.misc import isNumber
 
 #region === OSM Nominatim Validation ===
 
@@ -29,85 +32,47 @@ def osmnValidateAddress(_address):
 
 #region === ChatGPT Validation ===
 
-# Uses ChatGPT to check for any oddities in the address compared to the OSMN address (unit numbers in Address1,
-# for example) and refines it.
 client = OpenAI(api_key=mainConfig["authentication"]["openAIKey"])
-chatGPTAddressQuery = """
-    You are an address validation assistant. You are a part of a program called "Shaman2" which automates
-    phone orders for a carrier. As a part of the phone ordering process, users submit address to us, which 
-    we then take to the carrier (Verizon, AT&T, Bell Mobility, Rogers, etc.) to input into a shipping field
-    to send the phone to. However, quite often, users will input addresses that aren't quite valid, have typos,
-    or other mistakes. Our form is really quite simple - it contains space for an Address1 (street address), 
-    Address2 (apartment/complex number), City, State/Province, Zip/Area Code. However, our uses sometimes still
-    manage to get confused enough to do things like entering the Apartment Number into Address1 and the street
-    number into Address2, or entering both into Address1, etc. Sometimes, the address they list simply don't exist,
-    or validate to a slightly different city or zip code.
+# Uses ChatGPT to classify an address into its parts, and ignore all the random bullshit that users
+# add.
+classifyAddressQuery = """You are an address classifier bot, who specializes in identifying the various parts of a shipping address given to you by one of our users for ordering. Our users often make mistakes or inconsistencies when writing their shipping addresses, including putting Street Name and Unit/Apt Number out of order, forgetting a state, or writing their city in it twice.
 
-    To remedy this, we use a 2-step address validation system. In this system, you are **Part 2**. Part one involves
-    using a request to OpenStreetMaps Nominatim to attempt to validate the address. The function "validateOSM" accepts
-    a single string, which we rip straight from the address that the user gave us, and it returns a formatted OSMN
-    object with the validated address IF it could be validated. Here, we catch errors like:
-    -Outright invalid addresses
-    -Addresses that may map to slightly different cities/zips for shipping
-    -Similar issues involving address validity.
+Your job is simply to classify the various parts of a raw user address string into its parts in the json format shown below: 
 
-    However, OSMN does not do well with everything, ESPECIALLY with units or apartment numbers. This is where you come
-    in, as **Part 2** of the Shaman2's address verification service. Here's what we're going to give you:
+{returnAddressFormat}
 
-    -ORIGINAL_ADDRESS - This refers to the plain, simple string that the user gave us directly. It might be perfectly
-    valid, it might be an absolute mess.
-    -OSMN_ADDRESS - This is the output of running ORIGINAL_ADDRESS through step 1 of our validation service. It will
-    be neatly formatted, but may include some extraneous information that's unimportant like a neighborhood.
+If anything seems to be missing, instead map it to a json "null" like this: "City": null
 
-    What you're looking for is any inconsistencies or oddities between the two. As I already stated, stuff like
-    neighborhoods are unimportant, but since the OSMN_ADDRESS often misses apartment numbers, be extra vigilant
-    about these. If you do notice anything that looks like an apartment, unit, suite number or something like that,
-    remember that that goes in ADDRESS 2, not in Address 1 or anywhere else. Furthermore, OSMN is REALLY good with 
-    getting exact streetnames. 9999 times out of 10000, the street name that OSMN validates is EXACTLY right. So,
-    if there's something in the ORIGINAL_ADDRESS Address1 that's not in the OSMN_ADDRESS Address1, it's almost 
-    certainly a mistaken Address2 and, rarely, just outright unimportant. Simply try your best to detect any 
-    oddities/discrepencies, if there are any (there often won't be any) and then return what YOU BELIEVE is the final, 
-    validated address.
+Put the whole result into a single code block using 3 `. Provide a very brief explanation beforehand. Note that some users may add a lot of extraneous information that can simply be removed, such as Attention To, Company Names, PHone Numbers, or even Devliery Instructions. Your only focus is on finding the 5 parts listed in the example, and ignoring everything else.
 
-    Now that you understand your task, please observe the actual addresses in question and respond with your results:
+Here is the address below:
 
-    ORIGINAL_ADDRESS = {originalAddress}
-    OSMN_ADDRESS = {osmnAddress}   
-
-    Go ahead and discuss your reasoning, but at the very end of your response, I would like you to give me your
-    final version of the address. Write in a simple JSON object and surround the whole thing in 3 dollar signs so
-    that my program can read it, like so: 
-
-
+{rawAddress}
 """
-exampleOutputString = """
-    ```
-    $$$
-    {
-        "Address1" : "",
-        "Address2" : "",
-        "City" : "",
-        "State" : "",
-        "Zip" : "",
-    }
-    $$$
-    ```
-"""
-def gptValidateAddress(_originalAddress, _osmnAddress):
+returnAddressFormat = '''```
+{
+    "Address1": "street name/number",
+    "Address2": "unit, apartment, building number etc, ONLY if applicable (is often not present in every address)",
+    "City": "city name",
+    "State": "state/province",
+    "ZipCode": "zip/postal code"
+}
+```'''
+def gptClassifyAddress(_rawAddress):
     _response = client.chat.completions.create(
         model="gpt-4o",
         messages=[
             {"role": "system", "content": "You are an address validation assistant."},
-            {"role": "user", "content": chatGPTAddressQuery.format(originalAddress=_originalAddress,
-                                                                  osmnAddress=_osmnAddress) + exampleOutputString}
+            {"role": "user", "content": classifyAddressQuery.format(returnAddressFormat=returnAddressFormat,
+                                                                    rawAddress=_rawAddress)}
         ],
         temperature=0
     )
 
     return _response.choices[0].message.content
 # Simply extracts only the address dict from GPT's response
-def extractGPTAddressFromResponse(gptResponseString):
-    pattern = r'\$\$\$(.*?)\$\$\$'
+def extractAddressFromGPTResponse(gptResponseString):
+    pattern = r'```(.*?)```'
     match = re.findall(pattern, gptResponseString, re.DOTALL)
     rawAddressDict = json.loads(match[0].strip())
 
@@ -135,21 +100,66 @@ def extractGPTAddressFromResponse(gptResponseString):
 
 # Main function, simply accepts an address string, handles edge cases, and spits out a refined address.
 #TODO handle these in GUI later, to avoid crashing program and instead prompt user for decision making
-def validateAddress(addressString : str):
-    osmnAddress = osmnValidateAddress(_address=addressString)
+def validateAddress(rawAddressString : str):
+    # First, we take a raw address string given by a user and classify it using ChatGPT.
+    classifiedAddressResponse = gptClassifyAddress(_rawAddress=rawAddressString)
+    classifiedAddress = extractAddressFromGPTResponse(gptResponseString=classifiedAddressResponse)
 
-    if(len(osmnAddress) == 0):
-        error = ValueError(f"OSMN did not find any addresses that match user's address \"{addressString}\"")
+    # Now, we check the address with OSMN (along with removing the address2 to avoid confusion).
+    osmnAddressToTest = f"{classifiedAddress['Address1']}, " if classifiedAddress["Address1"] is not None else ""
+    osmnAddressToTest += f"{classifiedAddress['City']}, " if classifiedAddress["City"] is not None else ""
+    osmnAddressToTest += f"{classifiedAddress['State']}, " if classifiedAddress["State"] is not None else ""
+    osmnAddressToTest += f"{classifiedAddress['ZipCode'][:5]}, " if classifiedAddress["ZipCode"] is not None else ""
+    print(osmnAddressToTest)
+    osmnValidatedAddresses = osmnValidateAddress(osmnAddressToTest)
+
+    # Default behavior is to crash when no Address1 is found at all.
+    if(classifiedAddress["Address1"] is None):
+        error = ValueError(f"ChatGPT thinks that user included literally no street address. Here's its classifiedAddress: '{classifiedAddress}'")
         log.error(error)
         raise error
-    elif(len(osmnAddress) == 1):
-        gptResponse = gptValidateAddress(_originalAddress=addressString,_osmnAddress=osmnAddress)
-        gptAddress = extractGPTAddressFromResponse(gptResponseString=gptResponse)
-        return gptAddress
-    else:
-        error = ValueError(f"OSMN did not find multiple addresses that look like user's address \"{addressString}\":\n\n{osmnAddress}")
-        log.error(error)
-        raise error
 
+    # If osmn validates 0 addresses, we prompt the user the let them confirm.
+    if(len(osmnValidatedAddresses) == 0):
+        playsoundAsync(paths["media"] / "shaman_attention.mp3")
+        userResponse = input(f"OSMN could not find any matches for cleaned/classified address '{classifiedAddress}'.\n\nPress enter to continue using this address. Press any other key to quit.")
+        if(userResponse):
+            error = ValueError(f"User cancelled program due to OSMN not validating the classifiedAddress: '{classifiedAddress}'")
+            log.error(error)
+            raise error
 
-response = osmnValidateAddress("5151 BANNOCK ST, DENVER, Colorado, 80216, United States")
+    # Now, we check to see if the original raw address was missing anything/
+    if(classifiedAddress["City"] is None or classifiedAddress["State"] is None or classifiedAddress["ZipCode"] is None):
+
+        # If so, we test here to see if there is a 1-to-1 match with
+        # OSMN or if we need to prompt the user for further verification.
+        if(len(osmnValidatedAddresses) > 1):
+            playsoundAsync(paths["media"] / "shaman_attention.mp3")
+            print("User's raw address seems to be missing information, and OSMN is suggesting multiple possible addresses. Please select the address that the user likely meant. Press any other key to cancel.\n\n")
+            counter = 0
+            for counter,addressDict in enumerate(osmnValidatedAddresses):
+                print(f"{counter+1}. {addressDict['display_name']}")
+                if(counter >= 4):
+                    break
+            userResponse = input("\n\nPlease select the number of the address you would like to use (note that any missing Address2 info will still be added regardless of what's shown here)").strip()
+            if (isNumber(userResponse) and (0 < int(userResponse) < counter+2)):
+                targetOSMNAddressDict = osmnValidatedAddresses[int(userResponse) - 1]
+            else:
+                error = ValueError(f"User cancelled program due to OSMN not validating the classifiedAddress: '{classifiedAddress}'")
+                log.error(error)
+                raise error
+        else:
+            targetOSMNAddressDict = osmnValidatedAddresses[0]
+
+        # Finally, we fill in missing info.
+        if(classifiedAddress["Address1"] is None):
+            classifiedAddress["Address1"] = f"{targetOSMNAddressDict['address']['house_number']} {targetOSMNAddressDict['address']['road']}"
+        if(classifiedAddress["City"] is None):
+            classifiedAddress["City"] = targetOSMNAddressDict['address']["town"]
+        if(classifiedAddress["State"] is None):
+            classifiedAddress["State"] = targetOSMNAddressDict['address']["state"]
+        if(classifiedAddress["ZipCode"] is None):
+            classifiedAddress["ZipCode"] = targetOSMNAddressDict['address']["postcode"]
+
+    # Finally, we return our classified, validated address.
+    return classifiedAddress

@@ -435,8 +435,9 @@ class VerizonDriver:
                 shoppingCartHeaderXPath = "//div[contains(@class,'device-shopping-cart-content-left')]//h1[contains(text(),'Shopping cart')]"
                 self.browser.searchForElement(by=By.XPATH,value=shoppingCartHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True)
 
-                clearCartButtonXPath = "//a[@id='dtm_clearcart']"
-                clearCartButton = self.browser.searchForElement(by=By.XPATH,value=clearCartButtonXPath,timeout=30,testClickable=True)
+                clearCartButtonXPath1 = "//a[@id='dtm_clearcart']"
+                clearCartButtonXPath2 = "//a[@role='button'][normalize-space(text())='Clear cart']"
+                clearCartButton = self.browser.searchForElement(by=By.XPATH,value=[clearCartButtonXPath1,clearCartButtonXPath2],timeout=30,testClickable=True)
                 clearCartButton.click()
 
                 confirmationClearButtonXPath = "//mat-dialog-container//button[text()='Clear']"
@@ -697,7 +698,7 @@ class VerizonDriver:
         zipCodeFormXPath = "//input[@id='zip']"
         zipCodeForm = self.browser.searchForElement(by=By.XPATH,value=zipCodeFormXPath,timeout=60,testClickable=True)
         areaCodeDropdownXPath = "//div[contains(@class,'area-dropdown')]"
-        areaCodeScrollAreaXPath = "//div[contains(@class,'dropdown-scroll')]"
+        areaCodeScrollAreaXPath = "//div[contains(@class,'dropdown-scroll') or contains(@class,'dd-list')]"
         areaCodeResultsXPath = f"{areaCodeDropdownXPath}//div/ul/li[@class='ng-star-inserted'][1]"
         noNumbersAvailableXPath = "//div[contains(text(),'The city or zip code you entered has no numbers available')]"
 
@@ -959,6 +960,9 @@ class VerizonDriver:
     # a full address info.
     def Checkout_AddAddressInfo(self,company,attention,address1,city,stateAbbrev,zipCode,contactPhone,
                                 notificationEmails : list = None,address2 = ""):
+        if(address2 is None):
+            address2 = ""
+
         # First, convert contactPhone to the correct format.
         contactPhone = convertServiceIDFormat(serviceID=contactPhone,targetFormat="raw")
 

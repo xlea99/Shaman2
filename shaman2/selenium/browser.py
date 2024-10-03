@@ -179,7 +179,7 @@ class Browser(webdriver.Chrome):
     # element, new or existing, on the page, as well as returning it.
     #
     # by -      Search method for the given value (By.XPATH, By.CSS_SELECTOR). Requires a value to be specified
-    # value -   Search term to search for using the method specified by "by" (a literal xpath or CSS selector)
+    # value -   Search term to search for using the method specified by "by" (a literal xpath or CSS selector) Supports MULTIPLE values as a list - will search each value sequentially, considering the first one found the first success.
     # element - An existing WebElement to test on. Can't use with by/value
     # timeout - How long to search for, at minimum. Defaults to zero to run exactly one test.
     # minSearchTime -           Ensures that, even if the test initially passes, it keeps searching for the element until this time has been reached. If the search fails even after first succeeding, the whole search is considered failed.
@@ -191,7 +191,7 @@ class Browser(webdriver.Chrome):
     # raiseError/logError -     Whether to raise and log the error when the test fails, or simply return "False"
     # singleTestInterval -      How long to perform each single test for, defaulting at 0.2 seconds per test.
     # TODO is this enough to defeat Verizon's weird elements that selenium believes are clickable, but secretly aren't yet?
-    def searchForElement(self,by = None,value : str = None,element : WebElement = None,timeout : float = 0, minSearchTime : float = 0,
+    def searchForElement(self,by = None,value : (str,list) = None,element : WebElement = None,timeout : float = 0, minSearchTime : float = 0,
                          testNotStale = True,testClickable = False,testScrolledInView = False,testLiteralClick = False,
                          invertedSearch = False,raiseError = False,logError = None,singleTestInterval = 0.1,debug=False):
         # Throw error if both a value and an element are given
@@ -203,17 +203,22 @@ class Browser(webdriver.Chrome):
         if(logError is None):
             logError = raiseError
 
+        # Convert value to a list for standardized processing.
+        if(type(value) is not list):
+            value = [value]
+
         lastException = None
         minTestTime = time.time() + minSearchTime
         endTestTime = time.time() + timeout
         searchAttempt = 0
         wait = WebDriverWait(self, singleTestInterval)
+        nextValueIndexToTest = 0
         while(searchAttempt < 1 or time.time() < endTestTime):
             searchAttempt += 1
             try:
                 # If element is not provided, test to find it by locator
                 if(not element):
-                    targetElement = self.find_element(by=by,value=value)
+                    targetElement = self.find_element(by=by,value=value[nextValueIndexToTest])
                 else:
                     targetElement = element
                     # If it's an inverted search AND a given element, we simply try to take a sample attribute to ensure
@@ -237,6 +242,8 @@ class Browser(webdriver.Chrome):
                 # need to continue testing (if timeout allows)
                 if(invertedSearch):
                     time.sleep(0.1)
+                    # Set the next valueIndex to test, in case there's multiple.
+                    nextValueIndexToTest = searchAttempt % len(value)
                     continue
                 # If all tests pass, and this is a standard search, return the element
                 else:
@@ -247,10 +254,15 @@ class Browser(webdriver.Chrome):
                         return targetElement
                     else:
                         time.sleep(0.1)
+                        # Set the next valueIndex to test, in case there's multiple.
+                        nextValueIndexToTest = searchAttempt % len(value)
                         continue
 
             # === TESTS FAIL ===
             except Exception as e:
+                # Set the next valueIndex to test, in case there's multiple, since this didn't happen in the try block
+                # yet.
+                nextValueIndexToTest = searchAttempt % len(value)
                 lastException = e
                 # If the tests didn't pass, and this is an inverted search, that means the element is considered to
                 # be lacking from the page, and we're done.
