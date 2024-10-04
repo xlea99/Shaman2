@@ -150,6 +150,28 @@ class EyesafeDriver:
         # Fix zip code to be just 5 numbers
         zipCode = zipCode[:5]
 
+        # This helper method simply waits until the loader is first found, THEN until it disappears.
+        def waitForLoader(timeout=30):
+            loaderXPath = "//div[@id='load']"
+
+            # First, find the loader
+            loaderFind1 = self.browser.searchForElement(by=By.XPATH,value=loaderXPath,timeout=timeout,testClickable=True)
+
+            # Once its found the first time, now simply wait for it to disappear.
+            if(loaderFind1):
+                loaderFind2 = self.browser.searchForElement(by=By.XPATH,value=loaderXPath,timeout=60,testClickable=True,invertedSearch=True,raiseError=True)
+                return True
+            # If it's not found after the full timeout, assume its not going to show up.
+            else:
+                return True
+
+        # This helper method simply "commits" the change of a single shipping field by clicking off the field onto the
+        # page, and waiting for the loader to disappear.
+        def commitField(timeout=15):
+            customerHeaderToClickXPath = "//h2[contains(text(),'Customer')]"
+            self.browser.safeClick(by=By.XPATH,value=customerHeaderToClickXPath,timeout=timeout,scrollIntoView=True)
+            waitForLoader(timeout=timeout)
+
         # This helper method simply "refreshes" the page by navigating back to the cart first, then back here to
         # check out to try again. Assumes we're on the checkout screen.
         def refreshCheckoutScreen():
@@ -171,37 +193,51 @@ class EyesafeDriver:
             # Write First Name
             firstNameFieldXPath = "//input[@id='firstNameInput']"
             firstNameField = self.browser.searchForElement(by=By.XPATH,value=firstNameFieldXPath,timeout=10,testClickable=True)
+            firstNameField.click()
             firstNameField.clear()
             firstNameField.send_keys(firstName)
+            commitField()
 
             # Write Last Name
             lastNameFieldXPath = "//input[@id='lastNameInput']"
             lastNameField = self.browser.searchForElement(by=By.XPATH,value=lastNameFieldXPath,timeout=3)
             lastNameField.clear()
             lastNameField.send_keys(lastName)
+            commitField()
+
 
             #region === Zip/City ===
 
             # First, we test to make sure the "invalid zipcode select from list" dialogue isn't open.
-            invalidZipCodePopupXPath = "//div[contains(@class,'ui-dialog-buttonset')]/button/span[text()='OK']"
-            self.browser.safeClick(by=By.XPATH,value=invalidZipCodePopupXPath,raiseError=False,timeout=4)
+            #invalidZipCodePopupXPath = "//div[contains(@class,'ui-dialog-buttonset')]/button/span[text()='OK']"
+            #self.browser.safeClick(by=By.XPATH,value=invalidZipCodePopupXPath,raiseError=False,timeout=4)
 
             # Now, enter the zip code
             zipCodeFieldXPath = "//input[@id='postCodeInput']"
             zipCodeField = self.browser.searchForElement(by=By.XPATH,value=zipCodeFieldXPath,timeout=10,testClickable=True)
             # Click to trigger the autofill
             zipCodeField.click()
-            # A bit of manual wait time seems to just go a long, long way for this site right here
+            zipCodeField.clear()
+            # We first send a dummy zip code, to trigger the dreaded loader which can kill the whole page.
+            if(zipCode[:5] == "60115"):
+                dummyZipCode = "11001"
+            else:
+                dummyZipCode = "60115"
+            zipCodeField.send_keys(dummyZipCode)
+            waitForLoader()
+
+            # Once the loader is gone, we can now send write our actual zip code.
+            zipCodeField = self.browser.searchForElement(by=By.XPATH, value=zipCodeFieldXPath, timeout=10,testClickable=True)
+            zipCodeField.click()
             time.sleep(1)
             zipCodeField.clear()
-            time.sleep(1)
+            zipCodeField.clear()
             zipCodeField.send_keys(zipCode)
-            time.sleep(2)
 
             # Now, it should pop up with some options on zip codes mapped to cities. We need to find the option
             # with our target city and click it.
             allZipCityResultsXPath = "//ul[contains(@class,'ui-autocomplete')]/li[@class='ui-menu-item']/a"
-            allZipCityResults = self.browser.searchForElements(by=By.XPATH, value=allZipCityResultsXPath,timeout=10)
+            allZipCityResults = self.browser.searchForElements(by=By.XPATH, value=allZipCityResultsXPath,timeout=15,minSearchTime=5)
             # Consider the attempt failed if no zip-cities pop up
             if(not allZipCityResultsXPath):
                 return False
@@ -211,15 +247,23 @@ class EyesafeDriver:
             allCities = []
             for zipCityResult in allZipCityResults:
                 zipCityResultText = zipCityResult.text
+                log.debug(f" | {zipCityResultText} | ")
                 thisCity = zipCityResultText[6:].strip().lower()
                 allCities.append(thisCity)
                 if(thisCity == city.strip().lower()):
                     self.browser.safeClick(element=zipCityResult,timeout=10,scrollIntoView=True)
                     foundCity = True
                     break
+            # Since it already does the loader BS earlier, it doesn't seem to need this commitField here.
+            commitField(timeout=3)
 
             # Handle cases where the targeted city is NOT found.
             if(not foundCity):
+                # First, we test to see if its just the common "repopulate dummy" zip code issue, and if so,
+                # consider this a failed attempt.
+                if(allCities[0].strip() == ""):
+                    return False
+
                 potentialError = ValueError(f"Eyesafe didn't show chosen city '{city}' in its result list. Here are the cities it associates with zipCode {zipCode}: {allCities}")
                 if(promptUserOnIssue):
                     # TODO GLUEEEEE
@@ -248,14 +292,16 @@ class EyesafeDriver:
 
             # Write State (just in case)
             stateDropdownXPath = "//select[@id='provinceCodeInput']"
-            stateDropdown = Select(self.browser.searchForElement(by=By.XPATH, value=stateDropdownXPath, timeout=30))
+            stateDropdown = Select(self.browser.searchForElement(by=By.XPATH, value=stateDropdownXPath, timeout=60,minSearchTime=5))
             stateDropdown.select_by_visible_text(state.strip())
+            commitField(timeout=3)
 
             # Write Address1
             address1FieldXPath = "//input[@id='addressLine1Input']"
             address1Field = self.browser.searchForElement(by=By.XPATH, value=address1FieldXPath, timeout=30)
             address1Field.clear()
             address1Field.send_keys(address1)
+            commitField()
 
             # Write Address2 (if applicable)
             if(address2 is not None and address2 != ""):
@@ -263,9 +309,11 @@ class EyesafeDriver:
                 address2Field = self.browser.searchForElement(by=By.XPATH, value=address2FieldXPath, timeout=30)
                 address2Field.clear()
                 address2Field.send_keys(address2)
+                commitField()
 
             # If we got here, we've succeeded - return True yay!
             return True
+
 
         # We simply attempt to writeShippingInformation maxAttempts times, resetting the page on oddities and failures
         for i in range(maxAttempts):
@@ -307,16 +355,16 @@ class EyesafeDriver:
     # Assumes there is an order waiting to be submitted at checkout, and submits it. Also
     # handles "Is ThIs ThE rIgHt AdDrEsS?"
     def submitOrder(self):
+        self.browser.snapshotTab("Eyesafe")
         # Click submit
         submitOrderButtonXPath = "//button[@id='checkout-payment-continue']"
-        submitOrderButton = self.browser.searchForElement(by=By.XPATH,value=submitOrderButtonXPath)
-        self.browser.safeClick(element=submitOrderButton,scrollIntoView=True,timeout=20)
-
+        self.browser.safeClick(by=By.XPATH,value=submitOrderButtonXPath,scrollIntoView=True,timeout=30)
 
         # We test for Eyesafe's address suggestion now.
         useSuggestionButtonXPath = "//span[contains(text(),'USE SUGGESTION')]"
         useSuggestionButton = self.browser.searchForElement(by=By.XPATH,value=useSuggestionButtonXPath,timeout=10,testClickable=True)
         if(useSuggestionButton):
+            print("FOUND USE SUGGESTION BUTTON")
             continueAsEnteredButtonXPath = "//span[contains(text(),'CONTINUE WITH ADDRESS AS ENTERED')]"
             continueAsEnteredButton = self.browser.searchForElement(by=By.XPATH, value=continueAsEnteredButtonXPath, timeout=10, testClickable=True)
             #TODO gLuEEEEEE

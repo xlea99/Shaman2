@@ -520,14 +520,19 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
     cimplDriver.Workorders_WriteNote(subject="Order Placed",noteType="Information Only",status="Completed",content=orderNumber)
 
     # Handle ordering Eyesafe, if specified
-    #if(eyesafeAccessory):
-    #    eyesafeOrderNumber = placeEyesafeOrder(eyesafeDriver=eyesafeDriver,eyesafeAccessoryName=eyesafeAccessory,
-    #                            userFirstName=thisPerson.info_FirstName,userLastName=thisPerson.info_LastName,
-    #                            address1=validatedAddress["Address1"],address2=validatedAddress["Address2"],
-    #                            city=validatedAddress["City"],state=validatedAddress["State"],zipCode=validatedAddress["ZipCode"])
-    #    maintenance.validateCimpl(cimplDriver)
-    #    cimplDriver.Workorders_NavToSummaryTab()
-    #    cimplDriver.Workorders_WriteNote(subject="Eyesafe Order Placed", noteType="Information Only", status="Completed",content=eyesafeOrderNumber)
+    if(eyesafeAccessory):
+        # First make sure the requested eyeSafe device is compatible with the device we've ordered.
+        if(deviceID in accessories[eyesafeAccessory]["compatibleDevices"]):
+            eyesafeOrderNumber = placeEyesafeOrder(eyesafeDriver=eyesafeDriver,eyesafeAccessoryName=eyesafeAccessory,
+                                    userFirstName=thisPerson.info_FirstName,userLastName=thisPerson.info_LastName,
+                                    address1=validatedAddress["Address1"],address2=validatedAddress["Address2"],
+                                    city=validatedAddress["City"],state=validatedAddress["State"],zipCode=validatedAddress["ZipCode"])
+            maintenance.validateCimpl(cimplDriver)
+            cimplDriver.Workorders_NavToSummaryTab()
+            cimplDriver.Workorders_WriteNote(subject="Eyesafe Order Placed", noteType="Information Only", status="Completed",content=eyesafeOrderNumber)
+            log.info(f"Ordered Eyesafe device '{eyesafeAccessory}' per '{eyesafeOrderNumber}'")
+        else:
+            log.info(f"User requested eyesafe accessory '{eyesafeAccessory}', but this accessory is not compatible with the ordere device '{deviceID}'")
 
     # Confirm workorder, if not already confirmed.
     if(workorder["Status"] == "Pending"):
@@ -733,14 +738,14 @@ eyesafe = EyesafeDriver(br)
 
 missingEyesafeWOs = []
 for wo in missingEyesafeWOs:
+    # Place any missing eyesafe orders.
     placeMissingEyesafeOrderFromCimplWorkorder(tmaDriver=tma,cimplDriver=cimpl,eyesafeDriver=eyesafe,workorderNumber=wo)
 
-beans = []
-preProcessWOs = [48525,48526,48527,48528]
+preProcessWOs = []
 for wo in preProcessWOs:
     try:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
-                          workorderNumber=wo,referenceNumber="Alex",subjectLine="Order Placed 10/2")
+                          workorderNumber=wo,referenceNumber="Alex",subjectLine="Order Placed 10/3")
     except Exception as e:
         playsoundAsync(paths["media"] / "shaman_error.mp3")
         raise e

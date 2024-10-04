@@ -443,6 +443,7 @@ class Browser(webdriver.Chrome):
 
         # Return a boolean or raise error depending on whether the click was successful or not.
         if(clickSuccessful):
+            log.debug(f"safeClick on element '{element if element else value}' successful after {testAttempt} click attempts and {clickCount} actual clicks.")
             return True
         else:
             if(raiseError):
