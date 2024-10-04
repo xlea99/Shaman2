@@ -538,23 +538,29 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
     if(workorder["Status"] == "Pending"):
         if(workorder["OperationType"].lower() == "new request"):
             if carrier == "BellMobility":
-                templatePath = paths["emailTemplates"] / emailTemplatesConfig["BellMobility"]["NewInstall"][deviceID]
+                templateFileName = emailTemplatesConfig["BellMobility"]["NewInstall"].get(deviceID,None)
             else:
-                templatePath = paths["emailTemplates"] / emailTemplatesConfig["NormalCarrier"]["NewInstall"][deviceID]
+                templateFileName = emailTemplatesConfig["NormalCarrier"]["NewInstall"].get(deviceID,None)
         elif(workorder["OperationType"].lower() == "upgrade"):
             if carrier == "BellMobility":
-                templatePath = paths["emailTemplates"] / emailTemplatesConfig["BellMobility"]["Upgrade"][deviceID]
+                templateFileName = emailTemplatesConfig["BellMobility"]["Upgrade"].get(deviceID,None)
             else:
-                templatePath = paths["emailTemplates"] / emailTemplatesConfig["NormalCarrier"]["Upgrade"][deviceID]
+                templateFileName = emailTemplatesConfig["NormalCarrier"]["Upgrade"].get(deviceID,None)
         else:
             error = ValueError(f"Found incompatible order type after performing an order: '{workorder['OperationType']}'")
             log.error(error)
             raise error
-        with open(templatePath, "r") as file:
-            emailContent = file.read()
 
-        cimplDriver.Workorders_SetStatus(status="Confirm",emailRecipients=thisPerson.info_Email,emailCCs="btnetworkservicesmobility@sysco.com",emailContent=emailContent)
-        print(f"Cimpl WO {workorderNumber}: Added order number to workorder notes and confirmed request.")
+        if(templateFileName is None):
+            cimplDriver.Workorders_SetStatus(status="Confirm")
+            print(f"Cimpl WO {workorderNumber}: Added order number to workorder notes and confirmed request.")
+        else:
+            templatePath = paths["emailTemplates"] / templateFileName
+            with open(templatePath, "r") as file:
+                emailContent = file.read()
+
+            cimplDriver.Workorders_SetStatus(status="Confirm",emailRecipients=thisPerson.info_Email,emailCCs="btnetworkservicesmobility@sysco.com",emailContent=emailContent)
+            print(f"Cimpl WO {workorderNumber}: Added order number to workorder notes and confirmed request.")
 
     if(subjectLine is not None):
         cimplDriver.Workorders_NavToSummaryTab()
