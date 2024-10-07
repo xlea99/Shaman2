@@ -131,6 +131,7 @@ def placeVerizonNewInstall(verizonDriver : VerizonDriver,deviceID : str,accessor
             error = ValueError("User cancelled submission of order.")
             log.error(error)
             raise error
+    maintenance.validateVerizon(verizonDriver)
     orderInfo = verizonDriver.Checkout_PlaceOrder(billingAccountNum=clients["Sysco"]["Accounts"]["Verizon Wireless"])
     # Order should now be placed!
 
@@ -189,6 +190,7 @@ def placeVerizonUpgrade(verizonDriver : VerizonDriver,serviceID,deviceID : str,a
             error = ValueError("User cancelled submission of order.")
             log.error(error)
             raise error
+    maintenance.validateVerizon(verizonDriver)
     orderInfo = verizonDriver.Checkout_PlaceOrder(billingAccountNum=clients["Sysco"]["Accounts"]["Verizon Wireless"])
     # Order should now be placed!
 
@@ -434,7 +436,11 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
 
     # Get device model ID from Cimpl
     userID = getNetworkIDFromActions(workorder["Actions"])
-    classifiedHardware = classifyHardwareInfo(workorder["HardwareInfo"],carrier=workorder["Carrier"])
+    try:
+        classifiedHardware = classifyHardwareInfo(workorder["HardwareInfo"], carrier=workorder["Carrier"])
+    except ValueError as e:
+        print(f"Cimpl WO {workorderNumber}: Failed to validate hardware info, likely due to missing device in order.")
+        return False
     deviceID = classifiedHardware["DeviceID"]
     accessoryIDs = classifiedHardware["AccessoryIDs"]
     eyesafeAccessory = classifiedHardware["Eyesafe"]
@@ -696,11 +702,16 @@ def placeMissingEyesafeOrderFromCimplWorkorder(tmaDriver : TMADriver,cimplDriver
 
     # Get device model ID from Cimpl
     userID = getNetworkIDFromActions(workorder["Actions"])
-    classifiedHardware = classifyHardwareInfo(workorder["HardwareInfo"],carrier=workorder["Carrier"])
+    try:
+        classifiedHardware = classifyHardwareInfo(workorder["HardwareInfo"],carrier=workorder["Carrier"])
+    except ValueError as e:
+        print(f"Cimpl WO {workorderNumber}: Failed to validate hardware info, likely due to missing device in order.")
+        return False
     eyesafeAccessory = classifiedHardware["Eyesafe"]
 
     if(not eyesafeAccessory):
         print(f"Cimpl WO {workorderNumber}: No eyesafe device was requested.")
+        return False
 
     # Read the people object from TMA.
     maintenance.validateTMA(tmaDriver,"Sysco")
@@ -708,12 +719,7 @@ def placeMissingEyesafeOrderFromCimplWorkorder(tmaDriver : TMADriver,cimplDriver
     thisPerson = tmaDriver.People_ReadAllInformation()
 
     # Validate the shipping address
-    validatedAddress = {"Address1": workorder['Shipping']['Address1'],
-                        "Address2": workorder['Shipping']['Address2'],
-                        "City": workorder['Shipping']['City'],
-                        "State": workorder['Shipping']['State'],
-                        "ZipCode": workorder['Shipping']['ZipCode'],
-                        "Country": workorder['Shipping']['Country']}
+    validatedAddress = validateAddress(rawAddressString=workorder["RawShippingAddress"])
     print(validatedAddress)
 
     # Handle ordering Eyesafe
@@ -742,12 +748,19 @@ vzw = VerizonDriver(br)
 baka = BakaDriver(br)
 eyesafe = EyesafeDriver(br)
 
-missingEyesafeWOs = []
+missingEyesafeWOs = [48374,48375,48376,48377,48378,48379,48380,48381,48382,48383,48406,48407,48408,48409,48411,48412,48413,
+                     48414,48415,48417,48418,48419,48420,48421,48422,48423,48424,48425,48426,48427,48428,48433,48434,48448,
+                     48449,48454,48455,48456,48458,48459,48476,48482,48483,48484,48485,48486,48487,48489,48490,48491,
+                     48492,48493,48494,48495,48496,49497,48498,48520,48521,48522,48524,48525,48526,48527,48528]
 for wo in missingEyesafeWOs:
-    # Place any missing eyesafe orders.
-    placeMissingEyesafeOrderFromCimplWorkorder(tmaDriver=tma,cimplDriver=cimpl,eyesafeDriver=eyesafe,workorderNumber=wo)
+    try:
+        # Place any missing eyesafe orders.
+        placeMissingEyesafeOrderFromCimplWorkorder(tmaDriver=tma,cimplDriver=cimpl,eyesafeDriver=eyesafe,workorderNumber=wo)
+    except Exception as e:
+        playsoundAsync(paths["media"] / "shaman_error.mp3")
+        raise e
 
-preProcessWOs = []
+preProcessWOs = [] #[48565,48566,48567,48570,48571,48572,48573,48576,48577,48579,48580,48582,48583,48585,48586]
 for wo in preProcessWOs:
     try:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
