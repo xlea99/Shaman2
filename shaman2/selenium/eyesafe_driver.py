@@ -356,13 +356,16 @@ class EyesafeDriver:
     # handles "Is ThIs ThE rIgHt AdDrEsS?"
     def submitOrder(self):
         self.browser.snapshotTab("Eyesafe")
-        # Click submit
+
+        # Click submit, and wait for either order confirmation or address suggestion.
         submitOrderButtonXPath = "//button[@id='checkout-payment-continue']"
-        self.browser.safeClick(by=By.XPATH,value=submitOrderButtonXPath,scrollIntoView=True,timeout=30)
+        useSuggestionButtonXPath = "//span[contains(text(),'USE SUGGESTION')]"
+        orderConfirmationNumberTextXPath = "//p[@data-test='order-confirmation-order-number-text']"
+        self.browser.safeClick(by=By.XPATH,value=submitOrderButtonXPath,scrollIntoView=True,timeout=240,retryClicks=True,clickDelay=15,
+                               successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=[useSuggestionButtonXPath,orderConfirmationNumberTextXPath]))
 
         # We test for Eyesafe's address suggestion now.
-        useSuggestionButtonXPath = "//span[contains(text(),'USE SUGGESTION')]"
-        useSuggestionButton = self.browser.searchForElement(by=By.XPATH,value=useSuggestionButtonXPath,timeout=10,testClickable=True)
+        useSuggestionButton = self.browser.searchForElement(by=By.XPATH,value=useSuggestionButtonXPath,timeout=3,testClickable=True)
         if(useSuggestionButton):
             print("FOUND USE SUGGESTION BUTTON")
             continueAsEnteredButtonXPath = "//span[contains(text(),'CONTINUE WITH ADDRESS AS ENTERED')]"
@@ -385,7 +388,6 @@ class EyesafeDriver:
                 raise error
 
         # Finally, we get the order number and return it.
-        orderConfirmationNumberTextXPath = "//p[@data-test='order-confirmation-order-number-text']"
         orderConfirmationNumberText = self.browser.searchForElement(by=By.XPATH,value=orderConfirmationNumberTextXPath,timeout=20,testClickable=True).text
         return orderConfirmationNumberText
 

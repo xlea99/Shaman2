@@ -117,13 +117,26 @@ def placeVerizonNewInstall(verizonDriver : VerizonDriver,deviceID : str,accessor
     verizonDriver.ShoppingCart_ContinueToCheckOut()
     # This should send us to the checkout screen
 
-    # Fill in shipping information, then submit the order.
+    # "Clean" the contact emails for special characters which break Verizon.
     if(type(contactEmails) is not list):
         contactEmails = [contactEmails]
+    finalContactEmails = []
+    for contactEmail in contactEmails:
+        contactEmail = contactEmail.lower().strip()
+        isValidEmail = True
+        for character in contactEmail:
+            if(not (character.isalnum() or character in "._@")):
+                isValidEmail = False
+        if(isValidEmail):
+            finalContactEmails.append(contactEmail)
+
+
+
+    # Fill in shipping information, then submit the order.
     verizonDriver.Checkout_AddAddressInfo(company=companyName,attention=f"{firstName} {lastName}",
                                           address1=address1,address2=address2,city=city,zipCode=zipCode,
                                           stateAbbrev=convertStateFormat(stateString=state,targetFormat="abbreviation"),
-                                          contactPhone=mainConfig["misc"]["contactPhone"],notificationEmails=contactEmails)
+                                          contactPhone=mainConfig["misc"]["contactPhone"],notificationEmails=finalContactEmails)
     if(reviewMode):
         playsoundAsync(paths["media"] / "shaman_order_ready.mp3")
         userResponse = input("Order is ready to be submitted. Please review, then press enter to place. Type anything else to cancel.")
@@ -176,13 +189,25 @@ def placeVerizonUpgrade(verizonDriver : VerizonDriver,serviceID,deviceID : str,a
     verizonDriver.ShoppingCart_ContinueToCheckOut()
     # This should send us to the checkout screen
 
-    # Fill in shipping information, then submit the order.
-    if(type(contactEmails) is not list):
+
+    # "Clean" the contact emails for special characters which break Verizon.
+    if (type(contactEmails) is not list):
         contactEmails = [contactEmails]
+    finalContactEmails = []
+    for contactEmail in contactEmails:
+        contactEmail = contactEmail.lower().strip()
+        isValidEmail = True
+        for character in contactEmail:
+            if (not (character.isalnum() or character in "._@")):
+                isValidEmail = False
+        if (isValidEmail):
+            finalContactEmails.append(contactEmail)
+
+    # Fill in shipping information, then submit the order.
     verizonDriver.Checkout_AddAddressInfo(company=companyName,attention=f"{firstName} {lastName}",
                                           address1=address1,address2=address2,city=city,zipCode=zipCode,
                                           stateAbbrev=convertStateFormat(stateString=state,targetFormat="abbreviation"),
-                                          contactPhone=mainConfig["misc"]["contactPhone"],notificationEmails=contactEmails)
+                                          contactPhone=mainConfig["misc"]["contactPhone"],notificationEmails=finalContactEmails)
     if(reviewMode):
         playsoundAsync(paths["media"] / "shaman_order_ready.mp3")
         userResponse = input("Order is ready to be submitted. Please review, then press enter to place. Type anything else to cancel.")
@@ -748,10 +773,7 @@ vzw = VerizonDriver(br)
 baka = BakaDriver(br)
 eyesafe = EyesafeDriver(br)
 
-missingEyesafeWOs = [48374,48375,48376,48377,48378,48379,48380,48381,48382,48383,48406,48407,48408,48409,48411,48412,48413,
-                     48414,48415,48417,48418,48419,48420,48421,48422,48423,48424,48425,48426,48427,48428,48433,48434,48448,
-                     48449,48454,48455,48456,48458,48459,48476,48482,48483,48484,48485,48486,48487,48489,48490,48491,
-                     48492,48493,48494,48495,48496,49497,48498,48520,48521,48522,48524,48525,48526,48527,48528]
+missingEyesafeWOs = []
 for wo in missingEyesafeWOs:
     try:
         # Place any missing eyesafe orders.
@@ -760,11 +782,11 @@ for wo in missingEyesafeWOs:
         playsoundAsync(paths["media"] / "shaman_error.mp3")
         raise e
 
-preProcessWOs = [] #[48565,48566,48567,48570,48571,48572,48573,48576,48577,48579,48580,48582,48583,48585,48586]
+preProcessWOs = [48591,48594]
 for wo in preProcessWOs:
     try:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
-                          workorderNumber=wo,referenceNumber="Alex",subjectLine="Order Placed 10/3")
+                          workorderNumber=wo,referenceNumber="Alex",subjectLine="Order Placed %D")
     except Exception as e:
         playsoundAsync(paths["media"] / "shaman_error.mp3")
         raise e

@@ -950,7 +950,7 @@ class VerizonDriver:
     # Assumes we're on the checkout screen. Attempts to click on "add address" to add
     # a full address info.
     def Checkout_AddAddressInfo(self,company,attention,address1,city,stateAbbrev,zipCode,contactPhone,
-                                notificationEmails : list = None,address2 = ""):
+                                notificationEmails : list = None,address2 = "",attempts=3):
         if(address2 is None):
             address2 = ""
 
@@ -961,82 +961,85 @@ class VerizonDriver:
         checkoutHeaderXPath = "//div[@class='checkoutBox']//h1[text()='Checkout']"
         self.browser.searchForElement(by=By.XPATH,value=checkoutHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True)
 
-        companyFieldXPath = "//input[@id='firmName']"
-        addNewAddressButtonXPath = "//div[contains(@class,'new-address')]"
-        self.browser.safeClick(by=By.XPATH,value=addNewAddressButtonXPath,timeout=30,retryClicks=True,clickDelay=3,scrollIntoView=True,
-                               successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=companyFieldXPath))
+        # Helper method that handles actually writing the shipping info, condensed into a function for easy retryability.
+        def writeShippingInfo():
+            companyFieldXPath = "//input[@id='firmName']"
+            addNewAddressButtonXPath = "//div[contains(@class,'new-address')]"
+            self.browser.safeClick(by=By.XPATH,value=addNewAddressButtonXPath,timeout=30,retryClicks=True,clickDelay=3,scrollIntoView=True,
+                                   successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=companyFieldXPath,testClickable=True))
 
-        # Write company name
+            # Write company name
+            companyField = self.browser.searchForElement(by=By.XPATH,value=companyFieldXPath,timeout=30,testClickable=True)
+            companyField.clear()
+            companyField.send_keys(company)
 
-        companyField = self.browser.searchForElement(by=By.XPATH,value=companyFieldXPath,timeout=30,testClickable=True)
-        companyField.clear()
-        companyField.send_keys(company)
+            # Write attention
+            attentionFieldXPath = "//input[@id='attention']"
+            attentionField = self.browser.searchForElement(by=By.XPATH,value=attentionFieldXPath,timeout=30,testClickable=True)
+            attentionField.clear()
+            attentionField.send_keys(attention)
 
-        # Write attention
-        attentionFieldXPath = "//input[@id='attention']"
-        attentionField = self.browser.searchForElement(by=By.XPATH,value=attentionFieldXPath,timeout=30,testClickable=True)
-        attentionField.clear()
-        attentionField.send_keys(attention)
+            # Write address1
+            address1FieldXPath = "//input[@id='add1']"
+            address1Field = self.browser.searchForElement(by=By.XPATH,value=address1FieldXPath,timeout=30,testClickable=True)
+            address1Field.clear()
+            address1Field.send_keys(address1)
 
-        # Write address1
-        address1FieldXPath = "//input[@id='add1']"
-        address1Field = self.browser.searchForElement(by=By.XPATH,value=address1FieldXPath,timeout=30,testClickable=True)
-        address1Field.clear()
-        address1Field.send_keys(address1)
+            # Write address2
+            if(address2 is not None and address2 != ""):
+                address2FieldXPath = "//input[@id='add2']"
+                address2Field = self.browser.searchForElement(by=By.XPATH,value=address2FieldXPath,timeout=30,testClickable=True)
+                address2Field.clear()
+                address2Field.send_keys(address2)
 
-        # Write address2
-        if(address2 is not None and address2 != ""):
-            address2FieldXPath = "//input[@id='add2']"
-            address2Field = self.browser.searchForElement(by=By.XPATH,value=address2FieldXPath,timeout=30,testClickable=True)
-            address2Field.clear()
-            address2Field.send_keys(address2)
+            # Write City
+            cityFieldXPath = "//input[@id='city']"
+            cityField = self.browser.searchForElement(by=By.XPATH,value=cityFieldXPath,timeout=30,testClickable=True)
+            cityField.clear()
+            cityField.send_keys(city)
 
-        # Write City
-        cityFieldXPath = "//input[@id='city']"
-        cityField = self.browser.searchForElement(by=By.XPATH,value=cityFieldXPath,timeout=30,testClickable=True)
-        cityField.clear()
-        cityField.send_keys(city)
+            # Write state
+            stateSelectXPath = "//select[@id='states']"
+            stateSelect = Select(self.browser.searchForElement(by=By.XPATH,value=stateSelectXPath,timeout=30,testClickable=True))
+            stateSelect.select_by_visible_text(stateAbbrev)
 
-        # Write state
-        stateSelectXPath = "//select[@id='states']"
-        stateSelect = Select(self.browser.searchForElement(by=By.XPATH,value=stateSelectXPath,timeout=30,testClickable=True))
-        stateSelect.select_by_visible_text(stateAbbrev)
+            # Write contact phone
+            contactPhoneFieldXPath = "//input[@name='phoneNumber']"
+            contactPhoneField = self.browser.searchForElement(by=By.XPATH, value=contactPhoneFieldXPath,timeout=30,testClickable=True)
+            contactPhoneField.clear()
+            contactPhoneField.send_keys(contactPhone)
 
-        # Write contact phone
-        contactPhoneFieldXPath = "//input[@name='phoneNumber']"
-        contactPhoneField = self.browser.searchForElement(by=By.XPATH, value=contactPhoneFieldXPath,timeout=30,testClickable=True)
-        contactPhoneField.clear()
-        contactPhoneField.send_keys(contactPhone)
+            # To add emails, first, we remove all existing emails if present.
+            existingOldEmailsXPath = "//input[@type='email']/parent::div/following-sibling::div[@class='remove-btn']"
+            existingOldEmails = self.browser.find_elements(by=By.XPATH,value=existingOldEmailsXPath)
+            for existingOldEmail in existingOldEmails:
+                self.browser.safeClick(element=existingOldEmail,timeout=10)
+            # Now, we add all emails specified as arguments.
+            for newEmail in notificationEmails:
+                addNewNotifyButtonXPath = "//div[contains(@class,'add-notify')]/div[contains(text(),'Add new notification')]/parent::div"
+                addNewNotifyButton = self.browser.searchForElement(by=By.XPATH,value=addNewNotifyButtonXPath,timeout=30,testClickable=True)
+                self.browser.safeClick(element=addNewNotifyButton,timeout=30)
 
-        # To add emails, first, we remove all existing emails if present.
-        existingOldEmailsXPath = "//input[@type='email']/parent::div/following-sibling::div[@class='remove-btn']"
-        existingOldEmails = self.browser.find_elements(by=By.XPATH,value=existingOldEmailsXPath)
-        for existingOldEmail in existingOldEmails:
-            self.browser.safeClick(element=existingOldEmail,timeout=10)
-        # Now, we add all emails specified as arguments.
-        for newEmail in notificationEmails:
-            addNewNotifyButtonXPath = "//div[contains(@class,'add-notify')]/div[contains(text(),'Add new notification')]/parent::div"
-            addNewNotifyButton = self.browser.searchForElement(by=By.XPATH,value=addNewNotifyButtonXPath,timeout=30,testClickable=True)
-            self.browser.safeClick(element=addNewNotifyButton,timeout=30)
+                allNewEmailFields = self.browser.find_elements(by=By.XPATH, value="//input[@type='email']")
+                allNewEmailFields[-1].clear()
+                allNewEmailFields[-1].send_keys(newEmail)
 
-            allNewEmailFields = self.browser.find_elements(by=By.XPATH, value="//input[@type='email']")
-            allNewEmailFields[-1].clear()
-            allNewEmailFields[-1].send_keys(newEmail)
+            # Write zip code last, as this triggers a load
+            zipCodeFieldXPath = "//input[@name='zipCode']"
+            zipCodeField = self.browser.searchForElement(by=By.XPATH, value=zipCodeFieldXPath,timeout=30,testClickable=True)
+            zipCodeField.clear()
+            zipCodeField.send_keys(zipCode)
 
-        # Write zip code last, as this triggers a load
-        zipCodeFieldXPath = "//input[@name='zipCode']"
-        zipCodeField = self.browser.searchForElement(by=By.XPATH, value=zipCodeFieldXPath,timeout=30,testClickable=True)
-        zipCodeField.clear()
-        zipCodeField.send_keys(zipCode)
+            # Test again for the clickable checkout header, to ensure all loading is done
+            checkoutHeaderXPath = "//div[@class='checkoutBox']//h1[text()='Checkout']"
+            self.browser.searchForElement(by=By.XPATH, value=checkoutHeaderXPath, timeout=60, testClickable=True,
+                                          testLiteralClick=True, minSearchTime=3)
 
-        # Test again for the clickable checkout header, to ensure all loading is done
-        checkoutHeaderXPath = "//div[@class='checkoutBox']//h1[text()='Checkout']"
-        self.browser.searchForElement(by=By.XPATH,value=checkoutHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True,minSearchTime=3)
-
-        # Finally, we continue back to payment.
-        continueToPaymentButtonXPath = "//button[contains(text(),'Continue to Payment')]"
-        continueToPaymentButton = self.browser.searchForElement(by=By.XPATH,value=continueToPaymentButtonXPath,testClickable=True)
-        self.browser.safeClick(element=continueToPaymentButton,timeout=60)
+            # Finally, we continue back to payment.
+            continueToPaymentButtonXPath = "//button[contains(text(),'Continue to Payment')]"
+            continueToPaymentButton = self.browser.searchForElement(by=By.XPATH, value=continueToPaymentButtonXPath,testClickable=True)
+            self.browser.safeClick(element=continueToPaymentButton, timeout=60)
+        writeShippingInfo()
 
         # Wait for static shipping method label to confirm that the page is done loading.
         staticShippingMethodLabelXPath = "//div[@class='shipdisplay-method']/h4[text()='Shipping method']"
