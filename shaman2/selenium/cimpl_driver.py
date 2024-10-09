@@ -76,15 +76,53 @@ class CimplDriver:
                 usernameInput = self.browser.searchForElement(by=By.XPATH,value="//input[@id='username']",timeout=3,testClickable=True)
                 usernameInput.send_keys(mainConfig["authentication"]["cimplUser"])
 
-                continueButton = self.browser.find_element(by=By.XPATH,value="//button[@type='submit']")
+                continueButton = self.browser.searchForElement(by=By.XPATH,value="//button[@type='submit']",timeout=10)
                 continueButton.click()
                 self.waitForLoadingScreen()
 
-                passwordInput = self.browser.searchForElement(by=By.XPATH,value="//input[@id='password']",timeout=3,testClickable=True)
-                passwordInput.send_keys(mainConfig["authentication"]["cimplPass"])
+                # Now, we should be on JumpCloud login screen
+                jumpcloudEmailInputXPath = "//input[@type='email']"
+                jumpcloudEmailInput = self.browser.searchForElement(by=By.XPATH,value=jumpcloudEmailInputXPath,timeout=60)
+                jumpcloudEmailInput.send_keys(mainConfig["authentication"]["jumpcloudUser"])
 
-                signInButton = self.browser.find_element(by=By.XPATH,value="//button[@type='submit']")
-                signInButton.click()
+                jumpcloudContinueButtonXPath = "//button[@data-automation='loginButton']"
+                jumpcloudContinueButton = self.browser.searchForElement(by=By.XPATH,value=jumpcloudContinueButtonXPath,timeout=30)
+                jumpcloudContinueButton.click()
+
+                jumpcloudPassInputXPath = "//input[@type='password']"
+                jumpcloudPassInput = self.browser.searchForElement(by=By.XPATH, value=jumpcloudPassInputXPath,timeout=60)
+                jumpcloudPassInput.send_keys(mainConfig["authentication"]["jumpcloudPass"])
+
+                jumpcloudContinueButtonXPath = "//button[@data-automation='loginButton']"
+                jumpcloudContinueButton = self.browser.searchForElement(by=By.XPATH,value=jumpcloudContinueButtonXPath,timeout=30)
+                jumpcloudContinueButton.click()
+
+                # Wait for the MFA screen to load
+                verifyIdentityHeaderXPath = "//*[normalize-space(text())='Verify Your Identity']"
+                self.browser.searchForElement(by=By.XPATH,value=verifyIdentityHeaderXPath,testClickable=True,testLiteralClick=True,timeout=60)
+
+                # If the JumpCloud Protect option is listed, click on it.
+                jumpcloudProtectMFAXPath = "//button[contains(@data-test-id,'MfaButtons__push')]"
+                jumpcloudProtectMFA = self.browser.searchForElement(by=By.XPATH,value=jumpcloudProtectMFAXPath,timeout=1)
+                if(jumpcloudProtectMFA):
+                    jumpcloudProtectMFA.click()
+
+                # Prompt the user to fill in SSO
+                playsoundAsync(paths["media"] / "shaman_attention.mp3")
+                print("Please complete the MFA for JumpCloud to finish Cimpl login. You have 3 minutes remaining before the program crashes.")
+
+                # Search for the tenantSelectionDropdown for 3 minutes, then click "Sysco"
+                tenantSelectionDropdownXPath = "//label[normalize-space(text())='Tenant']/following-sibling::span//span[@class='select-icon']"
+                tenantSelectionDropdown = self.browser.searchForElement(by=By.XPATH,value=tenantSelectionDropdownXPath,timeout=180,testClickable=True)
+                tenantSelectionDropdown.click()
+                syscoTenantOptionXPath = "//div[@class='tenantOptions']//li[normalize-space(text())='Sysco']"
+                syscoTenantOption = self.browser.searchForElement(by=By.XPATH,value=syscoTenantOptionXPath,timeout=5)
+                syscoTenantOption.click()
+
+                # Click continue
+                continueFromTenantSelectionXPath = "//button[normalize-space(text())='Continue']"
+                continueFromTenantSelection = self.browser.searchForElement(by=By.XPATH,value=continueFromTenantSelectionXPath,timeout=3)
+                continueFromTenantSelection.click()
                 self.waitForLoadingScreen()
 
     # A simple helper method that will cause the program to wait until it can not find the loading screen
@@ -799,7 +837,7 @@ class CimplDriver:
             selectionListPrefix = "//ul[contains(@class,'k-list')][@aria-hidden='false']"
 
             # Now we can actually find the element.
-            targetSelectionElement = self.browser.find_element(by=By.XPATH,value=f"{selectionListPrefix}/li[starts-with(@class,'k-item')][text()='{selectionString}']")
+            targetSelectionElement = self.browser.searchForElement(by=By.XPATH,value=f"{selectionListPrefix}/li[starts-with(@class,'k-item')][normalize-space(text())='{selectionString}']",timeout=3)
             # We also check to make sure this element isn't already selected, in case our earlier check didn't catch it.
             if("k-state-selected" not in targetSelectionElement.get_attribute("class")):
                 self.browser.execute_script("arguments[0].scrollIntoView(true);", targetSelectionElement)
