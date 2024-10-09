@@ -305,7 +305,7 @@ def documentTMANewInstall(tmaDriver : TMADriver,client,netID,serviceNum,installD
     elif(newService.info_ServiceType == "Tablet"):
         costType = "Tablet"
     elif(newService.info_ServiceType == "Mifi"):
-        costType = "Mifi"
+        costType = "Aircard"
     else:
         raise ValueError(f"Invalid service type: {newService.info_ServiceType}")
     allCosts = clients["Sysco"]["Plans"][costType][carrier]
@@ -782,7 +782,7 @@ for wo in missingEyesafeWOs:
         playsoundAsync(paths["media"] / "shaman_error.mp3")
         raise e
 
-preProcessWOs = [48591,48594]
+preProcessWOs = [48612,48613]
 for wo in preProcessWOs:
     try:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,

@@ -939,7 +939,7 @@ class VerizonDriver:
     # Assumes we're on the shopping cart overview screen. Simply clicks "check out" to continue
     # to check out screen.
     def ShoppingCart_ContinueToCheckOut(self):
-        checkOutButtonXPath = "//div[contains(@class,'device-shopping-cart-content-right')]/div/button[contains(text(),'Check out')]"
+        checkOutButtonXPath = "//div[contains(@class,'device-shopping-cart-content-right')]/div/button[contains(text(),'Checkout')]"
         checkOutButton = self.browser.searchForElement(by=By.XPATH,value=checkOutButtonXPath,timeout=30,testClickable=True)
         self.browser.safeClick(element=checkOutButton,timeout=30)
 
