@@ -187,17 +187,18 @@ class Browser(webdriver.Chrome):
     # testClickable -           Tests that the element is considered "clickable"
     # testScrolledInView -      Tests that the element is scrolled into view
     # testLiteralClick -        ACTUALLY attempts to click the element, for when certain elements report as clickable but still somehow aren't.
+    # scrollIntoView -          Whether to attempt to scroll the element into view, BEFORE doing tests.
     # invertedSearch -          Inverts the search - instead of searching for presence of element, searches for LACK of element on page
     # raiseError/logError -     Whether to raise and log the error when the test fails, or simply return "False"
     # singleTestInterval -      How long to perform each single test for, defaulting at 0.2 seconds per test.
     # TODO is this enough to defeat Verizon's weird elements that selenium believes are clickable, but secretly aren't yet?
     def searchForElement(self,by = None,value : (str,list) = None,element : WebElement = None,timeout : float = 0, minSearchTime : float = 0,
                          testNotStale = True,testClickable = False,testScrolledInView = False,testLiteralClick = False,
-                         invertedSearch = False,raiseError = False,logError = None,singleTestInterval = 0.1,debug=False):
+                         invertedSearch = False,scrollIntoView=False,raiseError = False,logError = None,singleTestInterval = 0.1,debug=False):
         # Throw error if both a value and an element are given
         if(value and element):
             error = ValueError("Both a value and an element cannot be specified together in searchForElement.")
-            log.error(error)
+            log.error(error,stack_info=True)
             raise error
         # Unless logError is specified, we copy the value of raiseError
         if(logError is None):
@@ -226,6 +227,9 @@ class Browser(webdriver.Chrome):
                     if(invertedSearch):
                         test = targetElement.text
 
+                if(scrollIntoView):
+                    self.scrollIntoView(targetElement)
+
                 # Perform various other tests if specified
                 if(testNotStale):
                     wait.until(wait_for_non_stale_element(targetElement))
@@ -234,7 +238,7 @@ class Browser(webdriver.Chrome):
                 if(testScrolledInView):
                     wait.until(wait_for_element_scrolled_in_viewport(targetElement))
                 if(testLiteralClick):
-                    self.safeClick(element=targetElement,timeout=singleTestInterval,raiseError=True)
+                    self.safeClick(element=targetElement,timeout=singleTestInterval,raiseError=True,logging=False)
 
 
                 # === TESTS PASS ===
@@ -286,11 +290,11 @@ class Browser(webdriver.Chrome):
             if(invertedSearch):
                 error = ValueError(f"InvertedSearched for element, but element persisted on page past timeout after {searchAttempt} search attempts.")
                 if(logError):
-                    log.error(error)
+                    log.error(error,stack_info=True)
                 raise error
             else:
                 if (logError):
-                    log.error(lastException)
+                    log.error(lastException,stack_info=True)
                 raise lastException
         else:
             if(debug):
@@ -345,7 +349,7 @@ class Browser(webdriver.Chrome):
         else:
             if(raiseError):
                 error = ValueError(f"Failed to successfully{" inverted" if invertedSearch else ""} search for elements after {searchAttempt} search attempts.")
-                log.error(error)
+                log.error(error,stack_info=True)
                 raise error
             else:
                 return False
@@ -365,18 +369,20 @@ class Browser(webdriver.Chrome):
     # prioritizeCondition -         This means that the condition comes before all when determining click success, even the click itself. Other error messages will be ignored as long as condition is true.
     # jsClick -                     Whether to click using javascript, or selenium
     # raiseError -                  Whether to raise an error after unsuccessful click and timeout.
+    # logError -                    Whether to log an error after unsuccessful click and timeout.
     # retryClicks -                 Whether multiple clicks should even be attempted on first failed click.
     # minClicks/maxClicks -         Configurable min and max clicks to attempt, regardless of success.
     # testInterval -                Time interval to wait between element searches.
     # clickDelay -                  Time to wait between successive click attempts.
     # scrollIntoView -              Attempts to scroll the element into view before each click.
     def safeClick(self,element : WebElement = None,by = None,value : str = None,timeout : float = 0,
-                  successfulClickCondition : Callable = None,prioritizeCondition = True, jsClick=False,raiseError=True,scrollIntoView=False,
+                  successfulClickCondition : Callable = None,prioritizeCondition = True, jsClick=False,raiseError=True,logging=True,scrollIntoView=False,
                   retryClicks = False,minClicks : int = 0,maxClicks : int = 10**10,testInterval=0.5,clickDelay=0):
         # Throw error if both a value and an element are given
         if(value and element):
             error = ValueError("Both a value and an element cannot be specified together in safeClick.")
-            log.error(error)
+            if(logging):
+                log.error(error,stack_info=True)
             raise error
 
         # Helper method to evaluate if the condition is currently true.
@@ -443,14 +449,17 @@ class Browser(webdriver.Chrome):
 
         # Return a boolean or raise error depending on whether the click was successful or not.
         if(clickSuccessful):
-            log.debug(f"safeClick on element '{element if element else value}' successful after {testAttempt} click attempts and {clickCount} actual clicks.")
+            if (logging):
+                log.debug(f"safeClick on element '{element if element else value}' successful after {testAttempt} click attempts and {clickCount} actual clicks.")
             return True
         else:
             if(raiseError):
-                log.error(lastException)
+                if(logging):
+                    log.error(lastException,stack_info=True)
                 raise lastException
             else:
-                log.warning(lastException)
+                if(logging):
+                    log.warning(lastException)
                 return False
 
 
@@ -463,7 +472,7 @@ class Browser(webdriver.Chrome):
         # Throw error if both a value and an element are given
         if(value and element):
             error = ValueError("Both a value and an element cannot be specified together in safeClick.")
-            log.error(error)
+            log.error(error,stack_info=True)
             raise error
 
         if(value):
@@ -496,7 +505,7 @@ class Browser(webdriver.Chrome):
         errorMessage = f"Waited for URL: '{urlSnippet}' on page, but URL was never found after timeout of {timeout}"
         if(raiseError):
             error = RuntimeError(errorMessage)
-            log.error(error)
+            log.error(error,stack_info=True)
             raise error
         else:
             log.warning(errorMessage)
@@ -508,7 +517,7 @@ class Browser(webdriver.Chrome):
         if(tabName is None):
             tabName = self.currentTab
         elif((tabName not in self.tabs and not popup) or (tabName not in self.popupTabs and popup)):
-            log.error(f"Cannot take snapshot: Tab '{tabName}' does not exist.")
+            log.error(f"Cannot take snapshot: Tab '{tabName}' does not exist.",stack_info=True)
             raise ValueError(f"Tab '{tabName}' does not exist.")
         self.switchToTab(tabName=tabName,popup=popup)
 

@@ -964,8 +964,12 @@ class VerizonDriver:
         # Helper method that handles actually writing the shipping info, condensed into a function for easy retryability.
         def writeShippingInfo():
             companyFieldXPath = "//input[@id='firmName']"
+            # We try multiple add/edit shipping methods to ensure it works regardless of the page we're on.
             addNewAddressButtonXPath = "//div[contains(@class,'new-address')]"
-            self.browser.safeClick(by=By.XPATH,value=addNewAddressButtonXPath,timeout=30,retryClicks=True,clickDelay=3,scrollIntoView=True,
+            editShippingAddressButtonXPath = "//div[contains(@class,'edit-btn')]"
+
+            addEditShippingButton = self.browser.searchForElement(by=By.XPATH,value=[addNewAddressButtonXPath,editShippingAddressButtonXPath],timeout=30)
+            self.browser.safeClick(element=addEditShippingButton,timeout=30,retryClicks=True,clickDelay=3,scrollIntoView=True,
                                    successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=companyFieldXPath,testClickable=True))
 
             # Write company name
@@ -1031,8 +1035,7 @@ class VerizonDriver:
             zipCodeField.send_keys(zipCode)
 
             # Test again for the clickable checkout header, to ensure all loading is done
-            checkoutHeaderXPath = "//div[@class='checkoutBox']//h1[text()='Checkout']"
-            self.browser.searchForElement(by=By.XPATH, value=checkoutHeaderXPath, timeout=60, testClickable=True,
+            self.browser.searchForElement(by=By.XPATH, value=checkoutHeaderXPath, timeout=60, testClickable=True,scrollIntoView=True,
                                           testLiteralClick=True, minSearchTime=3)
 
             # Finally, we continue back to payment.
@@ -1043,7 +1046,7 @@ class VerizonDriver:
 
         # Wait for static shipping method label to confirm that the page is done loading.
         staticShippingMethodLabelXPath = "//div[@class='shipdisplay-method']/h4[text()='Shipping method']"
-        staticShippingMethodLabel = self.browser.searchForElement(by=By.XPATH,value=staticShippingMethodLabelXPath,timeout=30,testClickable=True,testLiteralClick=True)
+        staticShippingMethodLabel = self.browser.searchForElement(by=By.XPATH,value=staticShippingMethodLabelXPath,timeout=30,testClickable=True,testLiteralClick=True,scrollIntoView=True)
         if(not staticShippingMethodLabel):
             # We test to see if it failed due to Verizon believing the shipping address to be invalid.
             addressCouldNotBeValidatedXPath = "//div[contains(text(),'Address could not be validated.')]"

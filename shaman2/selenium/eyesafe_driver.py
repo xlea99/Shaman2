@@ -355,8 +355,6 @@ class EyesafeDriver:
     # Assumes there is an order waiting to be submitted at checkout, and submits it. Also
     # handles "Is ThIs ThE rIgHt AdDrEsS?"
     def submitOrder(self):
-        self.browser.snapshotTab("Eyesafe")
-
         # Click submit, and wait for either order confirmation or address suggestion.
         submitOrderButtonXPath = "//button[@id='checkout-payment-continue']"
         useSuggestionButtonXPath = "//span[contains(text(),'USE SUGGESTION')]"

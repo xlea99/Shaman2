@@ -782,7 +782,8 @@ for wo in missingEyesafeWOs:
         playsoundAsync(paths["media"] / "shaman_error.mp3")
         raise e
 
-preProcessWOs = [48612,48613]
+preProcessWOs = [48616,48617,48618,48625,48626,48627,48629,48630,48634,48635,48641,48642,48643,48645,
+                 48646,48651,48652,48653,48654,48656,48657,48658,48659,48660,48662]
 for wo in preProcessWOs:
     try:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
