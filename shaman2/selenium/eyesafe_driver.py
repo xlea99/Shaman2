@@ -239,7 +239,7 @@ class EyesafeDriver:
             allZipCityResultsXPath = "//ul[contains(@class,'ui-autocomplete')]/li[@class='ui-menu-item']/a"
             allZipCityResults = self.browser.searchForElements(by=By.XPATH, value=allZipCityResultsXPath,timeout=15,minSearchTime=5)
             # Consider the attempt failed if no zip-cities pop up
-            if(not allZipCityResultsXPath):
+            if(not allZipCityResults):
                 return False
 
             # Otherwise, start looking through each result for our target result

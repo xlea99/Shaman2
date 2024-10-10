@@ -160,7 +160,7 @@ class CimplDriver:
             if(self.browser.searchForElement(by=By.XPATH,value=f"{menuString}[contains(@class,'cimpl-header__icon-transform')]",invertedSearch=True)):
                 self.waitForLoadingScreen()
                 menuCollapserElement = self.browser.searchForElement(by=By.XPATH,value=menuString,timeout=120,testClickable=True)
-                menuCollapserElement.click()
+                self.browser.safeClick(element=menuCollapserElement,timeout=10)
                 self.waitForLoadingScreen()
 
 
