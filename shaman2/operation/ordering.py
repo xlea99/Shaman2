@@ -787,7 +787,7 @@ preProcessWOs = [48616,48617,48618,48625,48626,48627,48629,48630,48634,48635,486
 for wo in preProcessWOs:
     try:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
-                          workorderNumber=wo,referenceNumber="Alex",subjectLine="Order Placed %D")
+                          workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D")
     except Exception as e:
         playsoundAsync(paths["media"] / "shaman_error.mp3")
         raise e
