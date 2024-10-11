@@ -5,46 +5,50 @@ from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
+from shaman2.common.paths import paths
+from shaman2.common.logger import log
+from shaman2.utilities.async_sound import playsoundAsync
 
 # If modifying these scopes, delete the file token.json.
-SCOPES = ['https://www.googleapis.com/auth/drive']
+SCOPES = ['https://www.googleapis.com/auth/drive.file']
+SHAMAN2_DRIVE_FOLDER_ID = "15ajPAAzJc9UK0fWxM3L3uOC0sprprPW4"
 
-
-# Step 1: Authenticate the user
-def authenticate():
+# This method authenticates the current user with the Shaman2 Google Drive API project by either loading, refreshing,
+# or generating a new token.json file.
+def authenticateDriveAPI():
     creds = None
+    credentialsFilePath = paths["google"] / "credentials.json"
+    tokenFilePath = paths["google"] / "token.json"
     # Load previously saved credentials, or authenticate if not found
-    if os.path.exists('token.json'):
-        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
+    if(tokenFilePath.exists()):
+        creds = Credentials.from_authorized_user_file(filename=tokenFilePath, scopes=SCOPES)
+    if(not creds or not creds.valid):
+        if(creds and creds.expired and creds.refresh_token):
             creds.refresh(Request())
         else:
-            flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+            playsoundAsync(paths["media"] / "shaman_attention.mp3")
+            flow = InstalledAppFlow.from_client_secrets_file(credentialsFilePath, SCOPES)
             creds = flow.run_local_server(port=0)
-        with open('token.json', 'w') as token:
-            token.write(creds.to_json())
+        with open(tokenFilePath, 'w') as tokenFile:
+            tokenFile.write(creds.to_json())
     return creds
 
+# This method builds the Google Drive API service off of the user's credentials, then returns it.
+def buildDriveAPIService():
+    creds = authenticateDriveAPI()
+    _driveAPIService = build('drive', 'v3', credentials=creds)
+    return _driveAPIService
 
-# Step 2: Build the Google Drive API service
-def build_service():
-    creds = authenticate()
-    service = build('drive', 'v3', credentials=creds)
-    return service
-
-
-# Step 3: Upload a file to Google Drive
-def upload_file(service, file_path, drive_folder_id=None):
-    file_metadata = {'name': os.path.basename(file_path)}
-    if drive_folder_id:
-        file_metadata['parents'] = [drive_folder_id]
-
-    media = MediaFileUpload(file_path, resumable=True)
-    file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-    print(f"Uploaded {file_path} with file ID {file.get('id')}")
+# This method uploads the gives file to the Shaman2 folder in drive, and returns the fileID.
+def uploadFile(service, filePath):
+    fileMetadata = {
+        'name': os.path.basename(filePath),
+        'parents': [SHAMAN2_DRIVE_FOLDER_ID]
+    }
+    media = MediaFileUpload(filePath, resumable=True)
+    file = service.files().create(body=fileMetadata, media_body=media, fields='id').execute()
+    log.info(f"Uploaded {filePath} with file ID {file.get('id')}")
     return file.get('id')
-
 
 # Step 4: Download a file from Google Drive
 def download_file(service, file_id, dest_path):
@@ -57,13 +61,5 @@ def download_file(service, file_id, dest_path):
         print(f"Download {int(status.progress() * 100)}%.")
     fh.close()
 
-
-# Example usage
-if __name__ == '__main__':
-    service = build_service()
-
-    # Upload a file (e.g., a .toml file)
-    upload_file(service, 'devices.toml')
-
-    # Download a file
-    download_file(service, 'your_file_id_here', 'downloaded_file.toml')
+driveAPIService = buildDriveAPIService()
+#result = uploadFile(service=driveAPIService,filePath=paths["config"] / "clients.toml")
