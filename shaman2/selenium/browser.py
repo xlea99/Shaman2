@@ -213,13 +213,12 @@ class Browser(webdriver.Chrome):
         endTestTime = time.time() + timeout
         searchAttempt = 0
         wait = WebDriverWait(self, singleTestInterval)
-        nextValueIndexToTest = 0
         while(searchAttempt < 1 or time.time() < endTestTime):
             searchAttempt += 1
             try:
                 # If element is not provided, test to find it by locator
                 if(not element):
-                    targetElement = self.find_element(by=by,value=value[nextValueIndexToTest])
+                    targetElement = self.find_element(by=by,value=value[searchAttempt % len(value)])
                 else:
                     targetElement = element
                     # If it's an inverted search AND a given element, we simply try to take a sample attribute to ensure
@@ -247,7 +246,6 @@ class Browser(webdriver.Chrome):
                 if(invertedSearch):
                     time.sleep(0.1)
                     # Set the next valueIndex to test, in case there's multiple.
-                    nextValueIndexToTest = searchAttempt % len(value)
                     continue
                 # If all tests pass, and this is a standard search, return the element
                 else:
@@ -259,14 +257,10 @@ class Browser(webdriver.Chrome):
                     else:
                         time.sleep(0.1)
                         # Set the next valueIndex to test, in case there's multiple.
-                        nextValueIndexToTest = searchAttempt % len(value)
                         continue
 
             # === TESTS FAIL ===
             except Exception as e:
-                # Set the next valueIndex to test, in case there's multiple, since this didn't happen in the try block
-                # yet.
-                nextValueIndexToTest = searchAttempt % len(value)
                 lastException = e
                 # If the tests didn't pass, and this is an inverted search, that means the element is considered to
                 # be lacking from the page, and we're done.

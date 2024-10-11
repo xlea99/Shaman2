@@ -2,17 +2,18 @@ from datetime import datetime
 from selenium.webdriver.common.by import By
 from shaman2.selenium.browser import Browser
 from shaman2.selenium.baka_driver import BakaDriver
-from shaman2.selenium.cimpl_driver import CimplDriver, classifyHardwareInfo,getNetworkIDFromActions,findPlacedCimplOrderNumber
+from shaman2.selenium.cimpl_driver import CimplDriver
 from shaman2.selenium.tma_driver import TMADriver, TMALocation, TMAPeople, TMAService,TMAEquipment, TMACost
 from shaman2.selenium.verizon_driver import VerizonDriver
 from shaman2.selenium.eyesafe_driver import EyesafeDriver
 from shaman2.operation import maintenance
-from shaman2.common.config import mainConfig,accessories,clients,devices,emailTemplatesConfig
+from shaman2.common.config import mainConfig,accessories,clients,devices,emailTemplatesConfig, deviceCimplMappings
 from shaman2.common.logger import log
 from shaman2.common.paths import paths
-from shaman2.utilities.shaman_utils import convertServiceIDFormat,convertStateFormat
+from shaman2.utilities.shaman_utils import convertServiceIDFormat,convertStateFormat, consoleUserWarning
 from shaman2.utilities.async_sound import playsoundAsync
 from shaman2.utilities.address_validation import validateAddress
+from shaman2.utilities.misc import isNumber
 
 #region === Carrier Order Reading ===
 
@@ -20,6 +21,7 @@ from shaman2.utilities.address_validation import validateAddress
 def readCimplWorkorder(cimplDriver : CimplDriver,workorderNumber):
     maintenance.validateCimpl(cimplDriver)
     cimplDriver.navToWorkorderCenter()
+    workorderNumber = str(workorderNumber)
 
     cimplDriver.Filters_Clear()
     cimplDriver.Filters_AddWorkorderNumber(status="Equals",workorderNumber=workorderNumber)
@@ -220,6 +222,32 @@ def placeVerizonUpgrade(verizonDriver : VerizonDriver,serviceID,deviceID : str,a
     # Order should now be placed!
 
     return orderInfo
+
+# This method accepts an accessoryID list, and returns an accessoryID list adjusted for any norms specified
+# on Sysco in the config.
+def adjustAccessoriesForSyscoNorms(deviceID : str, accessoryIDs : list,carrier : str):
+    accessoryIDs = set(accessoryIDs)
+
+    # Right now, only VZW requires special cases.
+    if (carrier.lower() == "verizon wireless"):
+        if (not mainConfig["sysco"]["orderVehicleChargers"]):
+            for accessoryID in accessoryIDs:
+                if (accessories[accessoryID]["type"] == "vehicleCharger"):
+                    accessoryIDs.remove(accessoryID)
+                    break
+        # TODO for now, the "default order wall adapter" system works, but it could do with an overhaul to support more cases down the line
+        if (devices[deviceID]["tmaSubType"] == "Smart Phone"):
+            extraAccessoriesToOrder = mainConfig["sysco"]["vzwAccessoriesToAlwaysOrder_SmartPhone"]
+        elif (devices[deviceID]["tmaSubType"] == "Aircard"):
+            extraAccessoriesToOrder = mainConfig["sysco"]["vzwAccessoriesToAlwaysOrder_Aircard"]
+        elif (devices[deviceID]["tmaSubType"] == "Tablet"):
+            extraAccessoriesToOrder = mainConfig["sysco"]["vzwAccessoriesToAlwaysOrder_Tablet"]
+        else:
+            extraAccessoriesToOrder = []
+        accessoryIDs = accessoryIDs | set(extraAccessoriesToOrder)
+        return list(accessoryIDs)
+    else:
+        return accessoryIDs
 
 # Places an entire Eyesafe order.
 def placeEyesafeOrder(eyesafeDriver : EyesafeDriver,eyesafeAccessoryName : str,
@@ -433,7 +461,7 @@ def documentTMAUpgrade(tmaDriver : TMADriver,client,serviceNum,installDate,devic
 # it is valid to submit automatically through the respective carrier.
 def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,verizonDriver : VerizonDriver,eyesafeDriver : EyesafeDriver,
                              workorderNumber,reviewMode=True,referenceNumber=None,subjectLine : str = None):
-    maintenance.validateCimpl(cimplDriver)
+    # First, read the full workorder.
     print(f"Cimpl WO {workorderNumber}: Beginning automation")
     workorder = readCimplWorkorder(cimplDriver=cimplDriver,workorderNumber=workorderNumber)
 
@@ -441,66 +469,45 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
     if(workorder["OperationType"] not in ("New Request","Upgrade")):
         print(f"Cimpl WO {workorderNumber}: Can't complete WO, as order type '{workorder['OperationType']}' is not understood by the Shaman.")
         return False
-
     # Test to ensure status is operable
     if(workorder["Status"] == "Completed" or workorder["Status"] == "Cancelled"):
         print(f"Cimpl WO {workorderNumber}: Can't complete WO, as order is already {workorder['Status']}")
         return False
-
     # Test for correct carrier
     if(workorder["Carrier"].lower() == "verizon wireless"):
         carrier = "Verizon Wireless"
     else:
         print(f"Cimpl WO {workorderNumber}: Can't complete WO, as carrier is not Verizon ({workorder['Carrier']})")
         return False
-
     # Test to ensure it hasn't already been placed
-    #if (findPlacedCimplOrderNumber(workorder["Notes"],carrier=carrier) is not None):
-    #    print(f"Cimpl WO {workorderNumber}: An order has already been submitted for this Cimpl WO. Please review.")
-    #    return False
-
-    # Get device model ID from Cimpl
-    userID = getNetworkIDFromActions(workorder["Actions"])
-    try:
-        classifiedHardware = classifyHardwareInfo(workorder["HardwareInfo"], carrier=workorder["Carrier"])
-    except ValueError as e:
-        print(f"Cimpl WO {workorderNumber}: Failed to validate hardware info, likely due to missing device in order.")
-        return False
-    deviceID = classifiedHardware["DeviceID"]
-    accessoryIDs = classifiedHardware["AccessoryIDs"]
-    eyesafeAccessory = classifiedHardware["Eyesafe"]
-
-    # Check to make sure no existing comments/notes interfere with the request.
+    if (workorder.getLatestOrderNote() is not None):
+        warningMessage = f"Cimpl WO {workorderNumber}: An order has already been submitted for this Cimpl WO."
+        if(not consoleUserWarning(warningMessage)):
+            return False
+    # Check to make sure no existing comments interfere with the request.
     if(workorder["Comment"] != ""):
-        playsoundAsync(paths["media"] / "shaman_attention.mp3")
-        userInput = input(f"WARNING: There is a comment on this workorder:\n\"{workorder['Comment']}\"\n\n Press enter to continue ordering. Type anything to cancel.")
-        if(userInput != ""):
-            error = ValueError(f"User cancelled order due to a comment on workorder {workorderNumber}.")
-            log.error(error)
-            raise error
-    maintenance.validateCimpl(cimplDriver)
+        warningMessage = f"Cimpl WO {workorderNumber}: WARNING - There is a comment on this workorder:\n\"{workorder['Comment']}\"\n\n"
+        if(not consoleUserWarning(warningMessage)):
+            return False
+    # Check to make sure no existing notes interfere with the request.
     if(len(workorder["Notes"]) > 0):
-        playsoundAsync(paths["media"] / "shaman_attention.mp3")
-        userInput = input("WARNING: There are existing notes on this workorder. Please review, then press enter to continue. Type anything to cancel.")
-        if(userInput != ""):
-            error = ValueError(f"User cancelled order due to existing notes on workorder {workorderNumber}.")
-            log.error(error)
-            raise error
-    maintenance.validateCimpl(cimplDriver)
+        warningMessage = f"Cimpl WO {workorderNumber}: WARNING - There are existing notes on this workorder."
+        if(not consoleUserWarning(warningMessage)):
+            return False
+
+    # Make any necessary adjustments to accessories list.
+    accessoryIDs = adjustAccessoriesForSyscoNorms(deviceID=workorder["DeviceID"],accessoryIDs=workorder["AccessoryIDs"],carrier=carrier)
 
     # Read the people object from TMA.
     maintenance.validateTMA(tmaDriver,"Sysco")
-    tmaDriver.navToLocation(TMALocation(client="Sysco", entryType="People", entryID=userID))
+    tmaDriver.navToLocation(TMALocation(client="Sysco", entryType="People", entryID=workorder["UserNetID"]))
     thisPerson = tmaDriver.People_ReadAllInformation()
 
     if(workorder["OperationType"] == "New Request"):
         if(len(thisPerson.info_LinkedServices) > 0):
-            playsoundAsync(paths["media"] / "shaman_attention.mp3")
-            userInput = input(f"WARNING: User '{userID}' already has linked services. Press enter to continue. Type anything to cancel.")
-            if(userInput != ""):
-                error = ValueError(f"User cancelled order due to existing linked services for user '{userID}' on workorder {workorderNumber}.")
-                log.error(error)
-                raise error
+            warningMessage = f"WARNING: User '{workorder['UserNetID']}' already has linked services."
+            if (not consoleUserWarning(warningMessage)):
+                return False
         maintenance.validateTMA(tmaDriver,"Sysco")
     elif(workorder["OperationType"] == "Upgrade"):
         # TODO We just navigate here to raise errors in case the line is inactive. Maybe come up with better system?
@@ -517,25 +524,29 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
 
     # Validate the shipping address
     validatedAddress = validateAddress(rawAddressString=workorder["RawShippingAddress"])
-    print(validatedAddress)
+    print(f"Cimpl WO {workorderNumber}: Validated address as: {validatedAddress}")
 
     # If operation type is a New Install
     if(workorder["OperationType"] == "New Request"):
-        print(f"Cimpl WO {workorderNumber}: Ordering new device ({deviceID}) and service for user {userID}")
-        orderNumber = placeVerizonNewInstall(verizonDriver=verizonDriver,deviceID=deviceID,accessoryIDs=accessoryIDs,companyName="Sysco",
-                                            firstName=thisPerson.info_FirstName,lastName=thisPerson.info_LastName,userEmail=thisPerson.info_Email,
+        print(f"Cimpl WO {workorderNumber}: Ordering new device ({workorder['DeviceID']}) and service for user {workorder['UserNetID']}")
+        orderNumber = placeVerizonNewInstall(verizonDriver=verizonDriver,deviceID=workorder['DeviceID'],accessoryIDs=accessoryIDs,companyName="Sysco",
+                                            firstName=workorder["UserFirstName"],lastName=workorder["UserLastName"],userEmail=thisPerson.info_Email,
                                             address1=validatedAddress["Address1"],address2=validatedAddress.get("Address2",None),city=validatedAddress["City"],
                                             state=validatedAddress["State"],zipCode=validatedAddress["ZipCode"],reviewMode=reviewMode,contactEmails=thisPerson.info_Email)
-        print(f"Cimpl WO {workorderNumber}: Finished ordering new device and service for user {userID}")
+        print(f"Cimpl WO {workorderNumber}: Finished ordering new device and service for user {workorder['UserNetID']}")
+    # If op type is Upgrade
     elif(workorder["OperationType"] == "Upgrade"):
-        print(f"Cimpl WO {workorderNumber}: Ordering upgrade ({deviceID}) and service for user {userID} with service {workorder['ServiceID']}")
-        orderNumber = placeVerizonUpgrade(verizonDriver=verizonDriver,deviceID=deviceID,serviceID=workorder['ServiceID'],accessoryIDs=accessoryIDs,
-                                          firstName=thisPerson.info_FirstName,lastName=thisPerson.info_LastName,companyName="Sysco",
+        print(f"Cimpl WO {workorderNumber}: Ordering upgrade ({workorder['DeviceID']}) and service for user {workorder['UserNetID']} with service {workorder['ServiceID']}")
+        orderNumber = placeVerizonUpgrade(verizonDriver=verizonDriver,deviceID=workorder['DeviceID'],serviceID=workorder['ServiceID'],accessoryIDs=accessoryIDs,
+                                          firstName=workorder["UserFirstName"],lastName=workorder["UserLastName"],companyName="Sysco",
                                           address1=validatedAddress["Address1"],address2=validatedAddress.get("Address2", None),city=validatedAddress["City"],
                                           state=validatedAddress["State"], zipCode=validatedAddress["ZipCode"],reviewMode=reviewMode,contactEmails=thisPerson.info_Email)
-        print(f"Cimpl WO {workorderNumber}: Finished ordering upgrade for user {userID} on line {workorder['ServiceID']}")
+        print(f"Cimpl WO {workorderNumber}: Finished ordering upgrade for user {workorder['UserNetID']} on line {workorder['ServiceID']}")
+    # Otherwise, error out.
     else:
-        raise ValueError(f"Incorrect operation type for preprocess of workorder: '{workorder['OperationType']}'")
+        error = ValueError(f"Incorrect operation type for preprocess of workorder: '{workorder['OperationType']}'")
+        log.error(error)
+        raise error
 
     maintenance.validateCimpl(cimplDriver)
     if(orderNumber is False):
@@ -551,32 +562,32 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
     cimplDriver.Workorders_WriteNote(subject="Order Placed",noteType="Information Only",status="Completed",content=orderNumber)
 
     # Handle ordering Eyesafe, if specified
-    if(eyesafeAccessory):
+    if(workorder["EyesafeAccessoryID"]):
         # First make sure the requested eyeSafe device is compatible with the device we've ordered.
-        if(deviceID in accessories[eyesafeAccessory]["compatibleDevices"]):
-            eyesafeOrderNumber = placeEyesafeOrder(eyesafeDriver=eyesafeDriver,eyesafeAccessoryName=eyesafeAccessory,
+        if(workorder['DeviceID'] in accessories[workorder["EyesafeAccessoryID"]]["compatibleDevices"]):
+            eyesafeOrderNumber = placeEyesafeOrder(eyesafeDriver=eyesafeDriver,eyesafeAccessoryName=workorder["EyesafeAccessoryID"],
                                     userFirstName=thisPerson.info_FirstName,userLastName=thisPerson.info_LastName,
                                     address1=validatedAddress["Address1"],address2=validatedAddress["Address2"],
                                     city=validatedAddress["City"],state=validatedAddress["State"],zipCode=validatedAddress["ZipCode"])
             maintenance.validateCimpl(cimplDriver)
             cimplDriver.Workorders_NavToSummaryTab()
             cimplDriver.Workorders_WriteNote(subject="Eyesafe Order Placed", noteType="Information Only", status="Completed",content=eyesafeOrderNumber)
-            log.info(f"Ordered Eyesafe device '{eyesafeAccessory}' per '{eyesafeOrderNumber}'")
+            log.info(f"Ordered Eyesafe device '{workorder["EyesafeAccessoryID"]}' per '{eyesafeOrderNumber}'")
         else:
-            log.info(f"User requested eyesafe accessory '{eyesafeAccessory}', but this accessory is not compatible with the ordere device '{deviceID}'")
+            log.info(f"User requested eyesafe accessory '{workorder["EyesafeAccessoryID"]}', but this accessory is not compatible with the ordere device '{workorder['DeviceID']}'")
 
     # Confirm workorder, if not already confirmed.
     if(workorder["Status"] == "Pending"):
         if(workorder["OperationType"].lower() == "new request"):
             if carrier == "BellMobility":
-                templateFileName = emailTemplatesConfig["BellMobility"]["NewInstall"].get(deviceID,None)
+                templateFileName = emailTemplatesConfig["BellMobility"]["NewInstall"].get(workorder['DeviceID'],None)
             else:
-                templateFileName = emailTemplatesConfig["NormalCarrier"]["NewInstall"].get(deviceID,None)
+                templateFileName = emailTemplatesConfig["NormalCarrier"]["NewInstall"].get(workorder['DeviceID'],None)
         elif(workorder["OperationType"].lower() == "upgrade"):
             if carrier == "BellMobility":
-                templateFileName = emailTemplatesConfig["BellMobility"]["Upgrade"].get(deviceID,None)
+                templateFileName = emailTemplatesConfig["BellMobility"]["Upgrade"].get(workorder['DeviceID'],None)
             else:
-                templateFileName = emailTemplatesConfig["NormalCarrier"]["Upgrade"].get(deviceID,None)
+                templateFileName = emailTemplatesConfig["NormalCarrier"]["Upgrade"].get(workorder['DeviceID'],None)
         else:
             error = ValueError(f"Found incompatible order type after performing an order: '{workorder['OperationType']}'")
             log.error(error)
@@ -605,7 +616,7 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
 # it has a relevant order number, looks up to see if order is completed, and then closes it in TMA.
 def processPostOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,vzwDriver : VerizonDriver,bakaDriver : BakaDriver,workorderNumber,
                               orderViewPeriod="180 Days"):
-
+    # Read full workorder.
     print(f"Cimpl WO {workorderNumber}: Beginning automation")
     workorder = readCimplWorkorder(cimplDriver=cimplDriver,workorderNumber=workorderNumber)
 
@@ -629,12 +640,13 @@ def processPostOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,vz
         return False
 
     # Test to ensure it can properly locate the order number
-    carrierOrderNumber = findPlacedCimplOrderNumber(workorder["Notes"],carrier=carrier)
-    if (carrierOrderNumber is None):
+    carrierOrderNote = workorder.getLatestOrderNote()
+    if (carrierOrderNote is None):
         print(f"Cimpl WO {workorderNumber}: Can't complete WO, as no completed carrier order can be found.")
         return False
+    else:
+        carrierOrderNumber = carrierOrderNote["ClassifiedValue"]
 
-    # TODO only supports verizon and bell atm
     # Read Verizon Order
     if(carrier == "Verizon Wireless"):
         carrierOrder = readVerizonOrder(verizonDriver=vzwDriver,verizonOrderNumber=carrierOrderNumber,orderViewPeriod=orderViewPeriod)
@@ -655,30 +667,32 @@ def processPostOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,vz
 
     # Get device model ID from Cimpl
     print(f"Cimpl WO {workorderNumber}: Determined as valid WO for Shaman rituals")
-    hardwareInfo = classifyHardwareInfo(workorder["HardwareInfo"],workorder["Carrier"],raiseNoEquipmentError=False)
-    if(hardwareInfo):
-        deviceID = hardwareInfo["DeviceID"]
-    else:
+
+    if(not workorder["DeviceID"]):
+        # Quickly generate a list of devices currently specified in device_cimpl_mappings to prompt the user with.
+        commonMappedDevices = set()
+        for thisDeviceID in deviceCimplMappings.values():
+            commonMappedDevices.add(thisDeviceID)
+        commonMappedDevices = list(commonMappedDevices)
         playsoundAsync(paths["media"] / "shaman_attention.mp3")
-        userInput = input("No device is specified in the 'Hardware Info' section of Cimpl. Please manually select the ordered device, or enter anything else to cancel.\n\n"
-                          "1. iPhone 13 128gb\n2. Samsung Galaxy S23FE 128gb\n3. Verizon Orbic 5G UW\n")
-        if(userInput == "1"):
-            deviceID = "iPhone13_128GB"
-        elif(userInput == "2"):
-            deviceID = "GalaxyS23_128GB"
-        elif(userInput == "3"):
-            deviceID = "Orbic"
+        promptString = f"Cimpl WO {workorderNumber}: No device is specified in the 'Hardware Info' section of Cimpl. Please manually select the ordered device, or enter anything else to skip order.\n\n"
+        for counter, thisDeviceID in enumerate(commonMappedDevices):
+            promptString += f"{counter}. {thisDeviceID}\n"
+        userInput = input(promptString).strip()
+        if(isNumber(userInput) and (0 <= int(userInput) < len(commonMappedDevices))):
+            deviceID = commonMappedDevices[int(userInput)]
         else:
             return False
+    else:
+        deviceID = workorder["DeviceID"]
 
     # If operation type is a New Install
     if(workorder["OperationType"] == "New Request"):
-        userID = getNetworkIDFromActions(workorder["Actions"])
-        print(f"Cimpl WO {workorderNumber}: Building new service {carrierOrder['WirelessNumber']} for user {userID}")
-        returnCode = documentTMANewInstall(tmaDriver=tmaDriver,client="Sysco",netID=userID,serviceNum=carrierOrder["WirelessNumber"],installDate=carrierOrder["OrderDate"],device=deviceID,imei=carrierOrder["IMEI"],carrier=carrier)
+        print(f"Cimpl WO {workorderNumber}: Building new service {carrierOrder['WirelessNumber']} for user {workorder['UserNetID']}")
+        returnCode = documentTMANewInstall(tmaDriver=tmaDriver,client="Sysco",netID=workorder['UserNetID'],serviceNum=carrierOrder["WirelessNumber"],installDate=carrierOrder["OrderDate"],device=deviceID,imei=carrierOrder["IMEI"],carrier=carrier)
         if(returnCode == "Completed"):
             writeServiceToCimplWorkorder(cimplDriver=cimplDriver,serviceNum=carrierOrder["WirelessNumber"],carrier=carrier,installDate=carrierOrder["OrderDate"])
-            print(f"Cimpl WO {workorderNumber}: Finished building new service {carrierOrder['WirelessNumber']} for user {userID}")
+            print(f"Cimpl WO {workorderNumber}: Finished building new service {carrierOrder['WirelessNumber']} for user {workorder['UserNetID']}")
         elif(returnCode == "ServiceAlreadyExists"):
             print(f"Cimpl WO {workorderNumber}: Can't build new service for {carrierOrder['WirelessNumber']}, as the service already exists in the TMA database")
             return False
@@ -698,7 +712,7 @@ def processPostOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,vz
     # Write tracking information
     maintenance.validateCimpl(cimplDriver)
     cimplDriver.Workorders_NavToSummaryTab()
-    if(carrierOrder["TrackingNumber"].strip() != ""):
+    if(carrierOrder is not None and carrierOrder["TrackingNumber"].strip() != ""):
         cimplDriver.Workorders_WriteNote(subject="Tracking",noteType="Information Only",status="Completed",content=f"Courier: {carrierOrder['Courier']}\nTracking Number: {carrierOrder['TrackingNumber']}")
 
     # Complete workorder
@@ -726,13 +740,10 @@ def placeMissingEyesafeOrderFromCimplWorkorder(tmaDriver : TMADriver,cimplDriver
             return False
 
     # Get device model ID from Cimpl
-    userID = getNetworkIDFromActions(workorder["Actions"])
-    try:
-        classifiedHardware = classifyHardwareInfo(workorder["HardwareInfo"],carrier=workorder["Carrier"])
-    except ValueError as e:
+    if(not workorder["DeviceID"]):
         print(f"Cimpl WO {workorderNumber}: Failed to validate hardware info, likely due to missing device in order.")
         return False
-    eyesafeAccessory = classifiedHardware["Eyesafe"]
+    eyesafeAccessory = workorder["EyesafeAccessoryID"]
 
     if(not eyesafeAccessory):
         print(f"Cimpl WO {workorderNumber}: No eyesafe device was requested.")
@@ -740,7 +751,7 @@ def placeMissingEyesafeOrderFromCimplWorkorder(tmaDriver : TMADriver,cimplDriver
 
     # Read the people object from TMA.
     maintenance.validateTMA(tmaDriver,"Sysco")
-    tmaDriver.navToLocation(TMALocation(client="Sysco", entryType="People", entryID=userID))
+    tmaDriver.navToLocation(TMALocation(client="Sysco", entryType="People", entryID=workorder['UserNetID']))
     thisPerson = tmaDriver.People_ReadAllInformation()
 
     # Validate the shipping address
@@ -782,8 +793,7 @@ for wo in missingEyesafeWOs:
         playsoundAsync(paths["media"] / "shaman_error.mp3")
         raise e
 
-preProcessWOs = [48634,48635,48641,48642,48643,48645,
-                 48646,48651,48652,48653,48654,48656,48657,48658,48659,48660,48662]
+preProcessWOs = []
 for wo in preProcessWOs:
     try:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
@@ -792,7 +802,10 @@ for wo in preProcessWOs:
         playsoundAsync(paths["media"] / "shaman_error.mp3")
         raise e
 
-postProcessWOs = []
+postProcessWOs = [48522,48523,48524,48525,48526,48527,48528,48529,48530,48542,48546,48552,48553,48554,
+                  48556,48558,48559,48560,48561,48562,48563,48564,48565,48576,48577,48580,48582,48583,48586,48612,
+                  48616,48617,48618,48625,48626,48627,48630,48634,48635,48641,48642,48643,48645,48646,48651,48652
+                  ]
 for wo in postProcessWOs:
     try:
         processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,
@@ -800,7 +813,6 @@ for wo in postProcessWOs:
     except Exception as e:
         playsoundAsync(paths["media"] / "shaman_error.mp3")
         raise e
-
 
 
 # TEMPLATES

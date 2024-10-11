@@ -1,4 +1,7 @@
 import re
+from shaman2.utilities.async_sound import playsoundAsync
+from shaman2.common.paths import paths
+from shaman2.common.logger import log
 
 # This function accepts a phone number in ANY format (assuming it contains an actual phone number an
 # no extra numbers), and converts it to one of three forms:
@@ -97,3 +100,27 @@ def convertStateFormat(stateString,targetFormat):
         return stateName.title()
     else:
         raise ValueError(f"Invalid targetFormat specified '{targetFormat}'")
+
+# This helper method handles warning the user about something, and allowing them to choose to (C)ontinue (True),
+# (S)kip (False) or error out.
+def consoleUserWarning(warningMessage,
+                       continueMessage = "Continuing.",
+                       skipMessage = "Skipping",
+                       errorMessage = "User cancelled program runtime due to warning.",
+                       addUserInstructionsToWarning = True):
+    playsoundAsync(paths["media"] / "shaman_attention.mp3")
+    if(addUserInstructionsToWarning):
+        warningMessage = warningMessage + " Type C to (C)ontinue. Type S to (S)kip. Type anything else to cancel program run."
+    userResponse = input(warningMessage).strip().lower()
+    if(userResponse == "c"):
+        if(continueMessage):
+            print(continueMessage)
+        return True
+    elif(userResponse == "s"):
+        if(skipMessage):
+            print(skipMessage)
+        return False
+    else:
+        error = ValueError(errorMessage)
+        log.error(error)
+        raise error

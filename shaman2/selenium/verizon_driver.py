@@ -219,12 +219,18 @@ class VerizonDriver:
 
         # Line Information
         lineInformationButton = self.browser.searchForElement(by=By.XPATH, value="//a[contains(text(),'Line Information')]",timeout=bodyValueTimeout)
-        self.browser.safeClick(element=lineInformationButton,timeout=bodyValueTimeout)
-        lineInformation = self.browser.searchForElement(by=By.XPATH,value="//div[@aria-labelledby='tab2']/ul/div/li/div[contains(@class,'column-2')]",timeout=bodyValueTimeout)
-        imeiMatch = re.compile(r'Device ID: (\d+)').search(lineInformation.text)
-        order["IMEI"] = imeiMatch.group(1) if imeiMatch else None
-        simMatch = re.compile(r'SIM ID: (\d+)').search(lineInformation.text)
-        order["SIM"] = simMatch.group(1) if simMatch else None
+        if(lineInformationButton):
+            self.browser.safeClick(element=lineInformationButton,timeout=bodyValueTimeout)
+            lineInformation = self.browser.searchForElement(by=By.XPATH,value="//div[@aria-labelledby='tab2']/ul/div/li/div[contains(@class,'column-2')]",timeout=bodyValueTimeout)
+            imeiMatch = re.compile(r'Device ID: (\d+)').search(lineInformation.text)
+            order["IMEI"] = imeiMatch.group(1) if imeiMatch else None
+            simMatch = re.compile(r'SIM ID: (\d+)').search(lineInformation.text)
+            order["SIM"] = simMatch.group(1) if simMatch else None
+        # Sometimes, there just isn't any line information. Cause of course there's not. No reason as far as I can
+        # tell, sometimes Verizon just... doesn't show it.
+        else:
+            order["IMEI"] = None
+            order["SIM"] = None
 
         #endregion === Body Values ===
 

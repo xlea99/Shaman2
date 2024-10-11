@@ -11,6 +11,7 @@ from shaman2.selenium.browser import Browser
 from shaman2.common.logger import log
 from shaman2.common.config import mainConfig, devices, deviceCimplMappings, accessories,accessoryCimplMappings
 from shaman2.common.paths import paths
+from shaman2.data_storage.cimpl_storage import CimplWO
 from shaman2.utilities.async_sound import playsoundAsync
 from shaman2.utilities.shaman_utils import convertServiceIDFormat
 
@@ -77,7 +78,7 @@ class CimplDriver:
                 usernameInput.send_keys(mainConfig["authentication"]["cimplUser"])
 
                 continueButton = self.browser.searchForElement(by=By.XPATH,value="//button[@type='submit']",timeout=10)
-                continueButton.click()
+                self.browser.safeClick(continueButton,timeout=5)
                 self.waitForLoadingScreen()
 
                 # Now, we should be on JumpCloud login screen
@@ -114,6 +115,7 @@ class CimplDriver:
                 # Search for the tenantSelectionDropdown for 3 minutes, then click "Sysco"
                 tenantSelectionDropdownXPath = "//label[normalize-space(text())='Tenant']/following-sibling::span//span[@class='select-icon']"
                 tenantSelectionDropdown = self.browser.searchForElement(by=By.XPATH,value=tenantSelectionDropdownXPath,timeout=180,testClickable=True)
+                print("MFA completed! Continuing.")
                 tenantSelectionDropdown.click()
                 syscoTenantOptionXPath = "//div[@class='tenantOptions']//li[normalize-space(text())='Sysco']"
                 syscoTenantOption = self.browser.searchForElement(by=By.XPATH,value=syscoTenantOptionXPath,timeout=5)
@@ -549,41 +551,47 @@ class CimplDriver:
     # Combined method for reading a full workorder into a neat dictionary. Assumes
     # that we're currently open on a workorder.
     def Workorders_ReadFullWorkorder(self):
-        returnDict = {}
+        newWO = CimplWO()
+
         # Read all header info
-        returnDict["WONumber"] = self.Workorders_ReadWONumber()
-        returnDict["Status"] = self.Workorders_ReadStatus()
-        returnDict["Carrier"] = self.Workorders_ReadCarrier()
-        returnDict["DueDate"] = self.Workorders_ReadDueDate()
-        returnDict["OperationType"] = self.Workorders_ReadOperationType()
+        newWO["WONumber"] = self.Workorders_ReadWONumber()
+        newWO["Status"] = self.Workorders_ReadStatus()
+        newWO["Carrier"] = self.Workorders_ReadCarrier()
+        newWO["DueDate"] = self.Workorders_ReadDueDate()
+        newWO["OperationType"] = self.Workorders_ReadOperationType()
 
         # Read summary info
         self.Workorders_NavToSummaryTab()
-        returnDict["Comment"] = self.Workorders_ReadComment()
-        returnDict["ReferenceNumber"] = self.Workorders_ReadReferenceNo()
-        returnDict["Subject"] = self.Workorders_ReadSubject()
-        returnDict["WorkorderOwner"] = self.Workorders_ReadWorkorderOwner()
-        returnDict["Requestor"] = self.Workorders_ReadRequester()
-        returnDict["Notes"] = self.Workorders_ReadNotes()
+        newWO["Comment"] = self.Workorders_ReadComment()
+        newWO["ReferenceNumber"] = self.Workorders_ReadReferenceNo()
+        newWO["Subject"] = self.Workorders_ReadSubject()
+        newWO["WorkorderOwner"] = self.Workorders_ReadWorkorderOwner()
+        newWO["Requestor"] = self.Workorders_ReadRequester()
+
+        # Read notes
+        allWONotes = self.Workorders_ReadNotes()
+        for note in allWONotes:
+            newWO.addNote(user=note["User"],createdDate=note["CreatedDate"],subject=note["Subject"],
+                          noteType=note["Type"],status=note["Status"],content=note["Content"])
 
         # Read detail info
         self.Workorders_NavToDetailsTab()
-        returnDict["ServiceID"] = self.Workorders_ReadServiceID()
-        returnDict["Account"] = self.Workorders_ReadAccount()
-        returnDict["StartDate"] = self.Workorders_ReadStartDate()
-        returnDict["HardwareInfo"] = self.Workorders_ReadHardwareInfo()
-        returnDict["Actions"] = self.Workorders_ReadActions()
+        newWO["ServiceID"] = self.Workorders_ReadServiceID()
+        newWO["Account"] = self.Workorders_ReadAccount()
+        newWO["StartDate"] = self.Workorders_ReadStartDate()
+        newWO["HardwareInfo"] = self.Workorders_ReadHardwareInfo()
+        newWO["Actions"] = self.Workorders_ReadActions()
 
-        foundShippingAddress = False
-        for actionString in returnDict["Actions"]:
-            if(actionString.startswith("Shipping Address")):
-                returnDict["RawShippingAddress"] = actionString.split("Shipping Address -")[1].strip()
-                foundShippingAddress = True
-                break
-        if(not foundShippingAddress):
-            returnDict["RawShippingAddress"] = None
+        #foundShippingAddress = False
+        #for actionString in returnDict["Actions"]:
+        #    if(actionString.startswith("Shipping Address")):
+        #        returnDict["RawShippingAddress"] = actionString.split("Shipping Address -")[1].strip()
+        #        foundShippingAddress = True
+        #        break
+        #if(not foundShippingAddress):
+        #    returnDict["RawShippingAddress"] = None
 
-        return returnDict
+        return newWO
 
     # Front (Summary) page write methods
     def Workorders_WriteComment(self,comment):
@@ -849,138 +857,4 @@ class CimplDriver:
 
     #endregion === Utility ===
 
-# This helper method looks through a list of Notes to try and locate the Order Number. It prioritizes recent orders
-# over older ones.
-def findPlacedCimplOrderNumber(noteList : list,carrier : str):
-    targetOrder = None
-    targetOrderDate = None
-    verizonOrderPattern = re.compile(r"MB\d+")
-    bakaOrderPattern = re.compile(r"N\d{8}")
 
-    if(carrier.lower() == "verizon wireless"):
-        targetOrderPattern = verizonOrderPattern
-    elif(carrier.lower() == "bell mobility"):
-        targetOrderPattern = bakaOrderPattern
-    else:
-        raise ValueError("Unsupported carrier order type.")
-
-    for note in noteList:
-        thisDate = datetime.strptime(note["CreatedDate"], '%m/%d/%Y %I:%M %p')
-
-        subject = note["Subject"].strip().lower()
-        validOrderPlacedStrings = ["order placed","order number","new order number","order re-placed","order replaced","order confirmation","ordered"]
-        if(subject in validOrderPlacedStrings):
-            match = targetOrderPattern.search(note["Content"])
-            if match:
-                if(targetOrderDate is None or thisDate > targetOrderDate):
-                    targetOrderDate = thisDate
-                    targetOrder = match.group()
-    return targetOrder
-
-# This helper method simply extracts the assigned userID from the Actions of a Cimpl WO.
-def getNetworkIDFromActions(actionsList : list):
-    for action in actionsList:
-        if(action.startswith("Assigned to Employee")):
-            return action.split("Assigned to Employee - ")[1].split(" - ")[0]
-
-# This helper method takes a raw hardwareInfo list and classifies it in to the final deviceID and set of
-# accessoryIDs.
-def classifyHardwareInfo(hardwareInfo : list,carrier,raiseNoEquipmentError=True):
-    allAccessoryIDs = []
-    deviceID = None
-    if(hardwareInfo):
-        for hardware in hardwareInfo:
-            if(hardware["Type"] == "Equipment"):
-                try:
-                    deviceID = deviceCimplMappings[hardware["Name"].strip().strip('"')]
-                except KeyError:
-                    playsoundAsync(paths["media"] / "shaman_attention.mp3")
-                    # TODO pretty duct-tapey, huh?
-                    response = input(f"Unknown Cimpl device detected: '{hardware['Name']}'. If this is a valid Cimpl device, add it to the device_cimpl_mappings.toml and press enter to reload the config. Type anything else to exit.")
-                    if(response):
-                        error = KeyError(f"'{hardware['Name']}' is not a mapped Cimpl device.")
-                        log.error(error)
-                        raise error
-                    else:
-                        # If the user makes changes, reload the cimpl mappings program-wide to accommodate new changes.
-                        deviceCimplMappings.reload()
-                        deviceID = deviceCimplMappings[hardware["Name"].strip().strip('"')]
-            elif(hardware["Type"] == "Accessory"):
-                try:
-                    thisAccessory = accessoryCimplMappings[hardware["Name"]]
-                except KeyError:
-                    playsoundAsync(paths["media"] / "shaman_attention.mp3")
-                    # TODO pretty duct-tapey, huh?
-                    response = input(f"Unknown Cimpl accessory detected: '{hardware['Name']}'. If this is a valid Cimpl accessory, add it to the accessory_cimpl_mappings.toml and press enter to reload the config. Type anything else to exit.")
-                    if (response):
-                        error = KeyError(f"'{hardware['Name']}' is not a mapped Cimpl accessory.")
-                        log.error(error)
-                        raise error
-                    else:
-                        # If the user makes changes, reload the cimpl mappings program-wide to accommodate new changes.
-                        accessoryCimplMappings.reload()
-                        thisAccessory = accessoryCimplMappings[hardware["Name"].strip().strip('"')]
-                if(isinstance(thisAccessory,(list,tomlkitArray))):
-                    allAccessoryIDs.extend(thisAccessory)
-                else:
-                    allAccessoryIDs.append(thisAccessory)
-    else:
-        if(raiseNoEquipmentError):
-            raise(ValueError("Hardware info is empty in Cimpl!"))
-        else:
-            return False
-
-    # Check to ensure no duplicate accessory types due to a Sysco user getting a bit over-excited
-    # with accessory the order page
-    allAccessoryIDs = set(allAccessoryIDs)
-
-    finalAccessoryIDs = set()
-    usedTypes = set()
-    for accessoryID in allAccessoryIDs:
-        if(accessories[accessoryID]["type"] not in usedTypes):
-            usedTypes.add(accessories[accessoryID]["type"])
-            finalAccessoryIDs.add(accessoryID)
-
-    if(carrier.lower() == "verizon wireless"):
-        if(not mainConfig["sysco"]["orderVehicleChargers"]):
-            for accessoryID in finalAccessoryIDs:
-                if(accessories[accessoryID]["type"] == "vehicleCharger"):
-                    finalAccessoryIDs.remove(accessoryID)
-                    break
-        # TODO for now, the "default order wall adapter" system works, but it could do with an overhaul to support more cases down the line
-        if(devices[deviceID]["tmaSubType"] == "Smart Phone"):
-            extraAccessoriesToOrder = mainConfig["sysco"]["vzwAccessoriesToAlwaysOrder_SmartPhone"]
-        elif(devices[deviceID]["tmaSubType"] == "Aircard"):
-            extraAccessoriesToOrder = mainConfig["sysco"]["vzwAccessoriesToAlwaysOrder_Aircard"]
-        elif(devices[deviceID]["tmaSubType"] == "Tablet"):
-            extraAccessoriesToOrder = mainConfig["sysco"]["vzwAccessoriesToAlwaysOrder_Tablet"]
-        else:
-            extraAccessoriesToOrder = []
-        finalAccessoryIDs = finalAccessoryIDs | set(extraAccessoriesToOrder)
-
-    # TODO this is such glue it physically hurts. We need to build a system where we assume the customer is always an idiot, and builds accessoires that way
-    # Now we account for any eyesafe
-    eyesafeDevices = []
-    for accessoryID in finalAccessoryIDs:
-        if(accessories[accessoryID]["type"] == "eyesafe"):
-            eyesafeDevices.append(accessoryID)
-
-    for thisEyesafeDevice in eyesafeDevices:
-        finalAccessoryIDs.discard(thisEyesafeDevice)
-
-    if(len(eyesafeDevices) == 0):
-        eyesafeDevice = None
-    elif(len(eyesafeDevices) == 1):
-        eyesafeDevice = eyesafeDevices[0]
-    else:
-        playsoundAsync(paths["media"] / "shaman_attention.mp3")
-        userResponse = input(f"An idiot moron Sysco employee put more than one Eyesafe device in the accessories. Proceeding with the first found: {eyesafeDevices[0]}. Press enter to continue, anything else to cancel.")
-        if(userResponse):
-            error = ValueError("User cancelled accessory classification after a moron Sysco user added more than one eyesafe accessory.")
-            log.error(error)
-            raise error
-        else:
-            eyesafeDevice = eyesafeDevices[0]
-
-
-    return {"DeviceID" : deviceID, "AccessoryIDs" : finalAccessoryIDs, "Eyesafe" : eyesafeDevice}
