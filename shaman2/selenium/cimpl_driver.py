@@ -74,7 +74,7 @@ class CimplDriver:
             else:
                 self.waitForLoadingScreen()
 
-                usernameInput = self.browser.searchForElement(by=By.XPATH,value="//input[@id='username']",timeout=3,testClickable=True)
+                usernameInput = self.browser.searchForElement(by=By.XPATH,value="//input[@id='username']",timeout=30,testClickable=True)
                 usernameInput.send_keys(mainConfig["authentication"]["cimplUser"])
 
                 continueButton = self.browser.searchForElement(by=By.XPATH,value="//button[@type='submit']",timeout=10)

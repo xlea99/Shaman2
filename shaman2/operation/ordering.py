@@ -755,7 +755,7 @@ def placeMissingEyesafeOrderFromCimplWorkorder(tmaDriver : TMADriver,cimplDriver
     thisPerson = tmaDriver.People_ReadAllInformation()
 
     # Validate the shipping address
-    validatedAddress = validateAddress(rawAddressString=workorder["RawShippingAddress"])
+    validatedAddress = validateAddress(rawAddressString=workorder["UserShipping"])
     print(validatedAddress)
 
     # Handle ordering Eyesafe
@@ -793,7 +793,7 @@ for wo in missingEyesafeWOs:
         playsoundAsync(paths["media"] / "shaman_error.mp3")
         raise e
 
-preProcessWOs = []
+preProcessWOs = [48653,48660]
 for wo in preProcessWOs:
     try:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
