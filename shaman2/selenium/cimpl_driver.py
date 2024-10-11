@@ -378,7 +378,7 @@ class CimplDriver:
     def Filters_OpenFilterMenu(self):
         self.browser.switchToTab("Cimpl")
         filterDropdownArrowString = "//div/div/div/div/cimpl-collapsible-box/div/div[contains(@class,'cimpl-collapsible-box')]/div/div/i[contains(@class,'cimpl-collapsible-box')]"
-        filterDropdownArrow = self.browser.find_element(by=By.XPATH,value=filterDropdownArrowString)
+        filterDropdownArrow = self.browser.searchForElement(by=By.XPATH,value=filterDropdownArrowString,timeout=30)
         # This means we have to click to expand the filter submenu.
         if("headerArrowClose" in filterDropdownArrow.get_attribute("class")):
             filterDropdownArrow.click()

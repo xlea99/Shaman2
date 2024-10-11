@@ -24,6 +24,7 @@ def readCimplWorkorder(cimplDriver : CimplDriver,workorderNumber):
     workorderNumber = str(workorderNumber)
 
     cimplDriver.Filters_Clear()
+    cimplDriver.waitForLoadingScreen()
     cimplDriver.Filters_AddWorkorderNumber(status="Equals",workorderNumber=workorderNumber)
     cimplDriver.Filters_Apply()
 
@@ -523,7 +524,7 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
         cimplDriver.Workorders_ApplyChanges()
 
     # Validate the shipping address
-    validatedAddress = validateAddress(rawAddressString=workorder["RawShippingAddress"])
+    validatedAddress = validateAddress(rawAddressString=workorder["UserShipping"])
     print(f"Cimpl WO {workorderNumber}: Validated address as: {validatedAddress}")
 
     # If operation type is a New Install
