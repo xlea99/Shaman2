@@ -712,7 +712,7 @@ def processPostOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,vz
     # Write tracking information
     maintenance.validateCimpl(cimplDriver)
     cimplDriver.Workorders_NavToSummaryTab()
-    if(carrierOrder is not None and carrierOrder["TrackingNumber"].strip() != ""):
+    if(carrierOrder["TrackingNumber"] is not None and carrierOrder["TrackingNumber"].strip() != ""):
         cimplDriver.Workorders_WriteNote(subject="Tracking",noteType="Information Only",status="Completed",content=f"Courier: {carrierOrder['Courier']}\nTracking Number: {carrierOrder['TrackingNumber']}")
 
     # Complete workorder
@@ -802,10 +802,7 @@ for wo in preProcessWOs:
         playsoundAsync(paths["media"] / "shaman_error.mp3")
         raise e
 
-postProcessWOs = [48522,48523,48524,48525,48526,48527,48528,48529,48530,48542,48546,48552,48553,48554,
-                  48556,48558,48559,48560,48561,48562,48563,48564,48565,48576,48577,48580,48582,48583,48586,48612,
-                  48616,48617,48618,48625,48626,48627,48630,48634,48635,48641,48642,48643,48645,48646,48651,48652
-                  ]
+postProcessWOs = []
 for wo in postProcessWOs:
     try:
         processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,

@@ -199,7 +199,7 @@ class CimplWO():
         for actionString in self.vals["Actions"]:
             # This action string contains both our user's netID AND their name.
             if(actionString.startswith("Assigned to Employee")):
-                header, netID, rawName = actionString.split("-")
+                header, netID, rawName = actionString.split("-",2)
                 lastName, firstName = rawName.split(",")
                 netID = netID.strip()
                 firstName = firstName.strip()
