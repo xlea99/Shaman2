@@ -151,7 +151,7 @@ class EyesafeDriver:
         zipCode = zipCode[:5]
 
         # This helper method simply waits until the loader is first found, THEN until it disappears.
-        def waitForLoader(timeout=30):
+        def waitForLoader(timeout=10):
             loaderXPath = "//div[@id='load']"
 
             # First, find the loader
@@ -167,7 +167,7 @@ class EyesafeDriver:
 
         # This helper method simply "commits" the change of a single shipping field by clicking off the field onto the
         # page, and waiting for the loader to disappear.
-        def commitField(timeout=15):
+        def commitField(timeout=10):
             customerHeaderToClickXPath = "//h2[contains(text(),'Customer')]"
             self.browser.safeClick(by=By.XPATH,value=customerHeaderToClickXPath,timeout=timeout,scrollIntoView=True)
             waitForLoader(timeout=timeout)
@@ -216,6 +216,7 @@ class EyesafeDriver:
             zipCodeFieldXPath = "//input[@id='postCodeInput']"
             zipCodeField = self.browser.searchForElement(by=By.XPATH,value=zipCodeFieldXPath,timeout=10,testClickable=True)
             # Click to trigger the autofill
+            self.browser.scrollIntoView(zipCodeField)
             zipCodeField.click()
             zipCodeField.clear()
             # We first send a dummy zip code, to trigger the dreaded loader which can kill the whole page.

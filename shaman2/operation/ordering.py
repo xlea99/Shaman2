@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 from selenium.webdriver.common.by import By
 from shaman2.selenium.browser import Browser
@@ -164,7 +165,9 @@ def placeVerizonUpgrade(verizonDriver : VerizonDriver,serviceID,deviceID : str,a
 
     # Pull up the line and click "upgrade"
     verizonDriver.pullUpLine(serviceID=serviceID)
-    verizonDriver.LineViewer_UpgradeLine()
+    upgradeStatus = verizonDriver.LineViewer_UpgradeLine()
+    if(upgradeStatus in ["NotETFEligible","MTNPending"]):
+        return upgradeStatus
     # This should send us to the device selection page.
 
     # Search for the device, click on it, select contract, and add to cart.
@@ -487,9 +490,14 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
             return False
     # Check to make sure no existing comments interfere with the request.
     if(workorder["Comment"] != ""):
-        warningMessage = f"Cimpl WO {workorderNumber}: WARNING - There is a comment on this workorder:\n\"{workorder['Comment']}\"\n\n"
-        if(not consoleUserWarning(warningMessage)):
-            return False
+        # Cimpl requests often have comments now that read something like "Request Number REQ10005410981". These are
+        # simply API submitted orders, and we assume these don't need to be checked.
+        snowRequestNumberRegex = r"^\s*Request Number REQ\d+\s*$"
+        workorderRegexMatches = re.findall(snowRequestNumberRegex,workorder["Comment"].strip())
+        if(not workorderRegexMatches):
+            warningMessage = f"Cimpl WO {workorderNumber}: WARNING - There is a comment on this workorder:\n\"{workorder['Comment']}\"\n\n"
+            if(not consoleUserWarning(warningMessage)):
+                return False
     # Check to make sure no existing notes interfere with the request.
     if(len(workorder["Notes"]) > 0):
         warningMessage = f"Cimpl WO {workorderNumber}: WARNING - There are existing notes on this workorder."
@@ -542,7 +550,16 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
                                           firstName=workorder["UserFirstName"],lastName=workorder["UserLastName"],companyName="Sysco",
                                           address1=validatedAddress["Address1"],address2=validatedAddress.get("Address2", None),city=validatedAddress["City"],
                                           state=validatedAddress["State"], zipCode=validatedAddress["ZipCode"],reviewMode=reviewMode,contactEmails=thisPerson.info_Email)
-        print(f"Cimpl WO {workorderNumber}: Finished ordering upgrade for user {workorder['UserNetID']} on line {workorder['ServiceID']}")
+        if(orderNumber == "NotETFEligible"):
+            playsoundAsync(paths["media"] / "shaman_attention.mp3")
+            input(f"Cimpl WO {workorderNumber}: Not yet eligible for ETF upgrade. Open SNow ticket and cancel request. Press any key to continue to next request.")
+            return False
+        elif(orderNumber == "MTNPending"):
+            playsoundAsync(paths["media"] / "shaman_attention.mp3")
+            input(f"Cimpl WO {workorderNumber}: Line is stuck on 'MTNPending' error. Please submit an SM ticket with Verizon to resolve. Press any ket to continue to next request.")
+            return False
+        else:
+            print(f"Cimpl WO {workorderNumber}: Finished ordering upgrade for user {workorder['UserNetID']} on line {workorder['ServiceID']}")
     # Otherwise, error out.
     else:
         error = ValueError(f"Incorrect operation type for preprocess of workorder: '{workorder['OperationType']}'")
@@ -602,7 +619,7 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
             with open(templatePath, "r") as file:
                 emailContent = file.read()
 
-            cimplDriver.Workorders_SetStatus(status="Confirm",emailRecipients=thisPerson.info_Email,emailCCs="btnetworkservicesmobility@sysco.com",emailContent=emailContent)
+            cimplDriver.Workorders_SetStatus(status="Confirm",emailRecipients=thisPerson.info_Email,emailCCs="BTNetworkServicesMobility@corp.sysco.com",emailContent=emailContent)
             print(f"Cimpl WO {workorderNumber}: Added order number to workorder notes and confirmed request.")
 
     if(subjectLine is not None):
@@ -794,7 +811,7 @@ for wo in missingEyesafeWOs:
         playsoundAsync(paths["media"] / "shaman_error.mp3")
         raise e
 
-preProcessWOs = [48653,48660]
+preProcessWOs = []
 for wo in preProcessWOs:
     try:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
@@ -803,7 +820,9 @@ for wo in preProcessWOs:
         playsoundAsync(paths["media"] / "shaman_error.mp3")
         raise e
 
-postProcessWOs = []
+postProcessWOs = [48676,48696,48743,48745,48751,48754,48755,48756,48760,48762,48763,48764,48765,48785,48786,48787,
+                  48788,48789,48790,48839,48844,48845,48846,48848,48850,48851,48853,48854,48856,48857,48858,48860,
+                  48861,48862,48866,48867,48868,48870]
 for wo in postProcessWOs:
     try:
         processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,

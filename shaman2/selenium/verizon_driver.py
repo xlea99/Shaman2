@@ -51,7 +51,7 @@ class VerizonDriver:
                     raise error
             else:
                 #region === USERNAME LOGIN SCREEN ===
-                usernameFieldXPath = "//label[text()='User ID']/following-sibling::input"
+                usernameFieldXPath = "//input[@id='pwdUserID']"
                 usernameField = self.browser.searchForElement(by=By.XPATH,value=usernameFieldXPath,testClickable=True,timeout=30)
                 usernameField.send_keys(mainConfig["authentication"]["verizonUser"])
                 usernameField.send_keys(Keys.ENTER)
@@ -62,11 +62,11 @@ class VerizonDriver:
 
                 #region === HWYLTLI SCREEN ===
                 # This screen may pop up, asking the user how they want to log in.
-                howDoYouWantToLogInHeaderXPath = "//h3[contains(text(),'How do you want to log in?')]"
+                howDoYouWantToLogInHeaderXPath = "//*[contains(text(),'How do you want to log in?')]"
                 howDoYouWantToLogInHeader = self.browser.searchForElement(by=By.XPATH,value=howDoYouWantToLogInHeaderXPath,
                                               testClickable=True,testLiteralClick=True,timeout=3)
                 if(howDoYouWantToLogInHeader):
-                    logInWithPasswordOptionXPath = "//a[contains(text(),'Log in with my password')]"
+                    logInWithPasswordOptionXPath = "//div[@class='pwdless_option_text']/a[normalize-space(text())='Password']"
                     logInWithPasswordOption = self.browser.searchForElement(by=By.XPATH,value=logInWithPasswordOptionXPath,testClickable=True,timeout=30)
                     logInWithPasswordOption.click()
                     # Wait for HDYWTLI header to disappear.
@@ -76,7 +76,7 @@ class VerizonDriver:
 
                 #region === PASSWORD LOGIN SCREEN ===
                 # This screen means we're on the enter password screen.
-                passLogInHeaderXPath = "//h3[text()='Log in']"
+                passLogInHeaderXPath = "//h1[normalize-space(text())='Log in']"
                 passLogInHeader = self.browser.searchForElement(by=By.XPATH,value=passLogInHeaderXPath,
                                               testClickable=True,testLiteralClick=True,timeout=3)
                 if(passLogInHeader):
@@ -387,7 +387,7 @@ class VerizonDriver:
                     waiverOption = self.browser.searchForElement(by=By.XPATH,value=waiverOptionXPath,timeout=15,testClickable=True)
                     waiverOption.click()
 
-                    elementNotEligibleXPath = "//div[contains(@class,'Notification')][contains(text(),'The wireless number you are attempting to upgrade is not eligible to use a Waiver.')]"
+                    elementNotEligibleXPath = "//*[contains(text(),'The wireless number you are attempting to upgrade is not eligible to use a Waiver.')]"
                     if(self.browser.searchForElement(by=By.XPATH,value=elementNotEligibleXPath,timeout=5)):
                         return "NotETFEligible"
 
@@ -427,15 +427,52 @@ class VerizonDriver:
     # method contains "attempts" parameter which will repeat trying to clear the cart if it seems unsuccessful.
     def emptyCart(self,attempts=2):
         self.navToHomescreen()
-
-        miniCart = self.browser.searchForElement(by=By.XPATH,value="//app-mini-cart/div/div/span",timeout=30,testClickable=True)
-        miniCart.click()
-
+        miniCartXPath = "//app-mini-cart/div/div/span"
         noItemsInCartXPath = "//div[contains(text(),'No items in the cart yet, please continue shopping.')]"
-        if (not self.browser.searchForElement(by=By.XPATH,value=noItemsInCartXPath,timeout=2)):
-            viewCartButtonXPath = "//button[@clickname='MB View Shopping Cart']"
+        viewCartButtonXPath = "//button[@clickname='MB View Shopping Cart']"
+
+        # This helper function simply attempts to open the cart, and checks that it was opened correctly. If it wasn't
+        # after timeout, it closes the cart and returns False. Otherwise, returns True.
+        def attemptCartOpen(timeout=10):
+            # First, open the miniCart
+            miniCart = self.browser.searchForElement(by=By.XPATH, value=miniCartXPath, timeout=30, testClickable=True)
+            self.browser.safeClick(element=miniCart,timeout=3)
+
+            # Now, we search for either our noItemsInCart or viewCart element, meaning it was successfully opened.
+            openCartResult = self.browser.searchForElement(by=By.XPATH,value=[noItemsInCartXPath,viewCartButtonXPath],timeout=timeout)
+
+            # If the cart opened successfully, we return true.
+            if(openCartResult):
+                return True
+            # Otherwise, exit the cart and return False.
+            else:
+                cartCloseIconXPath = "//span[contains(@class,'cart-close')]"
+                cartCloseIcon = self.browser.searchForElement(by=By.XPATH,value=cartCloseIconXPath,timeout=3)
+                self.browser.safeClick(element=cartCloseIcon,timeout=3)
+                return False
+
+        # We attempt to open the cart successfully 5 times.
+        openedCart = False
+        for i in range(5):
+            openCartResult = attemptCartOpen()
+            if(openCartResult):
+                openedCart = True
+                break
+        if(not openedCart):
+            error = RuntimeError("Could not successfully open Verizon cart so that it wasn't stuck at loading after 5 attempts.")
+            log.error(error)
+            raise error
+
+        # Now, we search to see whether or not the cart is full or not.
+        noItemsInCart = self.browser.searchForElement(by=By.XPATH, value=noItemsInCartXPath, timeout=2)
+
+        # Simply return True, since we're done if no items in cart.
+        if (noItemsInCart):
+            return True
+        # Otherwise, clear the cart.
+        else:
             viewCartButton = self.browser.searchForElement(by=By.XPATH,value=viewCartButtonXPath,timeout=60,testClickable=True)
-            viewCartButton.click()
+            self.browser.safeClick(element=viewCartButton,timeout=5,raiseError=False)
 
             for i in range(attempts):
                 shoppingCartHeaderXPath = "//div[contains(@class,'device-shopping-cart-content-left')]//h1[contains(text(),'Shopping cart')]"
@@ -526,11 +563,11 @@ class VerizonDriver:
 
             twoYearContractSelectionXPath = "//div/ul/li/div[contains(text(),'2 Year Contract Required')]/parent::li"
             twoYearContractSelection = self.browser.searchForElement(by=By.XPATH,value=twoYearContractSelectionXPath,timeout=15,testClickable=True)
-            self.browser.safeClick(element=twoYearContractSelection,timeout=10,scrollIntoView=True)
+            self.browser.safeClick(element=twoYearContractSelection,timeout=60,scrollIntoView=True)
         else:
             twoYearContractXPath = "//div[contains(@class,'payment-option-each')]//div[contains(text(),'2 year contract')]"
             twoYearContractSelection = self.browser.searchForElement(by=By.XPATH,value=twoYearContractXPath,timeout=15,testClickable=True,raiseError=True)
-            self.browser.safeClick(element=twoYearContractSelection,timeout=10,scrollIntoView=True)
+            self.browser.safeClick(element=twoYearContractSelection,timeout=60,scrollIntoView=True)
     def DeviceSelection_DeviceView_DeclineDeviceProtection(self):
         declineDeviceProtectionOptionBaseXPath = "//div[contains(text(),'Decline Device Protection')]"
         declineDeviceProtectionOption = self.browser.searchForElement(by=By.XPATH,value=f"{declineDeviceProtectionOptionBaseXPath}/parent::div/parent::div",timeout=15,testClickable=True)
@@ -717,9 +754,12 @@ class VerizonDriver:
         def selectAreaCode():
             # First, open the dropdown. Wait until either the scrollArea is found (meaning area codes should be listed)
             # or Verizon says that there's no area codes available.
-            self.browser.safeClick(by=By.XPATH,value=areaCodeDropdownXPath,timeout=60,
+            initialClickResult = self.browser.safeClick(by=By.XPATH,value=areaCodeDropdownXPath,timeout=20,raiseError=False,
                                    successfulClickCondition=lambda b:
                                    (b.searchForElement(by=By.XPATH,value=areaCodeScrollAreaXPath) or b.searchForElement(by=By.XPATH,value=noNumbersAvailableXPath)))
+            if(not initialClickResult):
+                return False
+
             # Wait for the spinner.
             self.browser.searchForElement(by=By.XPATH, value=zipCodeSpinnerXPath, timeout=30, invertedSearch=True,minSearchTime=3)
 

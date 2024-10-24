@@ -220,7 +220,7 @@ class CimplDriver:
         clearAllButtonString = "//div/div/cimpl-button[@class='ng-isolate-scope']/button[@automation-id='__button']/div[@class='button-content']/span[@class='button-label ng-binding uppercase'][text()='Clear All']/parent::div/parent::button"
         clearAllButton = self.browser.searchForElement(by=By.XPATH,value=clearAllButtonString,timeout=3,testClickable=True)
         if(clearAllButton):
-            self.browser.safeClick(element=clearAllButton,timeout=10)
+            self.browser.safeClick(element=clearAllButton,timeout=10,raiseError=False)
             self.waitForLoadingScreen()
 
     # Methods to add specific filters, along with their status and value.

@@ -110,9 +110,9 @@ def consoleUserWarning(warningMessage,
                        addUserInstructionsToWarning = True):
     playsoundAsync(paths["media"] / "shaman_attention.mp3")
     if(addUserInstructionsToWarning):
-        warningMessage = warningMessage + " Type C to (C)ontinue. Type S to (S)kip. Type anything else to cancel program run."
+        warningMessage = warningMessage + " Type Enter or C to (C)ontinue. Type S to (S)kip. Type anything else to cancel program run."
     userResponse = input(warningMessage).strip().lower()
-    if(userResponse == "c"):
+    if(userResponse == "c" or userResponse == ""):
         if(continueMessage):
             print(continueMessage)
         return True

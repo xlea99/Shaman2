@@ -16,6 +16,7 @@ class DriveSync:
     SCOPES = ['https://www.googleapis.com/auth/drive.file']
     SHAMAN2_DRIVE_FOLDER_ID = "15ajPAAzJc9UK0fWxM3L3uOC0sprprPW4"
 
+    # Simple __init__ method
     def __init__(self,buildService = True):
         self.service = None
         if(buildService):
@@ -152,5 +153,5 @@ class DriveSync:
     #endregion === File/Folder Handling ===
 
 driveSync = DriveSync()
-uploadResult = driveSync.upload(localFilePath=paths["config"] / "clients.toml",driveFilePath="test/clients.toml")
-downloadResult = driveSync.download(localFilePath=paths["bin"] / "clients.toml",driveFilePath="test/clients.toml")
+#uploadResult = driveSync.upload(localFilePath=paths["config"] / "clients.toml",driveFilePath="test/clients.toml")
+#downloadResult = driveSync.download(localFilePath=paths["bin"] / "clients.toml",driveFilePath="test/clients.toml")
