@@ -124,6 +124,7 @@ class TMAPeople:
         self.info_Client = None
         self.info_FirstName = None
         self.info_LastName = None
+        self.info_Manager = None
         self.info_EmployeeID = None
         self.info_Email = None
         self.info_OpCo = None
@@ -1775,6 +1776,8 @@ class TMADriver():
         peopleObject.info_LastName = self.browser.searchForElement(by=By.XPATH, value=lastNameString,timeout=10).text
         employeeIDString = "//div/div/fieldset/ol/li/span[contains(@id,'Detail_lblEmployeeID__label')]/following-sibling::span"
         peopleObject.info_EmployeeID = self.browser.searchForElement(by=By.XPATH, value=employeeIDString,timeout=10).text
+        managerString = "//div/div/fieldset/ol/li/span[contains(@id,'Detail_ddlManager__label')]/following-sibling::span"
+        peopleObject.info_Manager = self.browser.searchForElement(by=By.XPATH,value=managerString,timeout=10).text
         emailString = "//div/div/fieldset/ol/li/span[contains(@id,'Detail_txtEmail__label')]/following-sibling::span"
         peopleObject.info_Email = self.browser.searchForElement(by=By.XPATH, value=emailString,timeout=10).text
         employeeStatusString = "//div/div/fieldset/ol/li/span[contains(@id,'Detail_ddlpeopleStatus__label')]/following-sibling::span"
@@ -2337,6 +2340,76 @@ class TMADriver():
         log.info("Successfully created assignment.")
 
     # endregion === Assignment Navigation ===
+
+    #region === Special Searches ===
+
+    # This method attempts to return the People object of a Sysco user, given a simple userName to search, and a manager
+    # name to verify against
+    def searchPeopleFromNameAndSup(self,userName, supervisorName):
+        self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
+        self.readPage()
+
+        # Clean the supervisor name for later use.
+        supervisorName = re.sub(r'[^A-Za-z0-9]', '', supervisorName)
+
+        # First, we need to make sure we're on Sysco
+        if(self.currentLocation.client != "Sysco"):
+            self.navToClientHome("Sysco")
+
+        selectionMenuString = "//div/div/div/div/div/div/select[starts-with(@id,'ctl00_LeftPanel')]/option"
+        searchBarString = "//div/div/fieldset/input[@title='Press (ENTER) to submit. ']"
+        inactiveCheckboxString = "//div/div/div/input[starts-with(@id,'ctl00_LeftPanel')][contains(@id,'chkClosed')][@type='checkbox']"
+
+        peopleOption = self.browser.find_element(by=By.XPATH,value=selectionMenuString + "[@value='people']")
+        peopleOption.click()
+        self.waitForTMALoader()
+
+        # Make sure inactive is False
+        inactiveCheckbox = self.browser.find_element(by=By.XPATH,value=inactiveCheckboxString)
+        if (str(inactiveCheckbox.get_attribute("CHECKED")) == "true"):
+            inactiveCheckbox.click()
+            self.waitForTMALoader()
+        elif (str(inactiveCheckbox.get_attribute("CHECKED")) == "None"):
+            pass
+
+        searchBar = self.browser.find_element(by=By.XPATH,value=searchBarString)
+        searchBar.clear()
+        searchBar.send_keys(str(userName))
+        searchBar = self.browser.searchForElement(by=By.XPATH,value=searchBarString,testClickable=True,timeout=3)
+        searchBar.send_keys(u'\ue007')
+        self.waitForTMALoader()
+
+        # Get the full list of results
+        peopleResultsXPath = f"//div[contains(@id,'UpdatePanelResults')]/fieldset/div/div/table/tbody/tr[contains(@class,'sgvitems')]/td/a"
+        peopleResults = self.browser.find_elements(by=By.XPATH,value=peopleResultsXPath)
+
+        # If there's no results, assume the person doesn't exist.
+        if(len(peopleResults) == 0):
+            return None
+        # Otherwise, document each found netID for later testing.
+        else:
+            potentialNetIDs = set()
+            for peopleResult in peopleResults:
+                netIDPattern = r":\s([A-Za-z0-9]{8,10})(?=\s)"
+                netIDMatch = re.search(netIDPattern,peopleResult.text)
+                if(netIDMatch):
+                    potentialNetIDs.add(str(netIDMatch.group(1)).strip().lower())
+
+            # Now that we have a list of NetIDs that may be our target user, we test each one to check for
+            # the target supervisor.
+            for potentialNetID in potentialNetIDs:
+                self.navToLocation(TMALocation(client="Sysco",entryType="People",entryID=potentialNetID))
+                resultPeopleObject = self.People_ReadAllInformation()
+                # This means we found our network ID, and return it
+                if(supervisorName == re.sub(r'[^A-Za-z0-9]', '', resultPeopleObject.info_Manager)):
+                    return resultPeopleObject
+
+            # If we've gotten here and still haven't found anything, that means we haven't found it, and return None.
+            return None
+
+
+
+    #endregion === Special Searches ===
 
 # orderType - New Install, Upgrade, etc.
 # client - Sysco, SLB, Rimkus, etc.

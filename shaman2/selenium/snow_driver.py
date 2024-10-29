@@ -1,7 +1,6 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.keys import Keys
-import re
 import time
 from shaman2.selenium.browser import Browser
 from shaman2.common.logger import log
@@ -102,16 +101,17 @@ class SnowDriver:
     # Nav method to pull up a specific request number.
     def navToRequest(self,requestNumber : str):
         self.browser.switchToTab("Snow")
+        self.navToFavoritesMenuOption("Home")
 
         searchBarCSS = "#sncwsgs-typeahead-input"
-        searchBar = self.browser.searchForElement(by=By.CSS_SELECTOR,value=searchBarCSS,timeout=10,
+        searchBar = self.browser.searchForElement(by=By.CSS_SELECTOR,value=searchBarCSS,timeout=10,testClickable=True,
                                                                      shadowRootStack=[{"by": By.XPATH,"value": "//*[@global-navigation-config]"},
                                                                                       {"by": By.CSS_SELECTOR,"value": "sn-polaris-layout"},
                                                                                       {"by": By.CSS_SELECTOR,"value": "sn-polaris-header"},
                                                                                       {"by": By.CSS_SELECTOR,"value": "sn-search-input-wrapper"},
                                                                                       {"by": By.CSS_SELECTOR,"value": "sn-component-workspace-global-search-typeahead"}],raiseError=True)
         # Sometimes the stupid search button has trouble clearing. So, we perform an "intelligent" clear here.
-        for i in range(50):
+        for i in range(20):
             searchBar.clear()
             time.sleep(1)
             if(searchBar.get_attribute("value").strip() == ""):
@@ -155,7 +155,7 @@ class SnowDriver:
     # This helper method handles scoping into the task frame of the (assumed currently open) task, simply
     # returning true if it's already open.
     def Tasks_ScopeToTaskFrame(self):
-        # Test if the previous taskFrame is still vaild.
+        # Test if the previous taskFrame is still valid.
         if(self.__lastUsedTaskFrame):
             try:
                 self.browser.switch_to.frame(self.__lastUsedTaskFrame)
@@ -196,7 +196,7 @@ class SnowDriver:
         for i in range(len(allActivities)):
             createdBy = self.browser.find_element(by=By.XPATH,value=f"{allActivitiesXPath}[{i+1}]//span[@class='sn-card-component-createdby']").text
             timestamp = self.browser.find_element(by=By.XPATH,value=f"{allActivitiesXPath}[{i+1}]//div[@class='date-calendar']").text
-            baseContent = self.browser.find_element(by=By.XPATH,value=f"{allActivitiesXPath}[{i+1}]//div[@class='sn-card-component sn-card-component_records']").text
+            baseContent = self.browser.find_element(by=By.XPATH,value=f"{allActivitiesXPath}[{i+1}]/div[3]").text
 
             # Check if there's an attached email and, if so, temporarily connect to iframe and add it to the activity.
             showEmailButton = self.browser.searchForElement(by=By.XPATH,value=f"{allActivitiesXPath}[{i+1}]//a[@action-type='show-email']")
@@ -314,18 +314,21 @@ class SnowDriver:
 
         # Then click on "Add Tag"
         addTagButtonXPath = "//button[@id='tags_menu']"
-        addTagButton = self.browser.searchForElement(by=By.XPATH,value=addTagButtonXPath,timeout=5)
+        addTagButton = self.browser.searchForElement(by=By.XPATH,value=addTagButtonXPath,timeout=5,testClickable=True)
         addTagButton.click()
+        naturalPause()
 
         # Then, write the target tag.
         addTagInputXPath = "//li[@class='tagit-new']/input"
-        addTagInput = self.browser.searchForElement(by=By.XPATH,value=addTagInputXPath,timeout=5)
+        addTagInput = self.browser.searchForElement(by=By.XPATH,value=addTagInputXPath,timeout=5,testClickable=True)
         addTagInput.clear()
-        addTagInput.send_keys(tagName)
+        addTagInput.send_keys(tagName[:5])
+        naturalPause()
+        addTagInput.send_keys(tagName[5:])
 
         # Finally, click on the correct tag.
         foundTagOptionXPath = f"//li[@class='ui-menu-item']/a[normalize-space(text())='{tagName.strip()}']"
-        foundTagOption = self.browser.searchForElement(by=By.XPATH,value=foundTagOptionXPath,timeout=5)
+        foundTagOption = self.browser.searchForElement(by=By.XPATH,value=foundTagOptionXPath,timeout=5,testClickable=True)
         foundTagOption.click()
 
         self.browser.switch_to.default_content()
@@ -343,14 +346,3 @@ class SnowDriver:
         self.browser.switchToTab("Snow")
 
     #endregion === Task Management ===
-
-ordersToRead = ["SCTASK1073728","SCTASK1073743","SCTASK1073780","SCTASK1073780","SCTASK1073603"]
-
-br = Browser()
-snow = SnowDriver(br)
-snow.logInToSnow()
-
-allResults = []
-for orderToRead in ordersToRead:
-    snow.navToRequest(orderToRead)
-    allResults.append(snow.Tasks_ReadFullTask())

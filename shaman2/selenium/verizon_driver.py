@@ -107,7 +107,7 @@ class VerizonDriver:
                 #endregion === OTP SCREEN ===
 
                 # We should now be on the main Verizon Homepage - we test this to make sure.
-                self.browser.searchForElement(by=By.XPATH, value="//app-search-modal",
+                self.browser.searchForElement(by=By.XPATH, value="//label[contains(@class,'custom-search-input-label')][contains(normalize-space(text()),'Welcome,')]",
                                               testClickable=True, timeout=60,raiseError=True)
                 self.testForUnregisteredPopup()
 
@@ -133,7 +133,7 @@ class VerizonDriver:
         homeLink.click()
 
         # Wait for shop new device button to confirm page load.
-        self.browser.searchForElement(by=By.XPATH,value="//app-search-modal",timeout=30,testClickable=True)
+        self.browser.searchForElement(by=By.XPATH,value="//label[contains(@class,'custom-search-input-label')][contains(normalize-space(text()),'Welcome,')]",timeout=30,testClickable=True)
         self.testForUnregisteredPopup()
 
     # This method navigates to the Verizon order viewer.
@@ -407,14 +407,13 @@ class VerizonDriver:
 
     #region === Device Ordering ===
 
-    # This method navigates to homescreen, then clicks "shop devices" to begin a new install
+    # This method navigates to homescreen, then navigates to the shop new device URL to begin a new install
     # request.
     def shopNewDevice(self):
         self.browser.switchToTab("Verizon")
         self.testForUnregisteredPopup()
 
-        shopDevicesButton = self.browser.find_element(by=By.XPATH,value="//span[contains(text(),'Shop Devices')]")
-        shopDevicesButton.click()
+        self.browser.get("https://mb.verizonwireless.com/mbt/secure/index?appName=comm&transType=NSE#/device-gridwall/mobile-evolution")
 
         # Now we wait to ensure that we've fully navigated to the newDevice screen.
         shopDevicesHeaderXPath = "//h2[contains(text(),'Shop Devices')]"

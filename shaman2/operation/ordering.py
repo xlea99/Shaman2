@@ -7,6 +7,7 @@ from shaman2.selenium.cimpl_driver import CimplDriver
 from shaman2.selenium.tma_driver import TMADriver, TMALocation, TMAPeople, TMAService,TMAEquipment, TMACost
 from shaman2.selenium.verizon_driver import VerizonDriver
 from shaman2.selenium.eyesafe_driver import EyesafeDriver
+from shaman2.selenium.snow_driver import SnowDriver
 from shaman2.operation import maintenance
 from shaman2.common.config import mainConfig,accessories,clients,devices,emailTemplatesConfig, deviceCimplMappings
 from shaman2.common.logger import log
@@ -16,22 +17,15 @@ from shaman2.utilities.async_sound import playsoundAsync
 from shaman2.utilities.address_validation import validateAddress
 from shaman2.utilities.misc import isNumber
 
+DEFAULT_SNOW_IPHONE = "iPhone14_128GB"
+DEFAULT_SNOW_ANDROID = "GalaxyS23_128GB"
+DEFAULT_SNOW_IPHONE_CASE = "iPhone14Defender"
+DEFAULT_SNOW_ANDROID_CASE = "SamsungS23Symmetry"
+DEFAULT_SNOW_CHARGER = "BelkinWallAdapter"
+
+
+
 #region === Carrier Order Reading ===
-
-# Searches up, and reads, a full workorder given by workorderNumber.
-def readCimplWorkorder(cimplDriver : CimplDriver,workorderNumber):
-    maintenance.validateCimpl(cimplDriver)
-    cimplDriver.navToWorkorderCenter()
-    workorderNumber = str(workorderNumber)
-
-    cimplDriver.Filters_Clear()
-    cimplDriver.waitForLoadingScreen()
-    cimplDriver.Filters_AddWorkorderNumber(status="Equals",workorderNumber=workorderNumber)
-    cimplDriver.Filters_Apply()
-
-    cimplDriver.openWorkorder(workorderNumber=workorderNumber)
-
-    return cimplDriver.Workorders_ReadFullWorkorder()
 
 # Searches up, and reads, a full Verizon order number.
 def readVerizonOrder(verizonDriver : VerizonDriver,verizonOrderNumber,orderViewPeriod):
@@ -52,7 +46,6 @@ def readBakaOrder(bakaDriver : BakaDriver,bakaOrderNumber):
     return bakaDriver.readOrder()
 
 #endregion === Carrier Order Reading ===
-
 #region === Carrier Order Placing ===
 
 # Places an entire Verizon new install.
@@ -126,6 +119,8 @@ def placeVerizonNewInstall(verizonDriver : VerizonDriver,deviceID : str,accessor
         contactEmails = [contactEmails]
     finalContactEmails = []
     for contactEmail in contactEmails:
+        if(contactEmail is None):
+            continue
         contactEmail = contactEmail.lower().strip()
         isValidEmail = True
         for character in contactEmail:
@@ -285,7 +280,30 @@ def writeServiceToCimplWorkorder(cimplDriver : CimplDriver,serviceNum,carrier,in
     cimplDriver.Workorders_ApplyChanges()
 
 #endregion === Carrier Order Placing ===
+#region === Ticketing Service Management ===
 
+# Searches up, and reads, a full SCTASK in Snow given taskNumber
+def readSnowTask(snowDriver : SnowDriver,taskNumber):
+    maintenance.validateSnow(snowDriver)
+    snowDriver.navToRequest(requestNumber=taskNumber)
+    return snowDriver.Tasks_ReadFullTask()
+
+# Searches up, and reads, a full Cimpl workorder given by workorderNumber.
+def readCimplWorkorder(cimplDriver : CimplDriver,workorderNumber):
+    maintenance.validateCimpl(cimplDriver)
+    cimplDriver.navToWorkorderCenter()
+    workorderNumber = str(workorderNumber)
+
+    cimplDriver.Filters_Clear()
+    cimplDriver.waitForLoadingScreen()
+    cimplDriver.Filters_AddWorkorderNumber(status="Equals",workorderNumber=workorderNumber)
+    cimplDriver.Filters_Apply()
+
+    cimplDriver.openWorkorder(workorderNumber=workorderNumber)
+
+    return cimplDriver.Workorders_ReadFullWorkorder()
+
+#endregion === Ticketing Service Management ===
 #region === TMA Documentation ===
 
 # Performs a full New Install in TMA, building a new service based on the provided information.
@@ -460,6 +478,7 @@ def documentTMAUpgrade(tmaDriver : TMADriver,client,serviceNum,installDate,devic
 
 #endregion === TMA Documentation ===
 
+#region === Full Cimpl Workflows ===
 
 # Given a workorderNumber, this method examines it, tries to figure out the type of workorder it is, and whether
 # it is valid to submit automatically through the respective carrier.
@@ -738,7 +757,6 @@ def processPostOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,vz
     print(f"Cimpl WO {workorderNumber}: Finished all Cimpl work")
     return True
 
-
 # Does what it says on the tin
 def placeMissingEyesafeOrderFromCimplWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,eyesafeDriver : EyesafeDriver,
                                                workorderNumber):
@@ -793,7 +811,100 @@ def placeMissingEyesafeOrderFromCimplWorkorder(tmaDriver : TMADriver,cimplDriver
 
     print(f"Cimpl WO {workorderNumber}: Eyesafe Order completed - '{eyesafeOrderNumber}'")
 
+#endregion === Full Cimpl Workflows ===
+#region === Full SNow Workflows ===
 
+def processPreOrderSCTASK(tmaDriver : TMADriver,snowDriver : SnowDriver,verizonDriver : VerizonDriver,
+                          taskNumber, assignTo,reviewMode=True):
+
+    # First, read the full SNow task.
+    scTask = readSnowTask(snowDriver=snowDriver,taskNumber=taskNumber)
+
+    # Make sure the note isn't assigned to somebody else, then assign it to assignTo
+    if(scTask["AssignedTo"] is not None and scTask["AssignedTo"] != "" and scTask["AssignedTo"].lower() != assignTo.lower()):
+        warningMessage = f"WARNING: This SCTASK is already assigned to '{scTask['AssignedTo']}'"
+        if (not consoleUserWarning(warningMessage)):
+            return False
+    snowDriver.Tasks_WriteAssignedTo(assignedTo=assignTo)
+
+    # Add the Upland/Cimpl tag to the SCTASK.
+    snowDriver.Tasks_AddTag("Upland/Cimpl")
+
+    # Look through the Activities to make sure there are no Verizon Orders already present
+    verizonOrderPattern = r"MB\d+"
+    foundVerizonOrders = False
+    for activity in scTask["Activities"]:
+        if(re.findall(verizonOrderPattern,activity["BaseContent"])):
+            foundVerizonOrders = True
+            break
+        if(activity["EmailContent"] is not None and re.findall(verizonOrderPattern,activity["EmailContent"])):
+            foundVerizonOrders = True
+            break
+    if(foundVerizonOrders):
+        warningMessage = f"WARNING: There are existing Verizon orders on the SCTASK."
+        if (not consoleUserWarning(warningMessage)):
+            return False
+
+    # Classify the device intended to be ordered.
+    if(scTask["OrderDevice"].lower() == "apple"):
+        deviceID = DEFAULT_SNOW_IPHONE
+    elif(scTask["OrderDevice"].lower() == "android"):
+        deviceID = DEFAULT_SNOW_ANDROID
+    else:
+        playsoundAsync(paths["media"] / "shaman_attention.mp3")
+        print(f"{taskNumber}: Unknown device specified in ticket: '{scTask['OrderDevice']}'")
+        return False
+
+    # Classify accessoryIDs depending on if accessories were requested.
+    if(scTask["OrderAccessoryBundle"]):
+        accessoryIDs = [DEFAULT_SNOW_CHARGER]
+        if(scTask["OrderDevice"].lower() == "apple"):
+            accessoryIDs.append(DEFAULT_SNOW_IPHONE_CASE)
+        else:
+            accessoryIDs.append(DEFAULT_SNOW_ANDROID_CASE)
+    else:
+        accessoryIDs = []
+
+    # Try to determine the employee's info given the order's username and supervisor name.
+    maintenance.validateTMA(tmaDriver=tmaDriver,client="Sysco")
+    searchedPeopleObject = tmaDriver.searchPeopleFromNameAndSup(userName=scTask["OrderEmployeeName"],supervisorName=scTask["OrderSupervisorName"])
+    if(searchedPeopleObject):
+        userFirstName = searchedPeopleObject.info_FirstName
+        userLastName = searchedPeopleObject.info_LastName
+        contactEmail = searchedPeopleObject.info_Email
+
+        # Check to make sure the user doesn't already have a service.
+        if (len(searchedPeopleObject.info_LinkedServices) > 0):
+            warningMessage = f"WARNING: User '{searchedPeopleObject. nfo_EmployeeID}' already has linked services."
+            if (not consoleUserWarning(warningMessage)):
+                return False
+    else:
+        userFirstName,userLastName = scTask["OrderEmployeeName"].split(" ")
+        contactEmail = None
+
+    # Validate and clean the address that the user gave.
+    validatedAddress = validateAddress(rawAddressString=scTask["OrderShippingAddress"])
+
+    print(f"{taskNumber}: Determined as valid SCTASK for Shaman rituals.")
+
+    # Process the new install.
+    print(f"{taskNumber}: Ordering new device ({deviceID}) and service for user {userFirstName} {userLastName}")
+    orderNumber = placeVerizonNewInstall(verizonDriver=verizonDriver,deviceID=deviceID,accessoryIDs=accessoryIDs,companyName="Sysco",
+                                        firstName=userFirstName,lastName=userLastName,userEmail=contactEmail if contactEmail is not None else "sysco_wireless_mac@cimpl.com",
+                                        address1=validatedAddress["Address1"],address2=validatedAddress.get("Address2",None),city=validatedAddress["City"],
+                                        state=validatedAddress["State"],zipCode=validatedAddress["ZipCode"],reviewMode=reviewMode,contactEmails=contactEmail)
+    print(f"{taskNumber}: Finished ordering new device and service for user {userFirstName} {userLastName}")
+
+    # Add workorder to SCTASK notes.
+    maintenance.validateSnow(snowDriver)
+    snowDriver.Tasks_WriteNote(noteContent=orderNumber)
+    snowDriver.Tasks_Update()
+
+
+
+
+
+#endregion === Full SNow Workflows
 
 br = Browser()
 tma = TMADriver(br)
@@ -801,15 +912,35 @@ cimpl = CimplDriver(br)
 vzw = VerizonDriver(br)
 baka = BakaDriver(br)
 eyesafe = EyesafeDriver(br)
+snow = SnowDriver(br)
 
-missingEyesafeWOs = []
-for wo in missingEyesafeWOs:
+
+preProcessSCTASKs = ["SCTASK1073505",
+"SCTASK1073926",
+"SCTASK1073101",
+"SCTASK1073098",
+"SCTASK1073097",
+"SCTASK1073096",
+"SCTASK1073085",
+"SCTASK1073084",
+"SCTASK1073082",
+"SCTASK1073079",
+"SCTASK1073071",
+"SCTASK1073059",
+"SCTASK1073053",
+"SCTASK1073037",
+"SCTASK1073497",
+"SCTASK1073132",
+"SCTASK1073500",
+"SCTASK1073205"]
+for task in preProcessSCTASKs:
     try:
-        # Place any missing eyesafe orders.
-        placeMissingEyesafeOrderFromCimplWorkorder(tmaDriver=tma,cimplDriver=cimpl,eyesafeDriver=eyesafe,workorderNumber=wo)
+        processPreOrderSCTASK(tmaDriver=tma,snowDriver=snow,verizonDriver=vzw,
+                          taskNumber=task,assignTo="Alex Somheil",reviewMode=True)
     except Exception as e:
         playsoundAsync(paths["media"] / "shaman_error.mp3")
         raise e
+
 
 preProcessWOs = []
 for wo in preProcessWOs:
@@ -820,7 +951,7 @@ for wo in preProcessWOs:
         playsoundAsync(paths["media"] / "shaman_error.mp3")
         raise e
 
-postProcessWOs = [48696]
+postProcessWOs = []
 for wo in postProcessWOs:
     try:
         processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,

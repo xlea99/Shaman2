@@ -5,6 +5,7 @@ from shaman2.selenium.cimpl_driver import CimplDriver
 from shaman2.selenium.tma_driver import TMADriver, TMALocation
 from shaman2.selenium.verizon_driver import VerizonDriver
 from shaman2.selenium.eyesafe_driver import EyesafeDriver
+from shaman2.selenium.snow_driver import SnowDriver
 from shaman2.utilities.async_sound import playsoundAsync
 from shaman2.common.paths import paths
 from shaman2.common.logger import log
@@ -46,5 +47,10 @@ def validateBaka(bakaDriver : BakaDriver):
 def validateEyesafe(eyesafeDriver : EyesafeDriver):
     eyesafeDriver.browser.switchToTab("Eyesafe")
     eyesafeDriver.logInToEyesafe()
+
+# Validates that SNow is logged in and the active tab.
+def validateSnow(snowDriver : SnowDriver):
+    snowDriver.browser.switchToTab("Snow")
+    snowDriver.logInToSnow()
 
 #endregion === DRIVER VALIDATION ===
