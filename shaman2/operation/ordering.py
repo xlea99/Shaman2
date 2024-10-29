@@ -816,6 +816,7 @@ def placeMissingEyesafeOrderFromCimplWorkorder(tmaDriver : TMADriver,cimplDriver
 
 def processPreOrderSCTASK(tmaDriver : TMADriver,snowDriver : SnowDriver,verizonDriver : VerizonDriver,
                           taskNumber, assignTo,reviewMode=True):
+    print(f"{taskNumber}: Beginning automation")
 
     # First, read the full SNow task.
     scTask = readSnowTask(snowDriver=snowDriver,taskNumber=taskNumber)
@@ -900,10 +901,6 @@ def processPreOrderSCTASK(tmaDriver : TMADriver,snowDriver : SnowDriver,verizonD
     snowDriver.Tasks_WriteNote(noteContent=orderNumber)
     snowDriver.Tasks_Update()
 
-
-
-
-
 #endregion === Full SNow Workflows
 
 br = Browser()
@@ -915,7 +912,8 @@ eyesafe = EyesafeDriver(br)
 snow = SnowDriver(br)
 
 
-preProcessSCTASKs = ["SCTASK1073505",
+preProcessSCTASKs = [
+    #"SCTASK1073505",
 "SCTASK1073926",
 "SCTASK1073101",
 "SCTASK1073098",

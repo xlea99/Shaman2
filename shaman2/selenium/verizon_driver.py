@@ -628,7 +628,7 @@ class VerizonDriver:
             self.browser.searchForElement(by=By.XPATH,value=deviceAddedToCartXPath,timeout=30,testClickable=True)
 
             # Click continue
-            continueButtonXPath = "//nav[@id='stickyMenubar']//button[contains(text(),'Continue')]"
+            continueButtonXPath = "//app-nse-multistep-progress-bar/following-sibling::*//button[normalize-space(text())='Continue']"
             continueButton = self.browser.searchForElement(by=By.XPATH,value=continueButtonXPath,timeout=30,testClickable=True)
             self.browser.safeClick(element=continueButton,timeout=10,scrollIntoView=True)
 
