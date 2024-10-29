@@ -829,9 +829,6 @@ def processPreOrderSCTASK(tmaDriver : TMADriver,snowDriver : SnowDriver,verizonD
             return False
     snowDriver.Tasks_WriteAssignedTo(assignedTo=assignTo)
 
-    # Add the Upland/Cimpl tag to the SCTASK.
-    snowDriver.Tasks_AddTag("Upland/Cimpl")
-
     # Look through the Activities to make sure there are no Verizon Orders already present
     verizonOrderPattern = r"MB\d+"
     foundVerizonOrders = False
@@ -846,6 +843,12 @@ def processPreOrderSCTASK(tmaDriver : TMADriver,snowDriver : SnowDriver,verizonD
         warningMessage = f"WARNING: There are existing Verizon orders on the SCTASK."
         if (not consoleUserWarning(warningMessage)):
             return False
+
+    # Add the Upland/Cimpl tag to the SCTASK.
+    snowDriver.Tasks_AddTag("Upland/Cimpl")
+
+    # Set the order to WIP
+    snowDriver.Tasks_WriteState("Work in Progress")
 
     # Classify the device intended to be ordered.
     if(scTask["OrderDevice"].lower() == "apple"):
@@ -895,7 +898,7 @@ def processPreOrderSCTASK(tmaDriver : TMADriver,snowDriver : SnowDriver,verizonD
                                         firstName=userFirstName,lastName=userLastName,userEmail=contactEmail if contactEmail is not None else "sysco_wireless_mac@cimpl.com",
                                         address1=validatedAddress["Address1"],address2=validatedAddress.get("Address2",None),city=validatedAddress["City"],
                                         state=validatedAddress["State"],zipCode=validatedAddress["ZipCode"],reviewMode=reviewMode,contactEmails=contactEmail)
-    verizonOrderNumber = re.search(verizonOrderPattern,fullOrderNumber).group(1).strip()
+    verizonOrderNumber = re.search(r"(MB\d+)",fullOrderNumber).group(1).strip()
     print(f"{taskNumber}: Finished ordering new device and service for user {userFirstName} {userLastName} ({verizonOrderNumber})")
 
     # Add workorder to SCTASK notes.
@@ -918,10 +921,6 @@ snow = SnowDriver(br)
 
 
 preProcessSCTASKs = [
-    #"SCTASK1073505",
-"SCTASK1073926",
-"SCTASK1073101",
-"SCTASK1073098",
 "SCTASK1073097",
 "SCTASK1073096",
 "SCTASK1073085",
