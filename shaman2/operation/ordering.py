@@ -333,7 +333,7 @@ def documentTMANewInstall(tmaDriver : TMADriver,client,netID,serviceNum,installD
     if(newService.info_ServiceType == "iPhone" or newService.info_ServiceType == "Android"):
         costType = "Smart Phone"
     elif(newService.info_ServiceType == "Cell Phone"):
-        costType = "CellPhone"
+        costType = "Cell Phone"
     elif(newService.info_ServiceType == "Tablet"):
         costType = "Tablet"
     elif(newService.info_ServiceType == "Mifi"):
@@ -820,9 +820,7 @@ for wo in preProcessWOs:
         playsoundAsync(paths["media"] / "shaman_error.mp3")
         raise e
 
-postProcessWOs = [48676,48696,48743,48745,48751,48754,48755,48756,48760,48762,48763,48764,48765,48785,48786,48787,
-                  48788,48789,48790,48839,48844,48845,48846,48848,48850,48851,48853,48854,48856,48857,48858,48860,
-                  48861,48862,48866,48867,48868,48870]
+postProcessWOs = [48696]
 for wo in postProcessWOs:
     try:
         processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,

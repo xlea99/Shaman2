@@ -1,4 +1,6 @@
 import re
+import time
+import random
 from shaman2.utilities.async_sound import playsoundAsync
 from shaman2.common.paths import paths
 from shaman2.common.logger import log
@@ -124,3 +126,14 @@ def consoleUserWarning(warningMessage,
         error = ValueError(errorMessage)
         log.error(error)
         raise error
+
+# This method simply adds a "natural pause", at a random time interval, to break automation detection on sites.
+def naturalPause():
+    pauseTime = random.uniform(0.3,2.5)
+
+    # Sometimes, add way more time just for realism.
+    if(random.random() > 0.85):
+        pauseTime += random.randrange(1,11)
+
+    # Wait the time.
+    time.sleep(pauseTime)

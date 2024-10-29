@@ -107,7 +107,7 @@ class VerizonDriver:
                 #endregion === OTP SCREEN ===
 
                 # We should now be on the main Verizon Homepage - we test this to make sure.
-                self.browser.searchForElement(by=By.XPATH, value="//span[contains(text(),'Shop Devices')]",
+                self.browser.searchForElement(by=By.XPATH, value="//app-search-modal",
                                               testClickable=True, timeout=60,raiseError=True)
                 self.testForUnregisteredPopup()
 
@@ -133,7 +133,7 @@ class VerizonDriver:
         homeLink.click()
 
         # Wait for shop new device button to confirm page load.
-        self.browser.searchForElement(by=By.XPATH,value="//span[contains(text(),'Shop Devices')]",timeout=30,testClickable=True)
+        self.browser.searchForElement(by=By.XPATH,value="//app-search-modal",timeout=30,testClickable=True)
         self.testForUnregisteredPopup()
 
     # This method navigates to the Verizon order viewer.

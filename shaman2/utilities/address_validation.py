@@ -216,3 +216,7 @@ def validateAddress(rawAddressString : str):
 
     # Finally, we return our classified, validated address.
     return classifiedAddress
+
+
+results = validateAddress("")
+

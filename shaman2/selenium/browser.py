@@ -191,10 +191,13 @@ class Browser(webdriver.Chrome):
     # invertedSearch -          Inverts the search - instead of searching for presence of element, searches for LACK of element on page
     # raiseError/logError -     Whether to raise and log the error when the test fails, or simply return "False"
     # singleTestInterval -      How long to perform each single test for, defaulting at 0.2 seconds per test.
+    # shadowRootStack -         Specifies an element that exists in a shadowRoot, or a nested shadowRoot. First attempts to scope into the root (first to last), before searching for the element. Each entry should be a dict as (by:by,value:value,extraElementTests:extraElementTests,withSubElement:withSubElement)
+    # extraElementTests -       Provides the ability to run extra tests on the element after it's found, but before declaring the search successful. Provides as a stack of lambdas evaluating a boolean (lambda el: el.get_attribute("beans") == "pinto")
     # TODO is this enough to defeat Verizon's weird elements that selenium believes are clickable, but secretly aren't yet?
     def searchForElement(self,by = None,value : (str,list) = None,element : WebElement = None,timeout : float = 0, minSearchTime : float = 0,
                          testNotStale = True,testClickable = False,testScrolledInView = False,testLiteralClick = False,
-                         invertedSearch = False,scrollIntoView=False,raiseError = False,logError = None,singleTestInterval = 0.1,debug=False):
+                         invertedSearch = False,scrollIntoView=False,raiseError = False,logError = None,singleTestInterval = 0.1,debug=False,
+                         shadowRootStack : list = None,extraElementTests : list = None):
         # Throw error if both a value and an element are given
         if(value and element):
             error = ValueError("Both a value and an element cannot be specified together in searchForElement.")
@@ -216,9 +219,67 @@ class Browser(webdriver.Chrome):
         while(searchAttempt < 1 or time.time() < endTestTime):
             searchAttempt += 1
             try:
+                # First, specify the root - unless there's a shadowRootStack, this is always the browser itself.
+                if(shadowRootStack):
+                    root = self
+                    for selector in shadowRootStack:
+                        allPotentialShadowHosts = root.find_elements(by=selector["by"],value=selector["value"])#,extraElementTests=selector.get("extraElementTests",None))
+
+                        # Evaluate any "extraElementTests" conditions to determine list of all valid shadow hosts
+                        if(selector.get("extraElementTests",None)):
+                            allValidShadowHosts = []
+                            for potentialShadowHost in allPotentialShadowHosts:
+                                for extraElementTest in selector["extraElementTests"]:
+                                    try:
+                                        if extraElementTest(potentialShadowHost):
+                                            allValidShadowHosts.append(potentialShadowHost)
+                                    except Exception as e:
+                                        pass
+                        else:
+                            allValidShadowHosts = allPotentialShadowHosts
+
+                        # Raise error (fail test) if no valid shadow hosts are found.
+                        if (len(allValidShadowHosts) == 0):
+                            raise ValueError(f"No valid shadow hosts found with selector '{selector['value']}'")
+
+                        # Test for any specific sub elements if specified.
+                        if(selector.get("withSubElement")):
+                            targetShadowHost = None
+                            for validShadowHost in allValidShadowHosts:
+                                tempRoot = self.execute_script("return arguments[0].shadowRoot",validShadowHost)
+                                withSubElementTestResult = tempRoot.find_elements(by=selector["withSubElement"]["by"],value=selector["withSubElement"]["value"])
+                                if(withSubElementTestResult):
+                                    # Evaluate any "extraElementTests" conditions on the sub element to determine its validity
+                                    if (selector["withSubElement"]["extraElementTests"]):
+                                        for thisSubElement in withSubElementTestResult:
+                                            for extraElementTest in selector["withSubElement"]["extraElementTests"]:
+                                                try:
+                                                    if extraElementTest(thisSubElement):
+                                                        # This means we've located the subelement with tests, and this is our target shadow host.
+                                                        targetShadowHost = validShadowHost
+                                                        break
+                                                except Exception as e:
+                                                    pass
+                                            if(targetShadowHost):
+                                                break
+                                    else:
+                                        # This means we've located the subelement, and this is our target shadow host.
+                                        targetShadowHost = validShadowHost
+                                # Break loop if the targetShadowHost has been found.
+                                if(targetShadowHost):
+                                    break
+                            if(not targetShadowHost):
+                                raise ValueError(f"No valid shadow hosts found with selector '{selector['value']}'")
+                        else:
+                            targetShadowHost = allValidShadowHosts[0]
+
+                        root = self.execute_script("return arguments[0].shadowRoot",targetShadowHost)
+                else:
+                    root = self
+
                 # If element is not provided, test to find it by locator
                 if(not element):
-                    targetElement = self.find_element(by=by,value=value[searchAttempt % len(value)])
+                    targetElement = root.find_element(by=by,value=value[searchAttempt % len(value)])
                 else:
                     targetElement = element
                     # If it's an inverted search AND a given element, we simply try to take a sample attribute to ensure
@@ -239,6 +300,11 @@ class Browser(webdriver.Chrome):
                 if(testLiteralClick):
                     self.safeClick(element=targetElement,timeout=singleTestInterval,raiseError=True,logging=False)
 
+
+                if(extraElementTests):
+                    for extraElementTest in extraElementTests:
+                        if not extraElementTest(targetElement):
+                            raise ValueError(f"Extra test {extraElementTest} failed on element {targetElement}.")
 
                 # === TESTS PASS ===
                 # If all tests pass, and this is an inverted search, that means the element is still present and we

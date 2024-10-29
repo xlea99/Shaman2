@@ -11,7 +11,7 @@ from shaman2.utilities.async_sound import playsoundAsync
 
 # This class represents a single Cimpl Workorder, and provides various methods for interacting with it on a data
 # level.
-class CimplWO():
+class CimplWO:
 
     def __init__(self):
         self.vals = {# Header info
