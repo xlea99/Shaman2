@@ -850,6 +850,10 @@ def processPreOrderSCTASK(tmaDriver : TMADriver,snowDriver : SnowDriver,verizonD
     # Set the order to WIP
     snowDriver.Tasks_WriteState("Work in Progress")
 
+    # Update, then reopen to avoid doing duplicate orders with other people in the queue.
+    snowDriver.Tasks_Update()
+    snowDriver.navToRequest(requestNumber=taskNumber)
+
     # Classify the device intended to be ordered.
     if(scTask["OrderDevice"].lower() == "apple"):
         deviceID = DEFAULT_SNOW_IPHONE
@@ -907,32 +911,45 @@ def processPreOrderSCTASK(tmaDriver : TMADriver,snowDriver : SnowDriver,verizonD
     snowDriver.Tasks_Update()
 
     # Document the order.
-    documentation.storeSNowOrderToGoogle(taskNumber=taskNumber,orderNumber=verizonOrderNumber,userName=f"{userFirstName} {userLastName}",deviceID=deviceID,datePlaced=datetime.today().strftime("%H:%M:%S %Y-%m-%d"))
+    documentation.storeSNowOrderToGoogle(taskNumber=taskNumber,orderNumber=verizonOrderNumber,userName=f"{userFirstName} {userLastName}",deviceID=deviceID,datePlaced=datetime.today().strftime("%H:%M:%S %d-%m-%Y"))
 
 #endregion === Full SNow Workflows
 
 br = Browser()
 tma = TMADriver(br)
 cimpl = CimplDriver(br)
+snow = SnowDriver(br)
 vzw = VerizonDriver(br)
 baka = BakaDriver(br)
 eyesafe = EyesafeDriver(br)
-snow = SnowDriver(br)
 
-
-preProcessSCTASKs = ["SCTASK1071369",
-"SCTASK1073085",
-"SCTASK1073084",
-"SCTASK1073082",
-"SCTASK1073079",
-"SCTASK1073071",
-"SCTASK1073059",
-"SCTASK1073053",
-"SCTASK1073037",
-"SCTASK1073497",
-"SCTASK1073132",
-"SCTASK1073500",
-"SCTASK1073205"]
+preProcessSCTASKs = ['SCTASK1073104',
+                     'SCTASK1073153',
+                     'SCTASK1073154',
+                     'SCTASK1073158',
+                     'SCTASK1073163',
+                     'SCTASK1073164',
+                     'SCTASK1073178',
+                     'SCTASK1073179',
+                     'SCTASK1073198',
+                     'SCTASK1073273',
+                     'SCTASK1073293',
+                     'SCTASK1073294',
+                     'SCTASK1073298',
+                     'SCTASK1073303',
+                     'SCTASK1073310',
+                     'SCTASK1073341',
+                     'SCTASK1073349',
+                     'SCTASK1073355',
+                     'SCTASK1073358',
+                     'SCTASK1073361',
+                     'SCTASK1073365',
+                     'SCTASK1073376',
+                     'SCTASK1073391',
+                     'SCTASK1073397',
+                     'SCTASK1073402',
+                     'SCTASK1073404',
+                     'SCTASK1073431']
 
 for task in preProcessSCTASKs:
     try:

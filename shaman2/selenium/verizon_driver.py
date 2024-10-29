@@ -475,7 +475,21 @@ class VerizonDriver:
 
             for i in range(attempts):
                 shoppingCartHeaderXPath = "//div[contains(@class,'device-shopping-cart-content-left')]//h1[contains(text(),'Shopping cart')]"
-                self.browser.searchForElement(by=By.XPATH,value=shoppingCartHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True)
+                shoppingCartHeader = self.browser.searchForElement(by=By.XPATH,value=shoppingCartHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True)
+                # Sometimes VZW randomly has the cart empty, so check that here.
+                if(not shoppingCartHeader):
+                    cartCleared = self.browser.searchForElement(by=By.XPATH, value="//h1[text()='Your cart is empty.']",
+                                                                timeout=10,
+                                                                testClickable=True, testLiteralClick=True)
+                    if(cartCleared):
+                        if (cartCleared):
+                            self.navToHomescreen()
+                            return True
+                    else:
+                        error = RuntimeError(f"Verizon ended up at an ambiguous page after attempting to open and clear the cart.")
+                        log.error(error)
+                        raise error
+
 
                 clearCartButtonXPath1 = "//a[@id='dtm_clearcart']"
                 clearCartButtonXPath2 = "//a[@role='button'][normalize-space(text())='Clear cart']"
@@ -986,7 +1000,7 @@ class VerizonDriver:
     def ShoppingCart_ContinueToCheckOut(self):
         checkOutButtonXPath = "//div[contains(@class,'device-shopping-cart-content-right')]/div/button[contains(text(),'Checkout')]"
         checkOutButton = self.browser.searchForElement(by=By.XPATH,value=checkOutButtonXPath,timeout=30,testClickable=True)
-        self.browser.safeClick(element=checkOutButton,timeout=30)
+        self.browser.safeClick(element=checkOutButton,timeout=30,scrollIntoView=True)
 
         # Test to ensure we've arrived at the checkout screen.
         checkoutHeaderXPath = "//div[@class='checkoutBox']//h1[text()='Checkout']"
