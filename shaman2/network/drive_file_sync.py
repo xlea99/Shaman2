@@ -1,55 +1,21 @@
 import os
 import io
-from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
 from shaman2.common.paths import paths
 from shaman2.common.logger import log
 from shaman2.utilities.async_sound import playsoundAsync
+from shaman2.network.google_auth import buildDriveAPIService
 
 
-class DriveSync:
+class DriveFileSync:
 
-    # If modifying scopes, delete the file token.json.
-    SCOPES = ['https://www.googleapis.com/auth/drive.file']
     SHAMAN2_DRIVE_FOLDER_ID = "15ajPAAzJc9UK0fWxM3L3uOC0sprprPW4"
 
     # Simple __init__ method
-    def __init__(self,buildService = True):
+    def __init__(self,googleService = None):
         self.service = None
-        if(buildService):
-            self.buildDriveAPIService()
-
-    #region === Setup ===
-
-    # This method authenticates the current user with the Shaman2 Google Drive API project by either loading, refreshing,
-    # or generating a new token.json file.
-    def __authenticateDriveAPI(self):
-        creds = None
-        credentialsFilePath = paths["google"] / "credentials.json"
-        tokenFilePath = paths["google"] / "token.json"
-        # Load previously saved credentials, or authenticate if not found
-        if(tokenFilePath.exists()):
-            creds = Credentials.from_authorized_user_file(filename=tokenFilePath, scopes=self.SCOPES)
-        if(not creds or not creds.valid):
-            if(creds and creds.expired and creds.refresh_token):
-                creds.refresh(Request())
-            else:
-                playsoundAsync(paths["media"] / "shaman_attention.mp3")
-                flow = InstalledAppFlow.from_client_secrets_file(credentialsFilePath, self.SCOPES)
-                creds = flow.run_local_server(port=0)
-            with open(tokenFilePath, 'w') as tokenFile:
-                tokenFile.write(creds.to_json())
-        return creds
-    # This method builds the Google Drive API service off of the user's credentials, then returns it.
-    def buildDriveAPIService(self):
-        creds = self.__authenticateDriveAPI()
-        driveAPIService = build('drive', 'v3', credentials=creds)
-        self.service = driveAPIService
-
-    #endregion === Setup ===
+        if(not googleService):
+            self.service = buildDriveAPIService()
 
     #region === File/Folder Handling ===
 
@@ -152,6 +118,6 @@ class DriveSync:
 
     #endregion === File/Folder Handling ===
 
-driveSync = DriveSync()
+#driveSync = DriveFileSync()
 #uploadResult = driveSync.upload(localFilePath=paths["config"] / "clients.toml",driveFilePath="test/clients.toml")
 #downloadResult = driveSync.download(localFilePath=paths["bin"] / "clients.toml",driveFilePath="test/clients.toml")

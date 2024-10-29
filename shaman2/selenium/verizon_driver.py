@@ -1086,7 +1086,8 @@ class VerizonDriver:
             # Finally, we continue back to payment.
             continueToPaymentButtonXPath = "//button[contains(text(),'Continue to Payment')]"
             continueToPaymentButton = self.browser.searchForElement(by=By.XPATH, value=continueToPaymentButtonXPath,testClickable=True)
-            self.browser.safeClick(element=continueToPaymentButton, timeout=60)
+            self.browser.safeClick(element=continueToPaymentButton, timeout=120,retryClicks=True,clickDelay=10,
+                                   successfulClickCondition=lambda b: b.searchForElement(element=continueToPaymentButton,invertedSearch=True))
         writeShippingInfo()
 
         # Wait for static shipping method label to confirm that the page is done loading.

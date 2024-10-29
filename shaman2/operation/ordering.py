@@ -9,6 +9,7 @@ from shaman2.selenium.verizon_driver import VerizonDriver
 from shaman2.selenium.eyesafe_driver import EyesafeDriver
 from shaman2.selenium.snow_driver import SnowDriver
 from shaman2.operation import maintenance
+from shaman2.operation import documentation
 from shaman2.common.config import mainConfig,accessories,clients,devices,emailTemplatesConfig, deviceCimplMappings
 from shaman2.common.logger import log
 from shaman2.common.paths import paths
@@ -890,16 +891,20 @@ def processPreOrderSCTASK(tmaDriver : TMADriver,snowDriver : SnowDriver,verizonD
 
     # Process the new install.
     print(f"{taskNumber}: Ordering new device ({deviceID}) and service for user {userFirstName} {userLastName}")
-    orderNumber = placeVerizonNewInstall(verizonDriver=verizonDriver,deviceID=deviceID,accessoryIDs=accessoryIDs,companyName="Sysco",
+    fullOrderNumber = placeVerizonNewInstall(verizonDriver=verizonDriver,deviceID=deviceID,accessoryIDs=accessoryIDs,companyName="Sysco",
                                         firstName=userFirstName,lastName=userLastName,userEmail=contactEmail if contactEmail is not None else "sysco_wireless_mac@cimpl.com",
                                         address1=validatedAddress["Address1"],address2=validatedAddress.get("Address2",None),city=validatedAddress["City"],
                                         state=validatedAddress["State"],zipCode=validatedAddress["ZipCode"],reviewMode=reviewMode,contactEmails=contactEmail)
-    print(f"{taskNumber}: Finished ordering new device and service for user {userFirstName} {userLastName}")
+    verizonOrderNumber = re.search(verizonOrderPattern,fullOrderNumber).group(1).strip()
+    print(f"{taskNumber}: Finished ordering new device and service for user {userFirstName} {userLastName} ({verizonOrderNumber})")
 
     # Add workorder to SCTASK notes.
     maintenance.validateSnow(snowDriver)
-    snowDriver.Tasks_WriteNote(noteContent=orderNumber)
+    snowDriver.Tasks_WriteNote(noteContent=fullOrderNumber)
     snowDriver.Tasks_Update()
+
+    # Document the order.
+    documentation.storeSNowOrderToGoogle(taskNumber=taskNumber,orderNumber=verizonOrderNumber,userName=f"{userFirstName} {userLastName}",deviceID=deviceID)
 
 #endregion === Full SNow Workflows
 
