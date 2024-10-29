@@ -20,7 +20,7 @@ from shaman2.utilities.misc import isNumber
 
 DEFAULT_SNOW_IPHONE = "iPhone14_128GB"
 DEFAULT_SNOW_ANDROID = "GalaxyS23_128GB"
-DEFAULT_SNOW_IPHONE_CASE = "iPhone14Defender"
+DEFAULT_SNOW_IPHONE_CASE = "iPhone14Symmetry"
 DEFAULT_SNOW_ANDROID_CASE = "SamsungS23Symmetry"
 DEFAULT_SNOW_CHARGER = "BelkinWallAdapter"
 
@@ -904,7 +904,7 @@ def processPreOrderSCTASK(tmaDriver : TMADriver,snowDriver : SnowDriver,verizonD
     snowDriver.Tasks_Update()
 
     # Document the order.
-    documentation.storeSNowOrderToGoogle(taskNumber=taskNumber,orderNumber=verizonOrderNumber,userName=f"{userFirstName} {userLastName}",deviceID=deviceID)
+    documentation.storeSNowOrderToGoogle(taskNumber=taskNumber,orderNumber=verizonOrderNumber,userName=f"{userFirstName} {userLastName}",deviceID=deviceID,datePlaced=datetime.today().strftime("%H:%M:%S %Y-%m-%d"))
 
 #endregion === Full SNow Workflows
 

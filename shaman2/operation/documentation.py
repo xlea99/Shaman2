@@ -12,8 +12,8 @@ ordersSheet = SheetSync(spreadsheetID=mainConfig["google"]["ordersSheet"])
 
 # This method stores the contents of an SNow order on the orders spreadsheet listed
 # in mainConfig.
-def storeSNowOrderToGoogle(taskNumber,orderNumber,userName,deviceID):
-    ordersSheet.addRows("SNow",[[taskNumber,orderNumber,userName,devices[deviceID]["tmaModel"]]])
+def storeSNowOrderToGoogle(taskNumber,orderNumber,userName,deviceID,datePlaced):
+    ordersSheet.addRows(mainConfig["google"]["snowSubSheet"],[[taskNumber,orderNumber,userName,devices[deviceID]["tmaModel"],datePlaced]])
 
 
 storeSNowOrderToGoogle(taskNumber="SCTASK1073505",orderNumber="MB1000448472238",userName="KAYLYNN SHAPIRO",deviceID="iPhone14_128GB")
