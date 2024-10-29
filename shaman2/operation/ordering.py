@@ -880,7 +880,7 @@ def processPreOrderSCTASK(tmaDriver : TMADriver,snowDriver : SnowDriver,verizonD
 
         # Check to make sure the user doesn't already have a service.
         if (len(searchedPeopleObject.info_LinkedServices) > 0):
-            warningMessage = f"WARNING: User '{searchedPeopleObject. nfo_EmployeeID}' already has linked services."
+            warningMessage = f"WARNING: User '{searchedPeopleObject.info_EmployeeID}' already has linked services."
             if (not consoleUserWarning(warningMessage)):
                 return False
     else:
@@ -920,9 +920,7 @@ eyesafe = EyesafeDriver(br)
 snow = SnowDriver(br)
 
 
-preProcessSCTASKs = [
-"SCTASK1073097",
-"SCTASK1073096",
+preProcessSCTASKs = ["SCTASK1071369",
 "SCTASK1073085",
 "SCTASK1073084",
 "SCTASK1073082",
@@ -935,6 +933,7 @@ preProcessSCTASKs = [
 "SCTASK1073132",
 "SCTASK1073500",
 "SCTASK1073205"]
+
 for task in preProcessSCTASKs:
     try:
         processPreOrderSCTASK(tmaDriver=tma,snowDriver=snow,verizonDriver=vzw,
