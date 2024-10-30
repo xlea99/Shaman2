@@ -53,7 +53,7 @@ class SnowTask:
     # This helper method attempts to classify the order text blob from SCTASK descriptions into a neat dictionary of relevant information
     def __classifySnowOrderInfoFromDescription(self):
         employeeNamePattern = r"Employee name:\s*([A-Za-z\s'’\.-]+)(?=\s*Location:)"
-        supervisorNamePattern = r"Supervisor:\s*([A-Za-z\s]+)(?=\s*Start Date:)"
+        supervisorNamePattern = r"Supervisor:\s*([A-Za-z\s'’\.-]+)(?=\s*Start Date:)"
         shippingAddressPattern = r"Address device to be shipped to:\s*(.+?)(?=\s*Device shipped will be)"
         devicePattern = r"Sysco standard (\w+) Device"
         accessoryBundlePattern = r"(Accessory bundle will be included)"
