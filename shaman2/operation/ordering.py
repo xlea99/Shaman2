@@ -888,7 +888,7 @@ def processPreOrderSCTASK(tmaDriver : TMADriver,snowDriver : SnowDriver,verizonD
             if (not consoleUserWarning(warningMessage)):
                 return False
     else:
-        userFirstName,userLastName = scTask["OrderEmployeeName"].split(" ")
+        userFirstName,userLastName = scTask["OrderEmployeeName"].split(" ",maxsplit=1)
         contactEmail = None
 
     # Validate and clean the address that the user gave.
@@ -923,33 +923,17 @@ vzw = VerizonDriver(br)
 baka = BakaDriver(br)
 eyesafe = EyesafeDriver(br)
 
-preProcessSCTASKs = ['SCTASK1073104',
-                     'SCTASK1073153',
-                     'SCTASK1073154',
-                     'SCTASK1073158',
-                     'SCTASK1073163',
-                     'SCTASK1073164',
-                     'SCTASK1073178',
-                     'SCTASK1073179',
-                     'SCTASK1073198',
-                     'SCTASK1073273',
-                     'SCTASK1073293',
-                     'SCTASK1073294',
-                     'SCTASK1073298',
-                     'SCTASK1073303',
-                     'SCTASK1073310',
-                     'SCTASK1073341',
-                     'SCTASK1073349',
-                     'SCTASK1073355',
-                     'SCTASK1073358',
-                     'SCTASK1073361',
-                     'SCTASK1073365',
-                     'SCTASK1073376',
-                     'SCTASK1073391',
-                     'SCTASK1073397',
-                     'SCTASK1073402',
-                     'SCTASK1073404',
-                     'SCTASK1073431']
+preProcessSCTASKs = ["SCTASK1073498",
+                     "SCTASK1073495",
+                     "SCTASK1073494",
+                     "SCTASK1073490",
+                     "SCTASK1073485",
+                     "SCTASK1073478",
+                     "SCTASK1073476",
+                     "SCTASK1073462",
+                     "SCTASK1073457",
+                     "SCTASK1073456",
+                     "SCTASK1073454"]
 
 for task in preProcessSCTASKs:
     try:

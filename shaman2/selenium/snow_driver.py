@@ -103,27 +103,36 @@ class SnowDriver:
         self.browser.switchToTab("Snow")
         self.navToFavoritesMenuOption("Home")
 
-        searchBarCSS = "#sncwsgs-typeahead-input"
-        searchBar = self.browser.searchForElement(by=By.CSS_SELECTOR,value=searchBarCSS,timeout=10,testClickable=True,
+
+        # Sometimes the stupid search button has trouble clearing. So, we perform an "intelligent" search here.
+        for i in range(3):
+            searchBarCSS = "#sncwsgs-typeahead-input"
+            searchBar = self.browser.searchForElement(by=By.CSS_SELECTOR,value=searchBarCSS,timeout=10,testClickable=True,
                                                                      shadowRootStack=[{"by": By.XPATH,"value": "//*[@global-navigation-config]"},
                                                                                       {"by": By.CSS_SELECTOR,"value": "sn-polaris-layout"},
                                                                                       {"by": By.CSS_SELECTOR,"value": "sn-polaris-header"},
                                                                                       {"by": By.CSS_SELECTOR,"value": "sn-search-input-wrapper"},
                                                                                       {"by": By.CSS_SELECTOR,"value": "sn-component-workspace-global-search-typeahead"}],raiseError=True)
-        # Sometimes the stupid search button has trouble clearing. So, we perform an "intelligent" clear here.
-        for i in range(20):
-            searchBar.clear()
-            time.sleep(1)
-            if(searchBar.get_attribute("value").strip() == ""):
+            clearedSearch = False
+            for i in range(5):
+                searchBar.clear()
+                time.sleep(1)
+                if(searchBar.get_attribute("value").strip() == ""):
+                    clearedSearch = True
+                    break
+                else:
+                    time.sleep(1)
+                    continue
+            # This means the page is freaking out, just refresh.
+            if(clearedSearch):
+                naturalPause()
+                searchBar.send_keys(requestNumber)
+                searchBar.send_keys(Keys.ENTER)
+                naturalPause()
                 break
             else:
-                time.sleep(1)
+                self.browser.refresh()
                 continue
-        naturalPause()
-        searchBar.send_keys(requestNumber)
-        searchBar.send_keys(Keys.ENTER)
-        naturalPause()
-
 
         # Now, we search for an exact match.
         exactMatch = self.browser.searchForElement(by=By.CSS_SELECTOR,value="div.global-search-records:nth-child(1)",timeout=10,testClickable=True,
@@ -312,24 +321,37 @@ class SnowDriver:
         moreOptionsMenu = self.browser.searchForElement(by=By.XPATH,value=moreOptionsMenuXPath,timeout=3)
         moreOptionsMenu.click()
 
-        # Then click on "Add Tag"
-        addTagButtonXPath = "//button[@id='tags_menu']"
-        addTagButton = self.browser.searchForElement(by=By.XPATH,value=addTagButtonXPath,timeout=5,testClickable=True)
-        addTagButton.click()
-        naturalPause()
+        # Then click on "Add Tag". This process sometimes fails, so try it a few times.
+        successfullyAddedTag = False
+        for i in range(5):
+            try:
+                addTagButtonXPath = "//button[@id='tags_menu']"
+                addTagInputXPath = "//li[@class='tagit-new']/input"
+                addTagButton = self.browser.searchForElement(by=By.XPATH,value=addTagButtonXPath,timeout=5,testClickable=True)
+                self.browser.safeClick(element=addTagButton,retryClicks=True,clickDelay=5,timeout=60,
+                                       successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=addTagInputXPath))
+                naturalPause()
 
-        # Then, write the target tag.
-        addTagInputXPath = "//li[@class='tagit-new']/input"
-        addTagInput = self.browser.searchForElement(by=By.XPATH,value=addTagInputXPath,timeout=5,testClickable=True)
-        addTagInput.clear()
-        addTagInput.send_keys(tagName[:5])
-        naturalPause()
-        addTagInput.send_keys(tagName[5:])
+                # Then, write the target tag.
+                addTagInput = self.browser.searchForElement(by=By.XPATH,value=addTagInputXPath,timeout=5,testClickable=True)
+                addTagInput.clear()
+                addTagInput.send_keys(tagName[:5])
+                naturalPause()
+                addTagInput.send_keys(tagName[5:])
 
-        # Finally, click on the correct tag.
-        foundTagOptionXPath = f"//li[@class='ui-menu-item']/a[normalize-space(text())='{tagName.strip()}']"
-        foundTagOption = self.browser.searchForElement(by=By.XPATH,value=foundTagOptionXPath,timeout=5,testClickable=True)
-        foundTagOption.click()
+                # Finally, click on the correct tag.
+                foundTagOptionXPath = f"//li[@class='ui-menu-item']/a[normalize-space(text())='{tagName.strip()}']"
+                foundTagOption = self.browser.searchForElement(by=By.XPATH,value=foundTagOptionXPath,timeout=5,testClickable=True)
+                foundTagOption.click()
+                successfullyAddedTag = True
+            except Exception as e:
+                time.sleep(1)
+                continue
+
+        if(not successfullyAddedTag):
+            error = RuntimeError(f"Could not add tag '{tagName}' after 5 attempts.")
+            log.error(error)
+            raise error
 
         self.browser.switch_to.default_content()
         self.browser.switchToTab("Snow")
