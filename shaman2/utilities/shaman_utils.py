@@ -82,13 +82,13 @@ def convertStateFormat(stateString,targetFormat):
         "wy": "wyoming"
     }
 
-    stateName = None
+    cleanedStateString = re.sub(r'[^a-zA-Z]', '', stateString).lower()
     stateAbbrev = None
-    if(stateString.lower() in stateDict.keys()):
-        stateAbbrev = stateString.lower()
+    if(cleanedStateString in stateDict.keys()):
+        stateAbbrev = cleanedStateString
         stateName = stateDict[stateAbbrev]
-    elif(stateString.lower() in stateDict.values()):
-        stateName = stateString.lower()
+    elif(cleanedStateString in stateDict.values()):
+        stateName = cleanedStateString
         for key,value in stateDict.items():
             if(value == stateName):
                 stateAbbrev = key

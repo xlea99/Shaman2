@@ -927,10 +927,7 @@ vzw = VerizonDriver(br)
 baka = BakaDriver(br)
 eyesafe = EyesafeDriver(br)
 
-preProcessSCTASKs = ["SCTASK1073574",
-                    "SCTASK1073576",
-                    "SCTASK1073577",
-                    "SCTASK1073601",
+preProcessSCTASKs = ["SCTASK1073601",
                     "SCTASK1073602",
                     "SCTASK1073603",
                     "SCTASK1073604",

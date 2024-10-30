@@ -19,7 +19,7 @@ def storeSNowOrderToGoogle(taskNumber,orderNumber,userName,deviceID,datePlaced):
             ordersSheet.addRows(mainConfig["google"]["snowSubSheet"],[[taskNumber,orderNumber,userName,devices[deviceID]["tmaModel"],datePlaced]])
             return True
         except Exception as e:
-            time.sleep(5)
+            time.sleep(3)
     return False
 
 
