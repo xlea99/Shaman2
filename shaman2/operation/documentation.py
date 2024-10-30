@@ -1,4 +1,5 @@
 import re
+import time
 from datetime import datetime
 from shaman2.common.config import mainConfig, devices
 from shaman2.common.logger import log
@@ -13,4 +14,13 @@ ordersSheet = SheetSync(spreadsheetID=mainConfig["google"]["ordersSheet"])
 # This method stores the contents of an SNow order on the orders spreadsheet listed
 # in mainConfig.
 def storeSNowOrderToGoogle(taskNumber,orderNumber,userName,deviceID,datePlaced):
-    ordersSheet.addRows(mainConfig["google"]["snowSubSheet"],[[taskNumber,orderNumber,userName,devices[deviceID]["tmaModel"],datePlaced]])
+    for i in range(5):
+        try:
+            ordersSheet.addRows(mainConfig["google"]["snowSubSheet"],[[taskNumber,orderNumber,userName,devices[deviceID]["tmaModel"],datePlaced]])
+            return True
+        except Exception as e:
+            time.sleep(5)
+    return False
+
+
+

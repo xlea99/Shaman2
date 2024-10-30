@@ -911,7 +911,11 @@ def processPreOrderSCTASK(tmaDriver : TMADriver,snowDriver : SnowDriver,verizonD
     snowDriver.Tasks_Update()
 
     # Document the order.
-    documentation.storeSNowOrderToGoogle(taskNumber=taskNumber,orderNumber=verizonOrderNumber,userName=f"{userFirstName} {userLastName}",deviceID=deviceID,datePlaced=datetime.today().strftime("%H:%M:%S %d-%m-%Y"))
+    storeResult = documentation.storeSNowOrderToGoogle(taskNumber=taskNumber,orderNumber=verizonOrderNumber,userName=f"{userFirstName} {userLastName}",deviceID=deviceID,datePlaced=datetime.today().strftime("%H:%M:%S %d-%m-%Y"))
+    if(not storeResult):
+        warningMessage = f"WARNING: Tried to store result of order 5 times, but google failed five times. Manually document?"
+        if (not consoleUserWarning(warningMessage)):
+            return False
 
 #endregion === Full SNow Workflows
 
@@ -923,17 +927,33 @@ vzw = VerizonDriver(br)
 baka = BakaDriver(br)
 eyesafe = EyesafeDriver(br)
 
-preProcessSCTASKs = ["SCTASK1073498",
-                     "SCTASK1073495",
-                     "SCTASK1073494",
-                     "SCTASK1073490",
-                     "SCTASK1073485",
-                     "SCTASK1073478",
-                     "SCTASK1073476",
-                     "SCTASK1073462",
-                     "SCTASK1073457",
-                     "SCTASK1073456",
-                     "SCTASK1073454"]
+preProcessSCTASKs = ["SCTASK1073574",
+                    "SCTASK1073576",
+                    "SCTASK1073577",
+                    "SCTASK1073601",
+                    "SCTASK1073602",
+                    "SCTASK1073603",
+                    "SCTASK1073604",
+                    "SCTASK1073697",
+                    "SCTASK1073713",
+                    "SCTASK1073723",
+                    "SCTASK1073725",
+                    "SCTASK1073727",
+                    "SCTASK1073728",
+                    "SCTASK1073729",
+                    "SCTASK1073737",
+                    "SCTASK1073739",
+                    "SCTASK1073741",
+                    "SCTASK1073743",
+                    "SCTASK1073744",
+                    "SCTASK1073749",
+                    "SCTASK1073759",
+                    "SCTASK1073780",
+                    "SCTASK1073786",
+                    "SCTASK1073788",
+                    "SCTASK1073799",
+                    "SCTASK1073811",
+                    "SCTASK1073812"]
 
 for task in preProcessSCTASKs:
     try:
