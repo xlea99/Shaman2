@@ -153,7 +153,6 @@ def validateAddress(rawAddressString : str):
     osmnAddressToTest += f"{classifiedAddress['City']}, " if classifiedAddress["City"] is not None else ""
     osmnAddressToTest += f"{classifiedAddress['State']}, " if classifiedAddress["State"] is not None else ""
     osmnAddressToTest += f"{classifiedAddress['ZipCode'][:5]}, " if classifiedAddress["ZipCode"] is not None else ""
-    osmnValidatedAddresses = osmnValidateAddress(osmnAddressToTest)
 
     # Default behavior is to crash when no Address1 is found at all.
     if(classifiedAddress["Address1"] is None):
@@ -161,58 +160,15 @@ def validateAddress(rawAddressString : str):
         log.error(error)
         raise error
 
-    # If osmn validates 0 addresses, we prompt the user the let them confirm.
-    if(len(osmnValidatedAddresses) == 0):
-        playsoundAsync(paths["media"] / "shaman_attention.mp3")
-        userResponse = input(f"OSMN could not find any matches for cleaned/classified address '{classifiedAddress}'.\n\nPress enter to continue using this address. Press any other key to quit.")
-        if(userResponse):
-            error = ValueError(f"User cancelled program due to OSMN not validating the classifiedAddress: '{classifiedAddress}'")
-            log.error(error)
-            raise error
-        # If the user chooses to proceed, we need to make sure to fill in any missing information.
-        else:
-            if(classifiedAddress["City"] is None):
-                userResponse = input(f"The user's shipping address is missing a CITY. Please enter a city name, then press enter to continue.")
-                classifiedAddress["City"] = userResponse.strip().capitalize()
-            if(classifiedAddress["State"] is None):
-                userResponse = input(f"The user's shipping address is missing a STATE. Please enter a state name, then press enter to continue.")
-                classifiedAddress["State"] = userResponse.strip().capitalize()
-            if(classifiedAddress["ZipCode"] is None):
-                userResponse = input(f"The user's shipping address is missing a ZIPCODE. Please enter a zipcode name, then press enter to continue.")
-                classifiedAddress["ZipCode"] = userResponse.strip().capitalize()
-
-    # Now, we check to see if the original raw address was missing anything/
-    if(classifiedAddress["City"] is None or classifiedAddress["State"] is None or classifiedAddress["ZipCode"] is None):
-
-        # If so, we test here to see if there is a 1-to-1 match with
-        # OSMN or if we need to prompt the user for further verification.
-        if(len(osmnValidatedAddresses) > 1):
-            playsoundAsync(paths["media"] / "shaman_attention.mp3")
-            print("User's raw address seems to be missing information, and OSMN is suggesting multiple possible addresses. Please select the address that the user likely meant. Press any other key to cancel.\n\n")
-            counter = 0
-            for counter,addressDict in enumerate(osmnValidatedAddresses):
-                print(f"{counter+1}. {addressDict['display_name']}")
-                if(counter >= 4):
-                    break
-            userResponse = input("\n\nPlease select the number of the address you would like to use (note that any missing Address2 info will still be added regardless of what's shown here)").strip()
-            if (isNumber(userResponse) and (0 < int(userResponse) < counter+2)):
-                targetOSMNAddressDict = osmnValidatedAddresses[int(userResponse) - 1]
-            else:
-                error = ValueError(f"User cancelled program due to OSMN not validating the classifiedAddress: '{classifiedAddress}'")
-                log.error(error)
-                raise error
-        else:
-            targetOSMNAddressDict = osmnValidatedAddresses[0]
-
-        # Finally, we fill in missing info.
-        if(classifiedAddress["Address1"] is None):
-            classifiedAddress["Address1"] = f"{targetOSMNAddressDict['address']['house_number']} {targetOSMNAddressDict['address']['road']}"
-        if(classifiedAddress["City"] is None):
-            classifiedAddress["City"] = targetOSMNAddressDict['address']["town"]
-        if(classifiedAddress["State"] is None):
-            classifiedAddress["State"] = targetOSMNAddressDict['address']["state"]
-        if(classifiedAddress["ZipCode"] is None):
-            classifiedAddress["ZipCode"] = targetOSMNAddressDict['address']["postcode"]
+    if(classifiedAddress["City"] is None):
+        userResponse = input(f"The user's shipping address is missing a CITY. Please enter a city name, then press enter to continue.")
+        classifiedAddress["City"] = userResponse.strip().capitalize()
+    if(classifiedAddress["State"] is None):
+        userResponse = input(f"The user's shipping address is missing a STATE. Please enter a state name, then press enter to continue.")
+        classifiedAddress["State"] = userResponse.strip().capitalize()
+    if(classifiedAddress["ZipCode"] is None):
+        userResponse = input(f"The user's shipping address is missing a ZIPCODE. Please enter a zipcode name, then press enter to continue.")
+        classifiedAddress["ZipCode"] = userResponse.strip().capitalize()
 
     # Finally, we return our classified, validated address.
     return classifiedAddress

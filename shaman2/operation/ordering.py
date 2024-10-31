@@ -893,6 +893,7 @@ def processPreOrderSCTASK(tmaDriver : TMADriver,snowDriver : SnowDriver,verizonD
 
     # Validate and clean the address that the user gave.
     validatedAddress = validateAddress(rawAddressString=scTask["OrderShippingAddress"])
+    print(f"{taskNumber}: Found validated address: {validatedAddress}")
 
     print(f"{taskNumber}: Determined as valid SCTASK for Shaman rituals.")
 
@@ -927,30 +928,7 @@ vzw = VerizonDriver(br)
 baka = BakaDriver(br)
 eyesafe = EyesafeDriver(br)
 
-preProcessSCTASKs = ["SCTASK1073601",
-                    "SCTASK1073602",
-                    "SCTASK1073603",
-                    "SCTASK1073604",
-                    "SCTASK1073697",
-                    "SCTASK1073713",
-                    "SCTASK1073723",
-                    "SCTASK1073725",
-                    "SCTASK1073727",
-                    "SCTASK1073728",
-                    "SCTASK1073729",
-                    "SCTASK1073737",
-                    "SCTASK1073739",
-                    "SCTASK1073741",
-                    "SCTASK1073743",
-                    "SCTASK1073744",
-                    "SCTASK1073749",
-                    "SCTASK1073759",
-                    "SCTASK1073780",
-                    "SCTASK1073786",
-                    "SCTASK1073788",
-                    "SCTASK1073799",
-                    "SCTASK1073811",
-                    "SCTASK1073812"]
+preProcessSCTASKs = []
 
 for task in preProcessSCTASKs:
     try:
@@ -965,7 +943,7 @@ preProcessWOs = []
 for wo in preProcessWOs:
     try:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
-                          workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D")
+                          workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D",reviewMode=True)
     except Exception as e:
         playsoundAsync(paths["media"] / "shaman_error.mp3")
         raise e
