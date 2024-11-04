@@ -815,6 +815,7 @@ def placeMissingEyesafeOrderFromCimplWorkorder(tmaDriver : TMADriver,cimplDriver
 #endregion === Full Cimpl Workflows ===
 #region === Full SNow Workflows ===
 
+# This method takes and orders for one single new hire SCTASK.
 def processPreOrderSCTASK(tmaDriver : TMADriver,snowDriver : SnowDriver,verizonDriver : VerizonDriver,
                           taskNumber, assignTo,reviewMode=True):
     print(f"{taskNumber}: Beginning automation")
@@ -912,51 +913,103 @@ def processPreOrderSCTASK(tmaDriver : TMADriver,snowDriver : SnowDriver,verizonD
     snowDriver.Tasks_Update()
 
     # Document the order.
-    storeResult = documentation.storeSNowOrderToGoogle(taskNumber=taskNumber,orderNumber=verizonOrderNumber,userName=f"{userFirstName} {userLastName}",deviceID=deviceID,datePlaced=datetime.today().strftime("%H:%M:%S %d-%m-%Y"))
+    storeResult = documentation.storeSCTASKToGoogle(taskNumber=taskNumber,orderNumber=verizonOrderNumber,userName=f"{userFirstName} {userLastName}",deviceID=deviceID,datePlaced=datetime.today().strftime("%H:%M:%S %d-%m-%Y"))
     if(not storeResult):
         warningMessage = f"WARNING: Tried to store result of order 5 times, but google failed five times. Manually document?"
         if (not consoleUserWarning(warningMessage)):
             return False
 
+# This method attempts to close an SCTASK (simply updating the ticket with tracking, and close) based
+# on the given SCTASK number.
+def processPostOrdersSCTASK(snowDriver : SnowDriver,verizonDriver : VerizonDriver,taskNumber : (str,list) = None):
+    # First, get the full list of pending SCTASKs to close.
+    scTasks = documentation.downloadSCTASKs()
+
+    # Validate Verizon
+    maintenance.validateVerizon(verizonDriver)
+    verizonDriver.navToOrderViewer()
+
+    if(taskNumber):
+        if(type(taskNumber) is not list):
+            taskNumber = [taskNumber]
+
+    # Now, iterate through each one and close.
+    for scTask in scTasks:
+        # Filter for specific tasks, if necessary.
+        if(taskNumber):
+            if(scTask["ServiceNow Ticket"] not in taskNumber):
+                continue
+
+        print(f"{scTask['ServiceNow Ticket']}: Beginning request close.")
+
+        # First, try to pull up the order in Verizon.
+        maintenance.validateVerizon(verizonDriver)
+        carrierOrder = readVerizonOrder(verizonDriver=verizonDriver, verizonOrderNumber=scTask["Order"],orderViewPeriod="180 Days")
+        if (carrierOrder is None):
+            print(f"{scTask['ServiceNow Ticket']}: Can't close request, as order number '{scTask['Order']}' is not yet showing in the Verizon Order Viewer.")
+            continue
+        elif (carrierOrder["Status"] != "Completed"):
+            print(f"{scTask['ServiceNow Ticket']}: Can't complete WO, as order number '{scTask['Order']}' has status '{carrierOrder['Status']}' and not Complete.")
+            continue
+
+        # Nav to the SNow request.
+        maintenance.validateSnow(snowDriver)
+        snowDriver.navToRequest(scTask["ServiceNow Ticket"])
+        thisSnowRequest = snowDriver.Tasks_ReadFullTask()
+
+        # Check to make sure the request is still open.
+        if(thisSnowRequest["State"] in ["Closed Complete","Closed Incomplete","Closed Skipped"]):
+            print(f"{scTask['ServiceNow Ticket']}: Task is already in state '{thisSnowRequest['State']}'")
+        else:
+            trackingNote = f"Service Number: {carrierOrder['WirelessNumber']}\n"
+            # Get tracking number if provided, and write to the SNow ticket.
+            if (carrierOrder["TrackingNumber"] is not None and carrierOrder["TrackingNumber"].strip() != ""):
+                trackingNote += f"Courier: {carrierOrder['Courier']}\nTracking Number: {carrierOrder['TrackingNumber']}"
+
+            # Close the order.
+            snowDriver.Tasks_WriteState("Closed Complete")
+            snowDriver.Tasks_WriteAdditionalNote(noteContent=trackingNote)
+            snowDriver.Tasks_Update()
+
+        # Archive the task in the Google sheet.
+        documentation.archiveSCTASKOnGoogle(taskNumber=scTask["ServiceNow Ticket"], closedBy="Alex", serviceNumber="", fullSCTASKSheet=scTasks)
+
+        print(f"{scTask['ServiceNow Ticket']}: Closed request.")
+
+
 #endregion === Full SNow Workflows
 
-br = Browser()
-tma = TMADriver(br)
-cimpl = CimplDriver(br)
-snow = SnowDriver(br)
-vzw = VerizonDriver(br)
-baka = BakaDriver(br)
-eyesafe = EyesafeDriver(br)
+try:
+    # Drivers init
+    br = Browser()
+    tma = TMADriver(br)
+    cimpl = CimplDriver(br)
+    snow = SnowDriver(br)
+    vzw = VerizonDriver(br)
+    baka = BakaDriver(br)
+    eyesafe = EyesafeDriver(br)
 
-preProcessSCTASKs = []
-
-for task in preProcessSCTASKs:
-    try:
+    # SCTASK processing
+    preProcessSCTASKs = []
+    postProcessSCTASKs = [] # Note that, if no postProcessSCTASKs are specified, all valid SCTASKs in the sheet will be closed. Input just "None" to NOT do this.
+    for task in preProcessSCTASKs:
         processPreOrderSCTASK(tmaDriver=tma,snowDriver=snow,verizonDriver=vzw,
-                          taskNumber=task,assignTo="Alex Somheil",reviewMode=True)
-    except Exception as e:
-        playsoundAsync(paths["media"] / "shaman_error.mp3")
-        raise e
+                              taskNumber=task,assignTo="Alex Somheil",reviewMode=True)
+    processPostOrdersSCTASK(snowDriver=snow,verizonDriver=vzw,taskNumber=postProcessSCTASKs)
 
-
-preProcessWOs = []
-for wo in preProcessWOs:
-    try:
+    # Cimpl processing
+    preProcessWOs = []
+    postProcessWOs = []
+    for wo in preProcessWOs:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
-                          workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D",reviewMode=True)
-    except Exception as e:
-        playsoundAsync(paths["media"] / "shaman_error.mp3")
-        raise e
-
-postProcessWOs = []
-for wo in postProcessWOs:
-    try:
+                              workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D",reviewMode=True)
+    for wo in postProcessWOs:
         processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,
-                          workorderNumber=wo)
-    except Exception as e:
-        playsoundAsync(paths["media"] / "shaman_error.mp3")
-        raise e
+                              workorderNumber=wo)
 
+except Exception as e:
+    playsoundAsync(paths["media"] / "shaman_error.mp3")
+    raise e
 
 # TEMPLATES
 #
@@ -969,3 +1022,4 @@ for wo in postProcessWOs:
 # DOCUMENTING A PHONE IN TMA:
 # documentTMANewInstall(tmaDriver=tma,client="Sysco",netID="",serviceNum="",installDate="",device="iPhone14_128GB",imei="",carrier="Verizon Wireless")
 # documentTMAUpgrade(tmaDriver=tma,client="Sysco",serviceNum="",installDate="",device="iPhone14_128GB",imei="")
+

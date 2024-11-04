@@ -293,7 +293,7 @@ class SnowDriver:
 
         self.browser.switch_to.default_content()
         self.browser.switchToTab("Snow")
-    # Method to write/add a note to the task.
+    # Method to write/add a note to the task (and one for the special "additional note").
     def Tasks_WriteNote(self,noteContent):
         self.browser.switchToTab("Snow")
         self.Tasks_ScopeToTaskFrame()
@@ -308,6 +308,18 @@ class SnowDriver:
         postButton = self.browser.searchForElement(by=By.XPATH,value=postButtonXPath,timeout=3,scrollIntoView=True)
         postButton.click()
 
+        self.browser.switch_to.default_content()
+        self.browser.switchToTab("Snow")
+    def Tasks_WriteAdditionalNote(self,noteContent):
+        self.browser.switchToTab("Snow")
+        self.Tasks_ScopeToTaskFrame()
+
+        additionalNoteTextAreaXPath = "//textarea[@data-stream-text-input='comments'][@id='activity-stream-comments-textarea']"
+        additionalNoteTextArea = self.browser.searchForElement(by=By.XPATH,value=additionalNoteTextAreaXPath,timeout=5,scrollIntoView=True)
+        additionalNoteTextArea.clear()
+        additionalNoteTextArea.send_keys(noteContent)
+
+        # We don't need to click post, since it gets auto-posted on update for a Completed ticket.
         self.browser.switch_to.default_content()
         self.browser.switchToTab("Snow")
 
