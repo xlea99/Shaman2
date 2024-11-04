@@ -28,77 +28,38 @@ def convertServiceIDFormat(serviceID, targetFormat):
 # abbreviation, then converts to either format:
 # -abbreviation (TX)
 # -name (Texas)
-def convertStateFormat(stateString,targetFormat):
+def convertStateFormat(stateString, targetFormat):
     stateDict = {
-        "al": "alabama",
-        "ak": "alaska",
-        "az": "arizona",
-        "ar": "arkansas",
-        "ca": "california",
-        "co": "colorado",
-        "ct": "connecticut",
-        "de": "delaware",
-        "fl": "florida",
-        "ga": "georgia",
-        "hi": "hawaii",
-        "id": "idaho",
-        "il": "illinois",
-        "in": "indiana",
-        "ia": "iowa",
-        "ks": "kansas",
-        "ky": "kentucky",
-        "la": "louisiana",
-        "me": "maine",
-        "md": "maryland",
-        "ma": "massachusetts",
-        "mi": "michigan",
-        "mn": "minnesota",
-        "ms": "mississippi",
-        "mo": "missouri",
-        "mt": "montana",
-        "ne": "nebraska",
-        "nv": "nevada",
-        "nh": "new hampshire",
-        "nj": "new jersey",
-        "nm": "new mexico",
-        "ny": "new york",
-        "nc": "north carolina",
-        "nd": "north dakota",
-        "oh": "ohio",
-        "ok": "oklahoma",
-        "or": "oregon",
-        "pa": "pennsylvania",
-        "ri": "rhode island",
-        "sc": "south carolina",
-        "sd": "south dakota",
-        "tn": "tennessee",
-        "tx": "texas",
-        "ut": "utah",
-        "vt": "vermont",
-        "va": "virginia",
-        "wa": "washington",
-        "wv": "west virginia",
-        "wi": "wisconsin",
-        "wy": "wyoming"
+        "al": "alabama", "ak": "alaska", "az": "arizona", "ar": "arkansas", "ca": "california",
+        "co": "colorado", "ct": "connecticut", "de": "delaware", "fl": "florida", "ga": "georgia",
+        "hi": "hawaii", "id": "idaho", "il": "illinois", "in": "indiana", "ia": "iowa", "ks": "kansas",
+        "ky": "kentucky", "la": "louisiana", "me": "maine", "md": "maryland", "ma": "massachusetts",
+        "mi": "michigan", "mn": "minnesota", "ms": "mississippi", "mo": "missouri", "mt": "montana",
+        "ne": "nebraska", "nv": "nevada", "nh": "new hampshire", "nj": "new jersey", "nm": "new mexico",
+        "ny": "new york", "nc": "north carolina", "nd": "north dakota", "oh": "ohio", "ok": "oklahoma",
+        "or": "oregon", "pa": "pennsylvania", "ri": "rhode island", "sc": "south carolina", "sd": "south dakota",
+        "tn": "tennessee", "tx": "texas", "ut": "utah", "vt": "vermont", "va": "virginia", "wa": "washington",
+        "wv": "west virginia", "wi": "wisconsin", "wy": "wyoming"
     }
 
-    cleanedStateString = re.sub(r'[^a-zA-Z]', '', stateString).lower()
-    stateAbbrev = None
-    if(cleanedStateString in stateDict.keys()):
+    # Clean the user input
+    cleanedStateString = re.sub(r'[^a-zA-Z]+', '', stateString).lower()
+
+    # Check if it's an abbreviation or a full name (ignoring spaces)
+    if cleanedStateString in stateDict.keys():  # abbreviation format
         stateAbbrev = cleanedStateString
         stateName = stateDict[stateAbbrev]
-    elif(cleanedStateString in stateDict.values()):
-        stateName = cleanedStateString
-        for key,value in stateDict.items():
-            if(value == stateName):
-                stateAbbrev = key
-                break
+    elif cleanedStateString in [value.replace(" ", "") for value in stateDict.values()]:  # name without spaces
+        # Find the abbreviation by matching the spaceless name
+        stateAbbrev = next(key for key, value in stateDict.items() if value.replace(" ", "") == cleanedStateString)
+        stateName = stateDict[stateAbbrev]
     else:
         raise ValueError(f"Invalid state string given '{stateString}'")
 
-    if(targetFormat.lower() == "abbreviation"):
+    # Return in the desired format
+    if targetFormat.lower() == "abbreviation":
         return stateAbbrev.upper()
-    elif(targetFormat.lower() == "name"):
+    elif targetFormat.lower() == "name":
         return stateName.title()
     else:
         raise ValueError(f"Invalid targetFormat specified '{targetFormat}'")
@@ -137,3 +98,7 @@ def naturalPause():
 
     # Wait the time.
     time.sleep(pauseTime)
+
+
+
+print(convertStateFormat(stateString="NewMexico",targetFormat="name"))
