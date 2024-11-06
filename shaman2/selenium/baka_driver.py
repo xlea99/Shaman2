@@ -95,7 +95,7 @@ class BakaDriver:
                 returnDict["WirelessNumber"] = lowerLine.split("cell number:")[1].strip()
             elif("agreement number" in lowerLine):
                 returnDict["AgreementNumber:"] = lowerLine.split("agreement number:")[1].strip()
-            elif("imei:" in lowerLine):
+            elif("imei" in lowerLine):
                 returnDict["IMEI"] = lowerLine.split("imei")[1].lstrip("/ESN:").strip()
             elif("term:" in lowerLine):
                 returnDict["Term"] = lowerLine.split("term:")[1].strip().title()
