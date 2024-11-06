@@ -145,7 +145,7 @@ def validateAddress(rawAddressString : str):
     classifiedAddress = extractAddressFromGPTResponse(gptResponseString=classifiedAddressResponse)
 
     # If specifically the state is missing, we can easily resolve this by querying OSMN one extra time.
-    if(classifiedAddress["State"] is None):
+    if(classifiedAddress.get("State") is None and classifiedAddress.get("ZipCode") is not None):
         classifiedAddress["State"] = getStateFromZip(classifiedAddress["ZipCode"][:5])
 
     # Now, we check the address with OSMN (along with removing the address2 to avoid confusion).

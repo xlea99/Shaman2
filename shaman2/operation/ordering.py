@@ -990,7 +990,7 @@ try:
     eyesafe = EyesafeDriver(br)
 
     # SCTASK processing
-    preProcessSCTASKs = []
+    preProcessSCTASKs = ["SCTASK1080415","SCTASK1080661","SCTASK1080671"]
     postProcessSCTASKs = [] # Note that, if no postProcessSCTASKs are specified, all valid SCTASKs in the sheet will be closed. Input just "None" to NOT do this.
     for task in preProcessSCTASKs:
         processPreOrderSCTASK(tmaDriver=tma,snowDriver=snow,verizonDriver=vzw,
