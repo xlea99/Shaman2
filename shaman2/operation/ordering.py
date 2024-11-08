@@ -740,7 +740,7 @@ def processPostOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,vz
     # If operation type is an Upgrade
     elif(workorder["OperationType"] == "Upgrade"):
         print(f"Cimpl WO {workorderNumber}: Processing Upgrade for service {carrierOrder['WirelessNumber']}")
-        returnCode = documentTMAUpgrade(tmaDriver=tmaDriver,client="Sysco",serviceNum=carrierOrder["WirelessNumber"],installDate=carrierOrder["OrderDate"],device=deviceID,imei=carrierOrder["IMEI"])
+        returnCode = documentTMAUpgrade(tmaDriver=tmaDriver,client="Sysco",serviceNum=workorder["ServiceID"],installDate=carrierOrder["OrderDate"],device=deviceID,imei=carrierOrder["IMEI"])
         if(returnCode == "Completed"):
             print(f"Cimpl WO {workorderNumber}: Finished upgrading TMA service {carrierOrder['WirelessNumber']}")
         elif(returnCode == "WrongDevice"):
