@@ -740,7 +740,7 @@ def processPostOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,vz
     # If operation type is an Upgrade
     elif(workorder["OperationType"] == "Upgrade"):
         print(f"Cimpl WO {workorderNumber}: Processing Upgrade for service {carrierOrder['WirelessNumber']}")
-        returnCode = documentTMAUpgrade(tmaDriver=tmaDriver,client="Sysco",serviceNum=carrierOrder["WirelessNumber"],installDate=carrierOrder["OrderDate"],device=deviceID,imei=carrierOrder["IMEI"])
+        returnCode = documentTMAUpgrade(tmaDriver=tmaDriver,client="Sysco",serviceNum=workorder["ServiceID"],installDate=carrierOrder["OrderDate"],device=deviceID,imei=carrierOrder["IMEI"])
         if(returnCode == "Completed"):
             print(f"Cimpl WO {workorderNumber}: Finished upgrading TMA service {carrierOrder['WirelessNumber']}")
         elif(returnCode == "WrongDevice"):
@@ -990,19 +990,19 @@ try:
     eyesafe = EyesafeDriver(br)
 
     # SCTASK processing
-    preProcessSCTASKs = ["SCTASK1080415","SCTASK1080661","SCTASK1080671"]
+    preProcessSCTASKs = []
     postProcessSCTASKs = [] # Note that, if no postProcessSCTASKs are specified, all valid SCTASKs in the sheet will be closed. Input just "None" to NOT do this.
     for task in preProcessSCTASKs:
         processPreOrderSCTASK(tmaDriver=tma,snowDriver=snow,verizonDriver=vzw,
-                              taskNumber=task,assignTo="Alex Somheil",reviewMode=True)
-    processPostOrdersSCTASK(snowDriver=snow,verizonDriver=vzw,taskNumber=postProcessSCTASKs)
+                              taskNumber=task,assignTo="Dan Kowalczyk",reviewMode=True)
+    #processPostOrdersSCTASK(snowDriver=snow,verizonDriver=vzw,taskNumber=postProcessSCTASKs)
 
     # Cimpl processing
     preProcessWOs = []
-    postProcessWOs = []
+    postProcessWOs = [48949, 49044, 49047, 49056, 49074, 49076, 49079, 49080, 49081, 49082, 49084, 49085, 49086, 49088, 49090, 49091, 49092, 49093, 49094]
     for wo in preProcessWOs:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
-                              workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D",reviewMode=True)
+                              workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order date %D",reviewMode=True)
     for wo in postProcessWOs:
         processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,
                               workorderNumber=wo)
