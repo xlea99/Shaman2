@@ -994,15 +994,15 @@ try:
     postProcessSCTASKs = [] # Note that, if no postProcessSCTASKs are specified, all valid SCTASKs in the sheet will be closed. Input just "None" to NOT do this.
     for task in preProcessSCTASKs:
         processPreOrderSCTASK(tmaDriver=tma,snowDriver=snow,verizonDriver=vzw,
-                              taskNumber=task,assignTo="Dan Kowalczyk",reviewMode=True)
-    #processPostOrdersSCTASK(snowDriver=snow,verizonDriver=vzw,taskNumber=postProcessSCTASKs)
+                              taskNumber=task,assignTo="Alex Somheil",reviewMode=True)
+    processPostOrdersSCTASK(snowDriver=snow,verizonDriver=vzw,taskNumber=postProcessSCTASKs)
 
     # Cimpl processing
-    preProcessWOs = []
-    postProcessWOs = [48949, 49044, 49047, 49056, 49074, 49076, 49079, 49080, 49081, 49082, 49084, 49085, 49086, 49088, 49090, 49091, 49092, 49093, 49094]
+    preProcessWOs = [48427,48694]
+    postProcessWOs = [48745]
     for wo in preProcessWOs:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
-                              workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order date %D",reviewMode=True)
+                              workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D",reviewMode=True)
     for wo in postProcessWOs:
         processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,
                               workorderNumber=wo)

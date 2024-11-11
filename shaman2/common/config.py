@@ -195,3 +195,8 @@ class EmailTemplatesConfig(ReloadableConfig):
 emailTemplatesConfig = EmailTemplatesConfig()
 
 
+
+input("Ready bro?")
+devices.reload()
+
+
