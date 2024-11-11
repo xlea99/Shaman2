@@ -194,9 +194,3 @@ class EmailTemplatesConfig(ReloadableConfig):
             raise error
 emailTemplatesConfig = EmailTemplatesConfig()
 
-
-
-input("Ready bro?")
-devices.reload()
-
-
