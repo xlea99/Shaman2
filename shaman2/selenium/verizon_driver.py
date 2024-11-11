@@ -424,92 +424,40 @@ class VerizonDriver:
     # happening, but ensures the cart is fully empty for future automation. Since Verizon is a miserable
     # excuse for a website, sometimes clicking on "clear cart" just literally does nothing. Therefore, this
     # method contains "attempts" parameter which will repeat trying to clear the cart if it seems unsuccessful.
-    def emptyCart(self,attempts=2):
-        self.navToHomescreen()
-        miniCartXPath = "//app-mini-cart/div/div/span"
-        noItemsInCartXPath = "//div[contains(text(),'No items in the cart yet, please continue shopping.')]"
-        viewCartButtonXPath = "//button[@clickname='MB View Shopping Cart']"
+    def emptyCart(self):
+        self.browser.switchToTab("Verizon")
+        verizonCartURL = "https://mb.verizonwireless.com/mbt/secure/index?appName=comm&transType=NSE&navtrk=globalnav%3Ashop%3Asmartphones#/device-shopping-cart"
 
-        # This helper function simply attempts to open the cart, and checks that it was opened correctly. If it wasn't
-        # after timeout, it closes the cart and returns False. Otherwise, returns True.
-        def attemptCartOpen(timeout=10):
-            # First, open the miniCart
-            miniCart = self.browser.searchForElement(by=By.XPATH, value=miniCartXPath, timeout=30, testClickable=True)
-            self.browser.safeClick(element=miniCart,timeout=3)
+        # First, navigate to the cart url.
+        filledShoppingCartHeaderXPath = "//h1[normalize-space(text())='Shopping cart']"
+        emptyShoppingCartHeaderXPath = "//h1[normalize-space(text())='Your cart is empty.']"
+        self.browser.get(verizonCartURL)
+        self.browser.searchForElement(by=By.XPATH,value=[filledShoppingCartHeaderXPath,emptyShoppingCartHeaderXPath],
+                                      timeout=180,testClickable=True,testLiteralClick=True,raiseError=True)
 
-            # Now, we search for either our noItemsInCart or viewCart element, meaning it was successfully opened.
-            openCartResult = self.browser.searchForElement(by=By.XPATH,value=[noItemsInCartXPath,viewCartButtonXPath],timeout=timeout)
-
-            # If the cart opened successfully, we return true.
-            if(openCartResult):
-                return True
-            # Otherwise, exit the cart and return False.
-            else:
-                cartCloseIconXPath = "//span[contains(@class,'cart-close')]"
-                cartCloseIcon = self.browser.searchForElement(by=By.XPATH,value=cartCloseIconXPath,timeout=3)
-                self.browser.safeClick(element=cartCloseIcon,timeout=3)
-                return False
-
-        # We attempt to open the cart successfully 5 times.
-        openedCart = False
-        for i in range(5):
-            openCartResult = attemptCartOpen()
-            if(openCartResult):
-                openedCart = True
-                break
-        if(not openedCart):
-            error = RuntimeError("Could not successfully open Verizon cart so that it wasn't stuck at loading after 5 attempts.")
-            log.error(error)
-            raise error
-
-        # Now, we search to see whether or not the cart is full or not.
-        noItemsInCart = self.browser.searchForElement(by=By.XPATH, value=noItemsInCartXPath, timeout=2)
-
-        # Simply return True, since we're done if no items in cart.
-        if (noItemsInCart):
+        # Now, test to see if its full or empty.
+        if(self.browser.searchForElement(by=By.XPATH,value=emptyShoppingCartHeaderXPath,timeout=1)):
+            # If it's already empty, we simply return True.
             return True
-        # Otherwise, clear the cart.
+        elif(self.browser.searchForElement(by=By.XPATH,value=filledShoppingCartHeaderXPath)):
+            # Click "clear cart".
+            clearCartButtonXPath = "//a[@id='dtm_clearcart']"
+            clearCartButton = self.browser.searchForElement(by=By.XPATH,value=clearCartButtonXPath,timeout=120,testClickable=True,raiseError=True)
+            clearCartButton.click()
+
+            # A confirmation box should pop up - click "clear" here.
+            confirmClearButtonXPath = "//div[contains(@class,'app-clear-cart-popup')]//button[normalize-space(text())='Clear']"
+            confirmClearButton = self.browser.searchForElement(by=By.XPATH,value=confirmClearButtonXPath,timeout=120,testClickable=True)
+            confirmClearButton.click()
+
+            # Finally, wait to confirm that the cart is empty.
+            self.browser.searchForElement(by=By.XPATH,value=emptyShoppingCartHeaderXPath,timeout=120,testClickable=True,testLiteralClick=True,raiseError=True)
+            return True
         else:
-            viewCartButton = self.browser.searchForElement(by=By.XPATH,value=viewCartButtonXPath,timeout=60,testClickable=True)
-            self.browser.safeClick(element=viewCartButton,timeout=5,raiseError=False)
-
-            for i in range(attempts):
-                shoppingCartHeaderXPath = "//div[contains(@class,'device-shopping-cart-content-left')]//h1[contains(text(),'Shopping cart')]"
-                shoppingCartHeader = self.browser.searchForElement(by=By.XPATH,value=shoppingCartHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True)
-                # Sometimes VZW randomly has the cart empty, so check that here.
-                if(not shoppingCartHeader):
-                    cartCleared = self.browser.searchForElement(by=By.XPATH, value="//h1[text()='Your cart is empty.']",
-                                                                timeout=10,
-                                                                testClickable=True, testLiteralClick=True)
-                    if(cartCleared):
-                        if (cartCleared):
-                            self.navToHomescreen()
-                            return True
-                    else:
-                        error = RuntimeError(f"Verizon ended up at an ambiguous page after attempting to open and clear the cart.")
-                        log.error(error)
-                        raise error
-
-
-                clearCartButtonXPath1 = "//a[@id='dtm_clearcart']"
-                clearCartButtonXPath2 = "//a[@role='button'][normalize-space(text())='Clear cart']"
-                clearCartButton = self.browser.searchForElement(by=By.XPATH,value=[clearCartButtonXPath1,clearCartButtonXPath2],timeout=30,testClickable=True)
-                clearCartButton.click()
-
-                confirmationClearButtonXPath = "//mat-dialog-container//button[text()='Clear']"
-                confirmationClearButton = self.browser.searchForElement(by=By.XPATH,value=confirmationClearButtonXPath,timeout=30,testClickable=True)
-                confirmationClearButton.click()
-
-                cartCleared = self.browser.searchForElement(by=By.XPATH,value="//h1[text()='Your cart is empty.']",timeout=60,
-                                              testClickable=True,testLiteralClick=True)
-                if(cartCleared):
-                    self.navToHomescreen()
-                    return True
-                else:
-                    continue
-            error = RuntimeError(f"Could not successfully clear cart after {attempts} attempts!")
+            error = RuntimeError("It is impossible on both a physical and philosophical level that you are seeing this. The presence of this error message confirms that the laws of the universe have fundamentally changed, and that you have much bigger problems than this phone order.")
             log.error(error)
             raise error
+
 
     # Assumes we're on the device selection page. Given a Universal Device ID, searches for that
     # device (if supported) on Verizon.

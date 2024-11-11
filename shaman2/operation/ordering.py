@@ -990,7 +990,7 @@ try:
     eyesafe = EyesafeDriver(br)
 
     # SCTASK processing
-    preProcessSCTASKs = ["SCTASK1080415","SCTASK1080661","SCTASK1080671"]
+    preProcessSCTASKs = []
     postProcessSCTASKs = [] # Note that, if no postProcessSCTASKs are specified, all valid SCTASKs in the sheet will be closed. Input just "None" to NOT do this.
     for task in preProcessSCTASKs:
         processPreOrderSCTASK(tmaDriver=tma,snowDriver=snow,verizonDriver=vzw,
@@ -998,8 +998,8 @@ try:
     processPostOrdersSCTASK(snowDriver=snow,verizonDriver=vzw,taskNumber=postProcessSCTASKs)
 
     # Cimpl processing
-    preProcessWOs = []
-    postProcessWOs = []
+    preProcessWOs = [48427,48694]
+    postProcessWOs = [48745]
     for wo in preProcessWOs:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
                               workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D",reviewMode=True)
