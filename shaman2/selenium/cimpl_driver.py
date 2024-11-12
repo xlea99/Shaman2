@@ -113,10 +113,10 @@ class CimplDriver:
                 print("Please complete the MFA for JumpCloud to finish Cimpl login. You have 3 minutes remaining before the program crashes.")
 
                 # Search for the tenantSelectionDropdown for 3 minutes, then click "Sysco"
-                tenantSelectionDropdownXPath = "//label[normalize-space(text())='Tenant']/following-sibling::span//span[@class='select-icon']"
-                tenantSelectionDropdown = self.browser.searchForElement(by=By.XPATH,value=tenantSelectionDropdownXPath,timeout=180,testClickable=True)
+                tenantSelectionDropdownArrowXPath = "//label[normalize-space(text())='Tenant']/following-sibling::div//input[@class='tenantInput']/following-sibling::span/span[contains(@class,'select-icon')]"
+                tenantSelectionDropdownArrow = self.browser.searchForElement(by=By.XPATH,value=tenantSelectionDropdownArrowXPath,timeout=180,testClickable=True,raiseError=True)
                 print("MFA completed! Continuing.")
-                tenantSelectionDropdown.click()
+                tenantSelectionDropdownArrow.click()
                 syscoTenantOptionXPath = "//div[@class='tenantOptions']//li[normalize-space(text())='Sysco']"
                 syscoTenantOption = self.browser.searchForElement(by=By.XPATH,value=syscoTenantOptionXPath,timeout=5)
                 syscoTenantOption.click()

@@ -990,15 +990,16 @@ try:
     eyesafe = EyesafeDriver(br)
 
     # SCTASK processing
-    preProcessSCTASKs = []
-    postProcessSCTASKs = [] # Note that, if no postProcessSCTASKs are specified, all valid SCTASKs in the sheet will be closed. Input just "None" to NOT do this.
-    for task in preProcessSCTASKs:
-        processPreOrderSCTASK(tmaDriver=tma,snowDriver=snow,verizonDriver=vzw,
-                              taskNumber=task,assignTo="Alex Somheil",reviewMode=True)
-    processPostOrdersSCTASK(snowDriver=snow,verizonDriver=vzw,taskNumber=postProcessSCTASKs)
+    #preProcessSCTASKs = []
+    #postProcessSCTASKs = [] # Note that, if no postProcessSCTASKs are specified, all valid SCTASKs in the sheet will be closed. Input just "None" to NOT do this.
+    #for task in preProcessSCTASKs:
+    #    processPreOrderSCTASK(tmaDriver=tma,snowDriver=snow,verizonDriver=vzw,
+    #                          taskNumber=task,assignTo="Alex Somheil",reviewMode=True)
+    #processPostOrdersSCTASK(snowDriver=snow,verizonDriver=vzw,taskNumber=postProcessSCTASKs)
 
     # Cimpl processing
-    preProcessWOs = [48427,48694]
+    preProcessWOs = [48427,48694,49107,49111,49113,49114,49115,49116,49117,49118,49119,49121,49123,49124,49125,49126,49127,
+                     49128,49130,49131,49133,49134,49135,49136,49137,49138,49139,49140,49141]
     postProcessWOs = [48745]
     for wo in preProcessWOs:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
