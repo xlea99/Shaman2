@@ -429,17 +429,18 @@ class VerizonDriver:
         verizonCartURL = "https://mb.verizonwireless.com/mbt/secure/index?appName=comm&transType=NSE&navtrk=globalnav%3Ashop%3Asmartphones#/device-shopping-cart"
 
         # First, navigate to the cart url.
-        filledShoppingCartHeaderXPath = "//h1[normalize-space(text())='Shopping cart']"
+        filledShoppingCartHeaderXPath1 = "//h1[normalize-space(text())='Review shopping cart']"
+        filledShoppingCartHeaderXPath2 = "//h1[normalize-space(text())='Shopping cart']"
         emptyShoppingCartHeaderXPath = "//h1[normalize-space(text())='Your cart is empty.']"
         self.browser.get(verizonCartURL)
-        self.browser.searchForElement(by=By.XPATH,value=[filledShoppingCartHeaderXPath,emptyShoppingCartHeaderXPath],
+        self.browser.searchForElement(by=By.XPATH,value=[filledShoppingCartHeaderXPath1,filledShoppingCartHeaderXPath2,emptyShoppingCartHeaderXPath],
                                       timeout=180,testClickable=True,testLiteralClick=True,raiseError=True)
 
         # Now, test to see if its full or empty.
         if(self.browser.searchForElement(by=By.XPATH,value=emptyShoppingCartHeaderXPath,timeout=1)):
             # If it's already empty, we simply return True.
             return True
-        elif(self.browser.searchForElement(by=By.XPATH,value=filledShoppingCartHeaderXPath)):
+        else:
             # Click "clear cart".
             clearCartButtonXPath = "//a[@id='dtm_clearcart']"
             clearCartButton = self.browser.searchForElement(by=By.XPATH,value=clearCartButtonXPath,timeout=120,testClickable=True,raiseError=True)
@@ -453,10 +454,6 @@ class VerizonDriver:
             # Finally, wait to confirm that the cart is empty.
             self.browser.searchForElement(by=By.XPATH,value=emptyShoppingCartHeaderXPath,timeout=120,testClickable=True,testLiteralClick=True,raiseError=True)
             return True
-        else:
-            error = RuntimeError("It is impossible on both a physical and philosophical level that you are seeing this. The presence of this error message confirms that the laws of the universe have fundamentally changed, and that you have much bigger problems than this phone order.")
-            log.error(error)
-            raise error
 
 
     # Assumes we're on the device selection page. Given a Universal Device ID, searches for that
@@ -601,7 +598,7 @@ class VerizonDriver:
         else:
             buyNowButtonXPath = "//button[text()='Buy Now']"
             buyNowButton = self.browser.searchForElement(by=By.XPATH,value=buyNowButtonXPath,timeout=10,testClickable=True)
-            self.browser.safeClick(element=buyNowButton,timeout=10,scrollIntoView=True)
+            self.browser.safeClick(element=buyNowButton,timeout=120,scrollIntoView=True)
 
             # Wait for Shopping Cart page to load to confirm successful device add
             shoppingCartHeaderXPath = "//div[contains(@class,'device-shopping-cart-content-left')]//h1[contains(text(),'Shopping cart')]"
@@ -946,8 +943,8 @@ class VerizonDriver:
     # Assumes we're on the shopping cart overview screen. Simply clicks "check out" to continue
     # to check out screen.
     def ShoppingCart_ContinueToCheckOut(self):
-        checkOutButtonXPath = "//div[contains(@class,'device-shopping-cart-content-right')]/div/button[contains(text(),'Checkout')]"
-        checkOutButton = self.browser.searchForElement(by=By.XPATH,value=checkOutButtonXPath,timeout=30,testClickable=True)
+        checkOutButtonXPaths = ["//div[@class='progress']//button[normalize-space(text())='Checkout']","//div[contains(@class,'device-shopping-cart-content-right')]//button[normalize-space(text())='Checkout']"]
+        checkOutButton = self.browser.searchForElement(by=By.XPATH,value=checkOutButtonXPaths,timeout=30,testClickable=True)
         self.browser.safeClick(element=checkOutButton,timeout=30,scrollIntoView=True)
 
         # Test to ensure we've arrived at the checkout screen.

@@ -998,12 +998,14 @@ try:
     #processPostOrdersSCTASK(snowDriver=snow,verizonDriver=vzw,taskNumber=postProcessSCTASKs)
 
     # Cimpl processing
-    preProcessWOs = [48427,48694,49107,49111,49113,49114,49115,49116,49117,49118,49119,49121,49123,49124,49125,49126,49127,
-                     49128,49130,49131,49133,49134,49135,49136,49137,49138,49139,49140,49141]
-    postProcessWOs = [48745]
+    preProcessWOs = [49190,49192,49193,49194,49195,49196,49197,49198,49199,49200,49201,49202,49203,
+                      49204,49207,49208,49209,49211,49213,49215,49216,49217,49219,49220,49222,49223,49225,49226,49227,
+                      49228,49229,49231,49232,49233,49234,49235,49236,49238,49239,49240,49241,49242,49243,49244,49245,
+                      49246,49247,49248,49249,49250,49251,49252,49253,49254,49255,49257]
+    postProcessWOs = []
     for wo in preProcessWOs:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
-                              workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D",reviewMode=True)
+                              workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D",reviewMode=False)
     for wo in postProcessWOs:
         processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,
                               workorderNumber=wo)
