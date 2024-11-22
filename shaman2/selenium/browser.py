@@ -671,6 +671,3 @@ class wait_for_element_scrolled_in_viewport(object):
                 rect.right <= (window.innerWidth || document.documentElement.clientWidth)
             );
         """, self.element)
-
-br = Browser()
-br.get("https://freexcafe.com")
