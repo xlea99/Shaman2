@@ -6,17 +6,25 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.remote.webelement import WebElement
+from webdriver_manager.chrome import ChromeDriverManager
+from webdriver_manager.core.driver_cache import DriverCacheManager
 import time
 from typing import Callable
 from urllib.parse import urlparse
 from shaman2.common.logger import log
 from shaman2.common.paths import paths
 import datetime
+import os
 
 class Browser(webdriver.Chrome):
 
     # Init method initializes members of class, and opensBrowser if true.
     def __init__(self):
+        # Auto-Download selenium driver with webdriver-manager
+        os.environ["WDM_LOCAL"] = str(paths["bin"])
+        cache_manager = DriverCacheManager(str(paths["bin"]))
+        driverPath = ChromeDriverManager(cache_manager=cache_manager).install()
+
         # Create a chrome options and set needed options
         chromeOptions = webdriver.ChromeOptions()
         chromeOptions.add_experimental_option("prefs", {
@@ -25,8 +33,32 @@ class Browser(webdriver.Chrome):
             "download.directory_upgrade": True,
             "safebrowsing.enabled": True
         })
-        browserService = Service(paths["chromedriver"])
-        super().__init__(service=browserService,options=chromeOptions)
+        # Suppress WebDriver-related automation flags
+        chromeOptions.add_experimental_option("excludeSwitches", ["enable-automation"])
+        chromeOptions.add_experimental_option("useAutomationExtension", False)
+        # Set a realistic User-Agent to avoid default Selenium identifier
+        chromeOptions.add_argument(
+            "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
+        )
+        # Disable logging to reduce noise (optional but helpful)
+        chromeOptions.add_argument("--log-level=3")
+        # Enable a full windowed browser experience
+        chromeOptions.add_argument("--start-maximized")
+        # Disable headless mode detection (if used)
+        chromeOptions.add_argument("--disable-blink-features=AutomationControlled")
+        # Enable consistent browser fingerprinting
+        chromeOptions.add_argument("--disable-extensions")
+        chromeOptions.add_argument("--disable-popup-blocking")
+        chromeOptions.add_argument("--profile-directory=Default")
+        chromeOptions.add_argument("--user-data-dir=/path/to/your/custom/profile")  # Optional: mimics a logged-in user
+        # Disable the WebRTC leak to hide local IP
+        chromeOptions.add_argument("--disable-webrtc")
+        # Disable password manager prompts
+        chromeOptions.add_argument("--disable-save-password-bubble")
+
+        # Initialize the parent Chrome class with configured options
+        browserService = Service(driverPath)
+        super().__init__(service=browserService, options=chromeOptions)
 
         # Initialize some member variables
         self.tabs = {}

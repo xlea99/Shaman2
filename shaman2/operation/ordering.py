@@ -997,12 +997,12 @@ try:
     #                          taskNumber=task,assignTo="Alex Somheil",reviewMode=True)
     #processPostOrdersSCTASK(snowDriver=snow,verizonDriver=vzw,taskNumber=postProcessSCTASKs)
 
+    # NOT DONE WOS: 49190, 49201
+
     # Cimpl processing
-    preProcessWOs = [49190,49192,49193,49194,49195,49196,49197,49198,49199,49200,49201,49202,49203,
-                      49204,49207,49208,49209,49211,49213,49215,49216,49217,49219,49220,49222,49223,49225,49226,49227,
-                      49228,49229,49231,49232,49233,49234,49235,49236,49238,49239,49240,49241,49242,49243,49244,49245,
-                      49246,49247,49248,49249,49250,49251,49252,49253,49254,49255,49257]
-    postProcessWOs = []
+    preProcessWOs = []
+    postProcessWOs = [49269,49272,49274,49276,49277,49278,49280,49281,49282,49283,49285,49286,49287,49288,
+                      49290,49301,49302,49304]
     for wo in preProcessWOs:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
                               workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D",reviewMode=False)

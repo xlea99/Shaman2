@@ -97,7 +97,7 @@ class CimplWO:
     # accessoryIDs.
     def __classifyHardwareInfo(self):
         # Helper function to attempt to read a value from either the device or accessories mappings config and,
-        # if it's not present, prompt the user to add it an reload.
+        # if it's not present, prompt the user to add it and reload.
         def getSafeHardwareMapping(hardwareName,hardwareType):
             hardwareID = None
             try:
@@ -155,6 +155,22 @@ class CimplWO:
             raise error
         else:
             deviceID = allDeviceIDs[0] if allDeviceIDs else None
+
+        # We treat any blank accessories as just accessories that don't need to be ordered, and we remove them
+        # from the list.
+        cleanedAccessoryIDs = []
+        for accessoryID in allAccessoryIDs:
+            if(accessoryID is not None and str(accessoryID).strip() != ""):
+                cleanedAccessoryIDs.append(accessoryID)
+        allAccessoryIDs = cleanedAccessoryIDs
+
+        # Here, we check to ensure that the moron Sysco user didn't add an incompatible accessory to the order,
+        # removing them if so.
+        cleanedAccessoryIDs = []
+        for accessoryID in allAccessoryIDs:
+            if(deviceID in accessories[accessoryID]["compatibleDevices"]):
+                cleanedAccessoryIDs.append(accessoryID)
+        allAccessoryIDs = cleanedAccessoryIDs
 
         # Now, we further flatten our accessories list, only allowing one accessory "type" per workorder.
         finalAccessoryIDs = set()
