@@ -115,6 +115,7 @@ paths["root"] = rootPath
 
 # Setup bin
 paths["bin"] = paths["root"] / "bin"
+paths["chromedriver"] = paths["bin"] / "chromedriver"
 paths["google"] = paths["bin"] / "google"
 
 # Setup assets
