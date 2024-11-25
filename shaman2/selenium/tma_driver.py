@@ -2263,7 +2263,7 @@ class TMADriver():
             # we'd select 000. There are a couple other special cases which are handled as well.
             if (currentTab == "company"):
                 log.debug(f"{logMessage} Found company page on assignment wizard")
-                if (siteCode in ["000","331"]):
+                if (siteCode in ["000","262","331"]):
                     selectorForSiteCodeXPath = f"//table/tbody/tr/td/div/div/table/tbody/tr[contains(@class,'sgvitems')]/td[text()='{siteCode}']"
                     self.browser.safeClick(by=By.XPATH,value=selectorForSiteCodeXPath,retryClicks=True,timeout=60,clickDelay=3,
                                            successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=sideTabXPathTemplate.format(tabName="company"),invertedSearch=True))
