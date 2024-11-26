@@ -129,6 +129,7 @@ class Browser(webdriver.Chrome):
             installFolder = paths["chromedriver"] / self.userChromeVersion
             if(not os.path.exists(installFolder)):
                 os.mkdir(installFolder)
+            os.chmod(installFolder, 0o777)
 
             # Check that we haven't already downloaded a chromedriver for this version of chrome.
             targetChromedriverInstallPath = installFolder / "chromedriver.exe"

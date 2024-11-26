@@ -1,12 +1,6 @@
-import os
-import json
-from google.auth.transport.requests import Request
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
-from google.oauth2.credentials import Credentials
 from shaman2.network.google_auth import buildSheetsAPIService
+from shaman2.common.config import mainConfig
 import time
-
 
 class SheetSync:
 
@@ -21,8 +15,9 @@ class SheetSync:
         self.fullSheet = None
 
     # This method reads the full, current sheet with the given name from the given spreadsheetID, formats it, and returns
-    # it as a neat Pythonic data structure. Assumes that the top row is a header.
-    def getFullSheet(self, sheetName: str):
+    # it as a neat Pythonic data structure. Assumes that the top row is a header. If keyColumn is specified, it returns
+    # it as a dictionary as a list, assuming that the given column contains a unique key.
+    def getFullSheet(self, sheetName: str,keyColumn = None):
         sheets = self.googleService.spreadsheets()
         targetRange = f'{sheetName}!{self.getSheetColumns(sheetName=sheetName)}'
         result = sheets.values().get(spreadsheetId=self.spreadsheetID, range=targetRange).execute()
@@ -37,7 +32,14 @@ class SheetSync:
             returnList.append(thisRowDict)
 
         self.fullSheet = returnList
-        return returnList
+
+        if(keyColumn is None):
+            return returnList
+        else:
+            returnDict = {}
+            for row in returnList:
+                returnDict[row[keyColumn]] = row
+            return returnDict
 
     # Simply returns a range of columns on the given sheetName
     def getSheetColumns(self, sheetName):
@@ -134,3 +136,27 @@ class SheetSync:
             body = {'requests': requests}
             response = self.googleService.spreadsheets().batchUpdate(spreadsheetId=self.spreadsheetID, body=body).execute()
             print(f"Batch delete completed, total ranges: {len(rowRangesToRemove)}")
+
+# Helper class just to allow the sysco data object to be reloaded from anywhere.
+class __SyscoDataClass:
+
+    def __init__(self,_syscoSheet):
+        self.__syscoSheet = _syscoSheet
+        self.data = None
+        self.reload()
+
+    # Using the sysco spreadsheet, this downloads and updates all sysco data.
+    def reload(self):
+        _syscoData = {"Devices": self.__syscoSheet.getFullSheet("Devices", keyColumn="DeviceID"),
+                      "Accessories": self.__syscoSheet.getFullSheet("Accessories", keyColumn="AccessoryID"),
+                      "CimplMappings": self.__syscoSheet.getFullSheet("CimplMappings", keyColumn="Cimpl Entry"),
+                      "Carriers": self.__syscoSheet.getFullSheet("Carriers", keyColumn="Carrier"),
+                      "Plans/Features": self.__syscoSheet.getFullSheet("Plans/Features", keyColumn="PlanID")}
+        self.data = _syscoData
+
+    def __getitem__(self, item):
+        return self.data[item]
+
+syscoSheet = SheetSync(spreadsheetID=mainConfig["google"]["ordersSheet"])
+syscoData = __SyscoDataClass(syscoSheet)
+

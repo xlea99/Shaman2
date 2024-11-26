@@ -1,6 +1,7 @@
 import re
 import time
 import random
+import unicodedata
 from shaman2.utilities.async_sound import playsoundAsync
 from shaman2.common.paths import paths
 from shaman2.common.logger import log
@@ -99,6 +100,29 @@ def naturalPause():
     # Wait the time.
     time.sleep(pauseTime)
 
+# This helper method attempts to convert between the many different carrier formats into our one standardized format.
+def validateCarrier(carrierString):
+    testCarrierString = ("".join(char for char in carrierString if char.isalpha())).lower()
+    if("verizon" in testCarrierString or "vzw" in testCarrierString):
+        return "Verizon Wireless"
+    elif("tmobile" in testCarrierString):
+        return "T Mobile"
+    elif("bell" in testCarrierString):
+        return "Bell Mobility"
+    elif("rogers" in testCarrierString):
+        return "Rogers"
+    elif("att" in testCarrierString):
+        return "AT&T Mobility"
+    else:
+        return None
 
+# This method simply normalizes a name (EX: Takes Jeanné and outputs Jeanne) for use with choosy ordering sites.
+def normalizeName(name):
+    # Normalize the name to decompose combined characters into base characters + diacritics
+    normalized = unicodedata.normalize('NFD', name)
+    # Filter out diacritics (Unicode combining marks)
+    asciiName = ''.join(char for char in normalized if not unicodedata.combining(char))
+    # Return the normalized name
+    return asciiName
 
-print(convertStateFormat(stateString="NewMexico",targetFormat="name"))
+print(normalizeName("Jeanné"))

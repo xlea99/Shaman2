@@ -3,8 +3,8 @@ import datetime
 from tomlkit.items import Array as tomlkitArray
 from shaman2.common.logger import log
 from shaman2.common.paths import paths
-from shaman2.common.config import accessories,deviceCimplMappings,accessoryCimplMappings
 from shaman2.utilities.async_sound import playsoundAsync
+from shaman2.network.sheets_sync import syscoData
 
 
 
@@ -39,8 +39,7 @@ class CimplWO:
                      "UserNetID" : None,
                      "UserShipping" : None,
                      "DeviceID" : [],
-                     "AccessoryIDs" : [],
-                     "EyesafeAccessoryID" : None}
+                     "AccessoryIDs" : []}
 
     # Simple getter and setter methods for accessing object like a dictionary.
     def __getitem__(self, item):
@@ -99,29 +98,21 @@ class CimplWO:
         # Helper function to attempt to read a value from either the device or accessories mappings config and,
         # if it's not present, prompt the user to add it and reload.
         def getSafeHardwareMapping(hardwareName,hardwareType):
-            hardwareID = None
-            try:
-                if(hardwareType == "device"):
-                    hardwareID = deviceCimplMappings[hardwareName.strip().strip('"')]
-                elif(hardwareType == "accessory"):
-                    hardwareID = accessoryCimplMappings[hardwareName.strip().strip('"')]
-            except KeyError:
+            cleanedHardwareName = hardwareName.strip().strip('"')
+            if(cleanedHardwareName in syscoData["CimplMappings"].keys()):
+                return syscoData["CimplMappings"][hardwareName.strip().strip('"')][f"Mapped {hardwareType.capitalize()}"]
+            else:
                 playsoundAsync(paths["media"] / "shaman_attention.mp3")
-                # TODO pretty duct-tapey, huh?
-                _userResponse = input(f"Unknown Cimpl {hardwareType} detected: '{hardwareName}'. If this is a valid Cimpl {hardwareType}, add it to the {hardwareType}_cimpl_mappings.toml and press enter to reload the config. Type anything else to exit.")
+                _userResponse = input(f"Unknown Cimpl {hardwareType} detected: '{hardwareName}'. If this is a valid Cimpl {hardwareType}, add it to the google sheet and press enter to reload. Type anything else to exit.")
                 if (_userResponse):
                     _error = KeyError(f"'{hardwareName}' is not a mapped Cimpl {hardwareType}.")
                     log.error(_error)
                     raise _error
                 else:
-                    # If the user makes changes, reload the cimpl mappings program-wide to accommodate new changes.
-                    if (hardwareType == "Device"):
-                        deviceCimplMappings.reload()
-                        hardwareID = deviceCimplMappings[hardwareName.strip().strip('"')]
-                    elif (hardwareType == "Accessory"):
-                        accessoryCimplMappings.reload()
-                        hardwareID = accessoryCimplMappings[hardwareName.strip().strip('"')]
-            return hardwareID
+                    # If the user makes changes, reload the cimpl mappings program-wide to accommodate new changes and
+                    # try to read it again.
+                    syscoData.reload()
+                    return getSafeHardwareMapping(hardwareName=hardwareName,hardwareType=hardwareType)
 
         # First, we build simple lists of all devices and accessories that are requested in the hardware info,
         # each mapped to the corresponding Shaman hardware ID.
@@ -143,7 +134,7 @@ class CimplWO:
                         allAccessoryIDs.append(thisAccessoryID)
 
         # Check to ensure no duplicate device or accessory types due to a Sysco user getting a bit over-excited
-        # with accessory the order page
+        # with accessories on the order page
         allDeviceIDs = list(set(allDeviceIDs))
         allAccessoryIDs = set(allAccessoryIDs)
 
@@ -162,54 +153,10 @@ class CimplWO:
         for accessoryID in allAccessoryIDs:
             if(accessoryID is not None and str(accessoryID).strip() != ""):
                 cleanedAccessoryIDs.append(accessoryID)
-        allAccessoryIDs = cleanedAccessoryIDs
-
-        # Here, we check to ensure that the moron Sysco user didn't add an incompatible accessory to the order,
-        # removing them if so.
-        cleanedAccessoryIDs = []
-        for accessoryID in allAccessoryIDs:
-            if(deviceID in accessories[accessoryID]["compatibleDevices"]):
-                cleanedAccessoryIDs.append(accessoryID)
-        allAccessoryIDs = cleanedAccessoryIDs
-
-        # Now, we further flatten our accessories list, only allowing one accessory "type" per workorder.
-        finalAccessoryIDs = set()
-        usedTypes = set()
-        for accessoryID in allAccessoryIDs:
-            if (accessories[accessoryID]["type"] not in usedTypes):
-                usedTypes.add(accessories[accessoryID]["type"])
-                finalAccessoryIDs.add(accessoryID)
-
-        # At this point, both our deviceID and accessoryIDs should be essentially complete. The only thing we
-        # have left to accommodate for is a potential Eyesafe accessory. First, we find them all.
-        eyesafeDevices = []
-        for accessoryID in finalAccessoryIDs:
-            if (accessories[accessoryID]["type"] == "eyesafe"):
-                eyesafeDevices.append(accessoryID)
-        # We remove them from the accessoryIDs list, since they're not considered accessories - they're
-        # EyesafeAccessories and are ordered completely differently.
-        for thisEyesafeDevice in eyesafeDevices:
-            finalAccessoryIDs.discard(thisEyesafeDevice)
-        # If the current deviceID doesn't have a compatible Eyesafe device, or if the brilliant supergenius Sysco
-        # employee somehow found a way to order an incompatible Eyesafe accessory, we handle it here.
-        finalEyesafeDevices = []
-        for thisEyesafeDevice in eyesafeDevices:
-            if(deviceID not in accessories[thisEyesafeDevice]["compatibleDevices"]):
-                log.warning(f"A Sysco user added a non-compatible Eyesafe device to their order. '{thisEyesafeDevice}' is not compatible with chosen device '{deviceID}'.")
-            else:
-                finalEyesafeDevices.append(thisEyesafeDevice)
-        # Finally, we set the list (and then get what should be the only remaining item) to account for duplicates.
-        finalEyesafeDevices = list(set(finalEyesafeDevices))
-        if(len(finalEyesafeDevices) > 1):
-            error = ValueError(f"It should not be physically possible for you to be reading this. The fact you reached this code confirms that there are fundamental truths about logic and the universe that we've taken for granted that, not only may not be true, but may have warped our very understanding of philosophy and understanding. God help you, for the world is not what you thought it was.")
-            log.error(error)
-            raise error
-        else:
-            eyesafeDevice = finalEyesafeDevices[0] if finalEyesafeDevices else None
+        allAccessoryIDs = list(set(cleanedAccessoryIDs))
 
         self.vals["DeviceID"] = deviceID
-        self.vals["AccessoryIDs"] = finalAccessoryIDs
-        self.vals["EyesafeAccessoryID"] = eyesafeDevice
+        self.vals["AccessoryIDs"] = allAccessoryIDs
     # This method attempts to scrape various important values from a Cimpl actions list.
     def __scrapeActions(self,):
         for actionString in self.vals["Actions"]:
