@@ -6,9 +6,10 @@ import time
 from shaman2.selenium.browser import Browser
 from shaman2.common.logger import log
 from shaman2.common.paths import paths
-from shaman2.common.config import mainConfig, devices, accessories
+from shaman2.common.config import mainConfig
 from shaman2.utilities.async_sound import playsoundAsync
 from shaman2.utilities.shaman_utils import convertServiceIDFormat
+from shaman2.network.sheets_sync import syscoData
 
 class VerizonDriver:
 
@@ -457,7 +458,7 @@ class VerizonDriver:
 
 
     # Assumes we're on the device selection page. Given a Universal Device ID, searches for that
-    # device (if supported) on Verizon.
+    # device (if supported) on Verizon. # TODO move the search term stuff to higher level - shouldn't need syscoSheet in this file technically
     def DeviceSelection_SearchForDevice(self,deviceID,orderPath="NewInstall",clearFilters=False):
         if(clearFilters):
             clearFiltersButtonXPath = "//div[contains(@class,'filter-badges')]/span[contains(text(),'Clear all')]"
@@ -467,16 +468,16 @@ class VerizonDriver:
         searchBox = self.browser.searchForElement(by=By.XPATH,value="//input[@id='search']",timeout=15,testClickable=True)
         searchButton = self.browser.searchForElement(by=By.XPATH,value="//span[contains(@class,'icon-search')]",timeout=15,testClickable=True)
         searchBox.clear()
-        searchBox.send_keys(devices[deviceID]["vzwSearchTerm"])
+        searchBox.send_keys(syscoData["Devices"][deviceID]["Verizon Wireless Search Term"])
         self.browser.safeClick(element=searchButton,timeout=60)
 
         if(orderPath == "NewInstall"):
             # Now we test to ensure that the proper device card has fully loaded.
-            targetDeviceCardXPath = f"//div/div[contains(@class,'device-name')][contains(text(),'{devices[deviceID]['vzwNewInstallCardName']}')]"
+            targetDeviceCardXPath = f"//div/div[contains(@class,'device-name')][contains(text(),'{syscoData["Devices"][deviceID]["Verizon Wireless New Install Card Name"]}')]"
             self.browser.searchForElement(by=By.XPATH,value=targetDeviceCardXPath,timeout=60,testClickable=True)
         else:
             # Now we test to ensure that the proper device card has fully loaded.
-            targetDeviceCardXPath = f"//div/div[contains(@class,'device-title')][text()='{devices[deviceID]['vzwUpgradeCardName']}']"
+            targetDeviceCardXPath = f"//div/div[contains(@class,'device-title')][text()='{syscoData["Devices"][deviceID]["Verizon Wireless Upgrade Card Name"]}']"
             targetDeviceCard = self.browser.searchForElement(by=By.XPATH,value=targetDeviceCardXPath,timeout=20,testClickable=True)
 
             if (targetDeviceCard):
@@ -499,11 +500,11 @@ class VerizonDriver:
                     raise error
     def DeviceSelection_SelectDevice(self,deviceID,orderPath="NewInstall"):
         if(orderPath == "NewInstall"):
-            targetDeviceCardXPath = f"//div/div[contains(@class,'device-name')][normalize-space(text())='{devices[deviceID]['vzwNewInstallCardName']}']"
-            deviceDetailsXPath = f"//div[contains(@class,'pdp-header-section')]/div[contains(@class,'left-top-details')]/div[contains(text(),'{devices[deviceID]['vzwNewInstallCardName']}')]"
+            targetDeviceCardXPath = f"//div/div[contains(@class,'device-name')][normalize-space(text())='{syscoData["Devices"][deviceID]["Verizon Wireless New Install Card Name"]}']"
+            deviceDetailsXPath = f"//div[contains(@class,'pdp-header-section')]/div[contains(@class,'left-top-details')]/div[contains(text(),'{syscoData["Devices"][deviceID]["Verizon Wireless New Install Card Name"]}')]"
         else:
-            targetDeviceCardXPath = f"//div/div[contains(@class,'device-title')][text()='{devices[deviceID]['vzwUpgradeCardName']}']"
-            deviceDetailsXPath = f"//div[contains(@class,'pdp-header-section')]//div[normalize-space(text())='{devices[deviceID]['vzwUpgradeCardName']}']"
+            targetDeviceCardXPath = f"//div/div[contains(@class,'device-title')][text()='{syscoData["Devices"][deviceID]["Verizon Wireless Upgrade Card Name"]}']"
+            deviceDetailsXPath = f"//div[contains(@class,'pdp-header-section')]//div[normalize-space(text())='{syscoData["Devices"][deviceID]["Verizon Wireless Upgrade Card Name"]}']"
 
         targetDeviceCard = self.browser.searchForElement(by=By.XPATH,value=targetDeviceCardXPath,timeout=5)
         self.browser.execute_script("arguments[0].scrollIntoView({block: 'center'});", targetDeviceCard)
@@ -534,7 +535,7 @@ class VerizonDriver:
     def DeviceSelection_DeviceView_SelectColor(self,deviceID=None,colorName=None,orderPath="NewInstall"):
         if(colorName is None):
             if(deviceID):
-                colorName = devices[deviceID]["vzwDefaultColor"]
+                colorName = syscoData["Devices"][deviceID]["Verizon Wireless Default Color"]
             else:
                 error = ValueError("Specified to select a Default color, but no deviceID was specified!")
                 log.error(error)
@@ -611,14 +612,14 @@ class VerizonDriver:
         searchButton = self.browser.searchForElement(by=By.XPATH,value="//span[@class='onedicon icon-search']",timeout=15,testClickable=True)
 
         searchBox.clear()
-        searchBox.send_keys(accessories[accessoryID]["vzwSearchTerm"])
+        searchBox.send_keys(syscoData["Accessories"][accessoryID]["Verizon Wireless Search Term"])
         self.browser.safeClick(element=searchButton,timeout=10)
 
         # Now we test to ensure that the proper device card has fully loaded.
-        targetAccessoryCardXPath = f"//app-accessory-tile/div/div/div[contains(@class,'product-name')][contains(text(),'{accessories[accessoryID]['vzwCardName']}')]"
+        targetAccessoryCardXPath = f"//app-accessory-tile/div/div/div[contains(@class,'product-name')][contains(text(),'{syscoData["Accessories"][accessoryID]["Verizon Wireless Card Name"]}')]"
         self.browser.searchForElement(by=By.XPATH,value=targetAccessoryCardXPath,timeout=60)
     def AccessorySelection_AddAccessoryToCart(self,accessoryID):
-        targetAccessoryCardXPath = f"//app-accessory-tile/div/div/div[contains(@class,'product-name')][contains(text(),'{accessories[accessoryID]['vzwCardName']}')]//ancestor::div[contains(@class,'accessory-card')]"
+        targetAccessoryCardXPath = f"//app-accessory-tile/div/div/div[contains(@class,'product-name')][contains(text(),'{syscoData["Accessories"][accessoryID]["Verizon Wireless Card Name"]}')]//ancestor::div[contains(@class,'accessory-card')]"
         targetAccessoryAddToCartButtonXPath = f"{targetAccessoryCardXPath}//button[contains(@class,'add-cart-btn')]"
         targetAccessoryAddToCartButton = self.browser.searchForElement(by=By.XPATH,value=targetAccessoryAddToCartButtonXPath,timeout=60)
         self.browser.safeClick(element=targetAccessoryAddToCartButton,timeout=60)

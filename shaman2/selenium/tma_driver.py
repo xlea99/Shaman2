@@ -1,13 +1,13 @@
 import time
 import re
-
 import selenium.common.exceptions
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
 from shaman2.selenium.browser import Browser
 from shaman2.utilities.shaman_utils import convertServiceIDFormat
 from shaman2.common.logger import log
-from shaman2.common.config import mainConfig, clients
+from shaman2.common.config import mainConfig
+from shaman2.network.sheets_sync import syscoData
 
 #region === TMA Data Structures ===
 
@@ -257,7 +257,10 @@ class TMACost:
 
     # Basic init method to initialize instance variables.
     def __init__(self, isBaseCost=True, featureName=None, gross=0, discountPercentage=0, discountFlat=0):
-        self.info_IsBaseCost = isBaseCost
+        if(type(isBaseCost) is bool):
+            self.info_IsBaseCost = isBaseCost
+        else:
+            self.info_IsBaseCost = isBaseCost == "TRUE"
         self.info_FeatureString = featureName
         self.info_Gross = gross
         self.info_DiscountPercentage = discountPercentage
@@ -314,7 +317,7 @@ class TMAAssignment:
         self.info_Vendor = vendor
 
 
-        self.info_Account = clients[client]["Accounts"][vendor][self.info_Vendor]
+        self.info_Account = syscoData["Carrier"][self.info_Vendor]
 
         self.info_SiteCode = siteCode
         self.info_Address = None
@@ -2217,7 +2220,7 @@ class TMADriver():
             log.error(f"Incorrect vendor selected to make assignment: {vendor}")
         self.browser.safeClick(element=vendorDropdownSelection)
         # Now select the appropriate account as found based on the vendor.
-        accountNumber = clients[client]["Accounts"][vendor]
+        accountNumber = syscoData["Carrier"][vendor]
         accountNumberDropdownSelectionXPath = f"//tr/td/div/fieldset/ol/li/select[contains(@id,'wizFindExistingAssigment_ddlAccount')]/option[text()='{accountNumber}']"
         accountNumberDropdownSelection = self.browser.searchForElement(by=By.XPATH,value=accountNumberDropdownSelectionXPath,timeout=10)
         self.browser.safeClick(element=accountNumberDropdownSelection)

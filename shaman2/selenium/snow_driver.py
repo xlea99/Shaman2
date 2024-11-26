@@ -5,7 +5,7 @@ import time
 from shaman2.selenium.browser import Browser
 from shaman2.common.logger import log
 from shaman2.common.paths import paths
-from shaman2.common.config import mainConfig, devices, accessories
+from shaman2.common.config import mainConfig
 from shaman2.utilities.async_sound import playsoundAsync
 from shaman2.utilities.shaman_utils import convertServiceIDFormat,naturalPause
 from shaman2.data_storage.snow_storage import SnowTask

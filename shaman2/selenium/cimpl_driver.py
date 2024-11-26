@@ -9,7 +9,7 @@ import os
 import re
 from shaman2.selenium.browser import Browser
 from shaman2.common.logger import log
-from shaman2.common.config import mainConfig, devices, deviceCimplMappings, accessories,accessoryCimplMappings
+from shaman2.common.config import mainConfig
 from shaman2.common.paths import paths
 from shaman2.data_storage.cimpl_storage import CimplWO
 from shaman2.utilities.async_sound import playsoundAsync

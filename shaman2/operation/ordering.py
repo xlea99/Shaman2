@@ -10,9 +10,10 @@ from shaman2.selenium.eyesafe_driver import EyesafeDriver
 from shaman2.selenium.snow_driver import SnowDriver
 from shaman2.operation import maintenance
 from shaman2.operation import documentation
-from shaman2.common.config import mainConfig,accessories,clients,devices,emailTemplatesConfig, deviceCimplMappings
+from shaman2.common.config import mainConfig,emailTemplatesConfig
 from shaman2.common.logger import log
 from shaman2.common.paths import paths
+from shaman2.network.sheets_sync import syscoData
 from shaman2.utilities.shaman_utils import convertServiceIDFormat,convertStateFormat, consoleUserWarning
 from shaman2.utilities.async_sound import playsoundAsync
 from shaman2.utilities.address_validation import validateAddress
@@ -24,7 +25,111 @@ DEFAULT_SNOW_IPHONE_CASE = "iPhone14Symmetry"
 DEFAULT_SNOW_ANDROID_CASE = "SamsungS23Symmetry"
 DEFAULT_SNOW_CHARGER = "BelkinWallAdapter"
 
+#region === Device, Accessory, and Plan Validation ===
 
+# Given a deviceID and a carrier, this method returns single plan and a list of extra features.
+def getPlansAndFeatures(deviceID,carrier):
+    mainPlanID = syscoData["Devices"][deviceID][f"{carrier} Plan"]
+    featureIDs = syscoData["Devices"][deviceID][f"{carrier} Features"].split(",")
+    mainPlan = syscoData["Plans/Features"][mainPlanID]
+    features = []
+    for featureID in featureIDs:
+        features.append(syscoData["Plans/Features"][featureID.strip()])
+    return mainPlan,features
+
+# Given a deviceID and a carrier, returns either a deviceID or None depending on specifications in the SyscoData
+# such as fallbacks and carrier orderability.
+def validateDeviceID(deviceID,carrier):
+    deviceOrderableCarriers = syscoData["Devices"][deviceID]["Orderable Carriers"].split(",")
+    deviceOrderableCarriers = [thisCarrier.strip() for thisCarrier in deviceOrderableCarriers]
+    # If the carrier is listed as orderable for this device, we're good to go and simply return the deviceID as is.
+    if(carrier in deviceOrderableCarriers):
+        return deviceID
+    # Otherwise, we first try to fallback.
+    else:
+        fallbackDevice = syscoData["Devices"][deviceID][f"Fallback ({carrier})"].strip()
+        # If a fallback device is found, we try to validate this instead.
+        if(fallbackDevice != ""):
+            return validateDeviceID(deviceID=fallbackDevice,carrier=carrier)
+        # Otherwise, we've reached the end of the line and simply return none.
+        else:
+            return None
+
+# Given a deviceID, a carrier, and a list of accessoryIDs, this returns a list of accessoryIDs (and potentially special
+# accessory types) validated against the device and carrier.
+def validateAccessoryIDs(deviceID,carrier,accessoryIDs,removeDuplicateTypes=True):
+    # First, we ensure the accessoryIDs list has only unique accessoryIDs in it.
+    accessoryIDs = list(set(accessoryIDs))
+
+    # Now, we iterate through all accessories to see if they're listed as "available" on the sheet.
+    def validateAvailableAccessories(_carrier,_accessoryIDs):
+        _availableAccessoryIDs = []
+        for _accessoryID in _accessoryIDs:
+            if(_accessoryID not in syscoData["Accessories"].keys()):
+                error = ValueError(f"Invalid accessoryID in list: '{_accessoryID}'")
+                log.error(error)
+                raise error
+
+            accessoryAvailable = syscoData["Accessories"][_accessoryID][f"Available ({_carrier})"] == "TRUE"
+            if(accessoryAvailable):
+                _availableAccessoryIDs.append(_accessoryID)
+            else:
+                log.info(f"Skipping accessory '{_accessoryID}', as it is listed as unavailable in the Sysco Sheet.")
+        return _availableAccessoryIDs
+    availableAccessoryIDs = validateAvailableAccessories(_carrier=carrier,_accessoryIDs=accessoryIDs)
+
+    # Now, we ensure that all accessories are compatible with the given device and, if not, we either move to the
+    # default device (if present) or remove it.
+    compatibleAccessoryIDs = []
+    for accessoryID in availableAccessoryIDs:
+        compatibleDevices = syscoData["Accessories"][accessoryID]["Compatible Devices"].split(",")
+        compatibleDevices = [thisDevice.strip() for thisDevice in compatibleDevices]
+        if(deviceID in compatibleDevices):
+            compatibleAccessoryIDs.append(accessoryID)
+            continue
+        # At the moment, only cases are supported for substitution. If a non-compatible case is found, we try to
+        # add a default case to the list instead.
+        elif(syscoData["Accessories"][accessoryID]["Accessory Type"] == "Case"):
+            if(f"{carrier} Default Case" in syscoData["Devices"][deviceID].values()):
+                defaultCase = syscoData["Device"][deviceID][f"{carrier} Default Case"].strip()
+                # If a default case is indeed listed, we also check to make sure its available and, if so, we
+                # add it to our accessoryIDs list.
+                if(defaultCase != ""):
+                    availableDefaultCases = validateAvailableAccessories(_carrier=carrier,_accessoryIDs=[defaultCase])
+                    if(availableDefaultCases):
+                        compatibleAccessoryIDs.append(availableDefaultCases[0])
+                        continue
+        # If we got here, the accessory is NOT compatible, so we don't add it.
+        log.info(f"Skipping accessory '{accessoryID}', as it is listed as incompatible with device '{deviceID}' in the Sysco Sheet.")
+
+    # If set to removeDuplicateTypes, we do that here, simply prioritizing the first valid accessory of each type.
+    if(removeDuplicateTypes):
+        cleanedAccessoryIDs = []
+        usedAccessoryTypes = set()
+        for accessoryID in compatibleAccessoryIDs:
+            if(syscoData["Accessories"][accessoryID]["Accessory Type"] not in usedAccessoryTypes):
+                usedAccessoryTypes.add(syscoData["Accessories"][accessoryID]["Accessory Type"])
+                cleanedAccessoryIDs.append(accessoryID)
+            else:
+                log.info(f"Skipping accessory '{accessoryID}', as it has a duplicate type to other accessories in the list.")
+    else:
+        cleanedAccessoryIDs = compatibleAccessoryIDs
+
+    # Finally, we filter out any special accessories, putting them in their own return structures.
+    finalAccessoryIDs = []
+    eyesafeAccessories = []
+    for accessoryID in cleanedAccessoryIDs:
+        if(syscoData["Accessories"][accessoryID]["Accessory Type"] == "Eyesafe"):
+            eyesafeAccessories.append(accessoryID)
+        else:
+            finalAccessoryIDs.append(accessoryID)
+
+    # We should now be left with a list of nuclear, validated, clean accessoryIDs, as well as potential special
+    # accessory type. We return this as a dict.
+    return {"AccessoryIDs" : finalAccessoryIDs, "EyesafeAccessoryIDs" : eyesafeAccessories}
+
+
+#endregion === Device, Accessory, and Plan Validation ===
 
 #region === Carrier Order Reading ===
 
@@ -50,7 +155,7 @@ def readBakaOrder(bakaDriver : BakaDriver,bakaOrderNumber):
 #region === Carrier Order Placing ===
 
 # Places an entire Verizon new install.
-def placeVerizonNewInstall(verizonDriver : VerizonDriver,deviceID : str,accessoryIDs : list,
+def placeVerizonNewInstall(verizonDriver : VerizonDriver,deviceID : str,accessoryIDs : list,plan,features,
                            firstName,lastName,userEmail,
                            address1,city,state,zipCode,companyName,contactEmails : str | list,
                            address2="",reviewMode = True,emptyCart=True,deviceColor=None):
@@ -76,8 +181,8 @@ def placeVerizonNewInstall(verizonDriver : VerizonDriver,deviceID : str,accessor
     # This should send us to the plan selection page.
 
     # Select plan, then click continue.
-    deviceType = devices[deviceID]["tmaSubType"]
-    verizonDriver.PlanSelection_SelectPlan(planID=clients["Sysco"]["Plans"][deviceType]["Verizon Wireless"][0]["planCode"])
+    deviceType = syscoData["Devices"][deviceID]["TMA Sub Type"]
+    verizonDriver.PlanSelection_SelectPlan(planID=plan["Carrier Lookup Code"])
     verizonDriver.PlanSelection_Continue()
     # This should send us to the device protection page.
 
@@ -95,19 +200,11 @@ def placeVerizonNewInstall(verizonDriver : VerizonDriver,deviceID : str,accessor
     verizonDriver.NumberSelection_Continue()
     # This should send us to the shopping cart page.
 
-    # Add specified features in main.toml, then continue
-    if(deviceType == "Smart Phone"):
-        featuresToAdd = mainConfig["sysco"]["vzwSmartphoneFeatures"]
-    elif(deviceType == "Aircard"):
-        featuresToAdd = mainConfig["sysco"]["vzwAircardFeatures"]
-    elif(deviceType == "Tablet"):
-        featuresToAdd = mainConfig["sysco"]["vzwTabletFeatures"]
-    else:
-        featuresToAdd = []
-    if(featuresToAdd):
+    # Add any necessary features.
+    if(features):
         verizonDriver.ShoppingCart_AddFeatures()
-        for featureToAdd in featuresToAdd:
-            verizonDriver.FeatureSelection_SelectFeature(featureName=featureToAdd)
+        for feature in features:
+            verizonDriver.FeatureSelection_SelectFeature(featureName=feature["Carrier Lookup Code"])
         verizonDriver.FeatureSelection_Continue()
     # This should send us back to the shopping cart page.
 
@@ -145,7 +242,7 @@ def placeVerizonNewInstall(verizonDriver : VerizonDriver,deviceID : str,accessor
             log.error(error)
             raise error
     maintenance.validateVerizon(verizonDriver)
-    orderInfo = verizonDriver.Checkout_PlaceOrder(billingAccountNum=clients["Sysco"]["Accounts"]["Verizon Wireless"])
+    orderInfo = verizonDriver.Checkout_PlaceOrder(billingAccountNum=syscoData["Carriers"]["Verizon Wireless"]["Account Number"])
     # Order should now be placed!
 
     return orderInfo
@@ -218,45 +315,19 @@ def placeVerizonUpgrade(verizonDriver : VerizonDriver,serviceID,deviceID : str,a
             log.error(error)
             raise error
     maintenance.validateVerizon(verizonDriver)
-    orderInfo = verizonDriver.Checkout_PlaceOrder(billingAccountNum=clients["Sysco"]["Accounts"]["Verizon Wireless"])
+    orderInfo = verizonDriver.Checkout_PlaceOrder(billingAccountNum=syscoData["Carriers"]["Verizon Wireless"]["Account Number"])
     # Order should now be placed!
 
     return orderInfo
 
-# This method accepts an accessoryID list, and returns an accessoryID list adjusted for any norms specified
-# on Sysco in the config.
-def adjustAccessoriesForSyscoNorms(deviceID : str, accessoryIDs : list,carrier : str):
-    accessoryIDs = set(accessoryIDs)
-
-    # Right now, only VZW requires special cases.
-    if (carrier.lower() == "verizon wireless"):
-        if (not mainConfig["sysco"]["orderVehicleChargers"]):
-            for accessoryID in accessoryIDs:
-                if (accessories[accessoryID]["type"] == "vehicleCharger"):
-                    accessoryIDs.remove(accessoryID)
-                    break
-        # TODO for now, the "default order wall adapter" system works, but it could do with an overhaul to support more cases down the line
-        if (devices[deviceID]["tmaSubType"] == "Smart Phone"):
-            extraAccessoriesToOrder = mainConfig["sysco"]["vzwAccessoriesToAlwaysOrder_SmartPhone"]
-        elif (devices[deviceID]["tmaSubType"] == "Aircard"):
-            extraAccessoriesToOrder = mainConfig["sysco"]["vzwAccessoriesToAlwaysOrder_Aircard"]
-        elif (devices[deviceID]["tmaSubType"] == "Tablet"):
-            extraAccessoriesToOrder = mainConfig["sysco"]["vzwAccessoriesToAlwaysOrder_Tablet"]
-        else:
-            extraAccessoriesToOrder = []
-        accessoryIDs = accessoryIDs | set(extraAccessoriesToOrder)
-        return list(accessoryIDs)
-    else:
-        return accessoryIDs
-
 # Places an entire Eyesafe order.
-def placeEyesafeOrder(eyesafeDriver : EyesafeDriver,eyesafeAccessoryName : str,
+def placeEyesafeOrder(eyesafeDriver : EyesafeDriver,eyesafeAccessoryID : str,
                       userFirstName : str, userLastName : str,
                       address1,city,state,zipCode,address2 = None):
     maintenance.validateEyesafe(eyesafeDriver)
 
     eyesafeDriver.navToShop()
-    eyesafeDriver.addItemToCart(itemName=accessories[eyesafeAccessoryName]["eyesafeCardName"])
+    eyesafeDriver.addItemToCart(itemName=syscoData["Accessories"][eyesafeAccessoryID]["Eyesafe Card Name"])
     eyesafeDriver.checkOutFromCart()
     eyesafeDriver.writeShippingInformation(firstName=userFirstName,lastName=userLastName,
                                            address1=address1,address2=address2,city=city,state=state,zipCode=zipCode)
@@ -275,7 +346,7 @@ def writeServiceToCimplWorkorder(cimplDriver : CimplDriver,serviceNum,carrier,in
 
     cimplDriver.Workorders_NavToDetailsTab()
     cimplDriver.Workorders_WriteServiceID(serviceID=convertServiceIDFormat(serviceNum,targetFormat="raw"))
-    cimplDriver.Workorders_WriteAccount(accountNum=clients['Sysco']['Accounts'][carrier])
+    cimplDriver.Workorders_WriteAccount(accountNum=syscoData['Carriers'][carrier]["Account Number"])
     cimplDriver.Workorders_WriteStartDate(startDate=installDate)
 
     cimplDriver.Workorders_ApplyChanges()
@@ -308,9 +379,9 @@ def readCimplWorkorder(cimplDriver : CimplDriver,workorderNumber):
 #region === TMA Documentation ===
 
 # Performs a full New Install in TMA, building a new service based on the provided information.
-def documentTMANewInstall(tmaDriver : TMADriver,client,netID,serviceNum,installDate,device,imei,carrier):
+def documentTMANewInstall(tmaDriver : TMADriver,client,netID,serviceNum,installDate,device,imei,carrier,planFeatures):
     maintenance.validateTMA(tmaDriver, client=client)
-    if(device not in devices.keys()):
+    if(device not in syscoData["Devices"].keys()):
         error = ValueError(f"Specified device '{device}' is not configured in devices.toml.")
         log.error(error)
         raise error
@@ -329,7 +400,7 @@ def documentTMANewInstall(tmaDriver : TMADriver,client,netID,serviceNum,installD
     newService.info_Carrier = carrier
     newService.info_UserName = f"{targetUser.info_FirstName} {targetUser.info_LastName}"
     newService.info_ServiceNumber = serviceNum.strip()
-    newService.info_ServiceType = devices[device]["tmaServiceType"]
+    newService.info_ServiceType = syscoData["Devices"][device]["TMA Service Type"]
 
     newService.info_InstalledDate = installDate
     expDateObj = datetime.strptime(installDate,"%m/%d/%Y")
@@ -337,12 +408,11 @@ def documentTMANewInstall(tmaDriver : TMADriver,client,netID,serviceNum,installD
     newService.info_ContractEndDate = expDateObj.strftime("%m/%d/%Y")
     newService.info_UpgradeEligibilityDate = expDateObj.strftime("%m/%d/%Y")
 
-    # TODO support for multiple clients other than sysco
     thisEquipment = TMAEquipment(linkedService=newService,
-                                     mainType=devices[device]["tmaMainType"],
-                                     subType=devices[device]["tmaSubType"],
-                                     make=devices[device]["tmaMake"],
-                                     model=devices[device]["tmaModel"])
+                                     mainType=syscoData["Devices"][device]["TMA Main Type"],
+                                     subType=syscoData["Devices"][device]["TMA Sub Type"],
+                                     make=syscoData["Devices"][device]["TMA Make"],
+                                     model=syscoData["Devices"][device]["TMA Model"])
     newService.info_LinkedEquipment = thisEquipment
     if(imei is None):
         newService.info_LinkedEquipment.info_IMEI = ""
@@ -359,14 +429,13 @@ def documentTMANewInstall(tmaDriver : TMADriver,client,netID,serviceNum,installD
         costType = "Aircard"
     else:
         raise ValueError(f"Invalid service type: {newService.info_ServiceType}")
-    allCosts = clients["Sysco"]["Plans"][costType][carrier]
 
     baseCost = None
     featureCosts = []
-    for cost in allCosts:
-        newCost = TMACost(isBaseCost=cost["isBaseCost"], featureName=cost["featureName"], gross=cost["gross"],
-                          discountFlat=cost["discountFlat"], discountPercentage=cost["discountPercentage"])
-        if(cost["isBaseCost"] is True):
+    for planFeature in planFeatures:
+        newCost = TMACost(isBaseCost=planFeature["TMA IsBaseCost"], featureName=planFeature["TMA Feature Name"], gross=planFeature["TMA Gross Cost"],
+                          discountFlat=planFeature["TMA Discount Flat"], discountPercentage=planFeature["TMA Discount Percent"])
+        if(planFeature["TMA IsBaseCost"] == "TRUE"):
             if(baseCost is not None):
                 raise ValueError(f"Multiple base costs for a single equipment entry in equipment.toml: {costType}|{carrier}")
             else:
@@ -437,7 +506,7 @@ def documentTMANewInstall(tmaDriver : TMADriver,client,netID,serviceNum,installD
 # Performs a full Upgrade in TMA, editing an existing service based on the provided information.
 def documentTMAUpgrade(tmaDriver : TMADriver,client,serviceNum,installDate,device,imei):
     maintenance.validateTMA(tmaDriver,client=client)
-    if(device not in devices.keys()):
+    if(device not in syscoData["Devices"].keys()):
         error = ValueError(f"Specified device '{device}' is not configured in devices.toml.")
         log.error(error)
         raise error
@@ -453,7 +522,7 @@ def documentTMAUpgrade(tmaDriver : TMADriver,client,serviceNum,installDate,devic
     tmaDriver.Service_InsertUpdate()
 
     # Now we check to make sure that the Service Type hasn't changed.
-    newServiceType = devices[device]["tmaServiceType"]
+    newServiceType = syscoData["Devices"][device]["TMA Service Type"]
     if(newServiceType != tmaDriver.Service_ReadMainInfo().info_ServiceType):
         tmaDriver.Service_WriteServiceType(rawValue=newServiceType)
         tmaDriver.Service_InsertUpdate()
@@ -461,10 +530,10 @@ def documentTMAUpgrade(tmaDriver : TMADriver,client,serviceNum,installDate,devic
     # Now, we navigate to the equipment and update the IMEI and device info.
     tmaDriver.Service_NavToEquipmentFromService()
 
-    thisEquipment = TMAEquipment(mainType=devices[device]["tmaMainType"],
-                                     subType=devices[device]["tmaSubType"],
-                                     make=devices[device]["tmaMake"],
-                                     model=devices[device]["tmaModel"])
+    thisEquipment = TMAEquipment(mainType=syscoData["Devices"][device]["TMA Main Type"],
+                                     subType=syscoData["Devices"][device]["TMA Sub Type"],
+                                     make=syscoData["Devices"][device]["TMA Make"],
+                                     model=syscoData["Devices"][device]["TMA Model"])
     deviceToBuild = thisEquipment
     if(imei is None):
         deviceToBuild.info_IMEI = ""
@@ -524,8 +593,19 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
         if(not consoleUserWarning(warningMessage)):
             return False
 
-    # Make any necessary adjustments to accessories list.
-    accessoryIDs = adjustAccessoriesForSyscoNorms(deviceID=workorder["DeviceID"],accessoryIDs=workorder["AccessoryIDs"],carrier=carrier)
+    # Validate and get the true plans/features, deviceID, and accessoryIDs for this orders.
+    deviceID = validateDeviceID(workorder["DeviceID"],carrier=workorder["Carrier"])
+    accessoryIDs,eyesafeAccessoryIDs = validateAccessoryIDs(deviceID=deviceID,carrier=workorder["Carrier"],accessoryIDs=workorder["AccessoryIDs"])
+    basePlan, features = getPlansAndFeatures(deviceID=deviceID,carrier=workorder["Carrier"])
+    featuresToBuildOnCarrier = []
+    for feature in features:
+        if(feature["BuildOnCarrier"] == "TRUE"):
+            featuresToBuildOnCarrier.append(feature)
+    # Get the eyesafe accessoryID or set to None
+    if(eyesafeAccessoryIDs):
+        eyesafeAccessoryID = eyesafeAccessoryIDs[0]
+    else:
+        eyesafeAccessoryID = None
 
     # Read the people object from TMA.
     maintenance.validateTMA(tmaDriver,"Sysco")
@@ -557,8 +637,8 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
 
     # If operation type is a New Install
     if(workorder["OperationType"] == "New Request"):
-        print(f"Cimpl WO {workorderNumber}: Ordering new device ({workorder['DeviceID']}) and service for user {workorder['UserNetID']}")
-        orderNumber = placeVerizonNewInstall(verizonDriver=verizonDriver,deviceID=workorder['DeviceID'],accessoryIDs=accessoryIDs,companyName="Sysco",
+        print(f"Cimpl WO {workorderNumber}: Ordering new device ({deviceID}) and service for user {workorder['UserNetID']}")
+        orderNumber = placeVerizonNewInstall(verizonDriver=verizonDriver,deviceID=deviceID,accessoryIDs=accessoryIDs,companyName="Sysco",plan=basePlan,features=featuresToBuildOnCarrier,
                                             firstName=workorder["UserFirstName"],lastName=workorder["UserLastName"],userEmail=thisPerson.info_Email,
                                             address1=validatedAddress["Address1"],address2=validatedAddress.get("Address2",None),city=validatedAddress["City"],
                                             state=validatedAddress["State"],zipCode=validatedAddress["ZipCode"],reviewMode=reviewMode,contactEmails=thisPerson.info_Email)
@@ -566,7 +646,7 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
     # If op type is Upgrade
     elif(workorder["OperationType"] == "Upgrade"):
         print(f"Cimpl WO {workorderNumber}: Ordering upgrade ({workorder['DeviceID']}) and service for user {workorder['UserNetID']} with service {workorder['ServiceID']}")
-        orderNumber = placeVerizonUpgrade(verizonDriver=verizonDriver,deviceID=workorder['DeviceID'],serviceID=workorder['ServiceID'],accessoryIDs=accessoryIDs,
+        orderNumber = placeVerizonUpgrade(verizonDriver=verizonDriver,deviceID=deviceID,serviceID=workorder['ServiceID'],accessoryIDs=accessoryIDs,
                                           firstName=workorder["UserFirstName"],lastName=workorder["UserLastName"],companyName="Sysco",
                                           address1=validatedAddress["Address1"],address2=validatedAddress.get("Address2", None),city=validatedAddress["City"],
                                           state=validatedAddress["State"], zipCode=validatedAddress["ZipCode"],reviewMode=reviewMode,contactEmails=thisPerson.info_Email)
@@ -600,19 +680,15 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
     cimplDriver.Workorders_WriteNote(subject="Order Placed",noteType="Information Only",status="Completed",content=orderNumber)
 
     # Handle ordering Eyesafe, if specified
-    if(workorder["EyesafeAccessoryID"]):
-        # First make sure the requested eyeSafe device is compatible with the device we've ordered.
-        if(workorder['DeviceID'] in accessories[workorder["EyesafeAccessoryID"]]["compatibleDevices"]):
-            eyesafeOrderNumber = placeEyesafeOrder(eyesafeDriver=eyesafeDriver,eyesafeAccessoryName=workorder["EyesafeAccessoryID"],
-                                    userFirstName=thisPerson.info_FirstName,userLastName=thisPerson.info_LastName,
-                                    address1=validatedAddress["Address1"],address2=validatedAddress["Address2"],
-                                    city=validatedAddress["City"],state=validatedAddress["State"],zipCode=validatedAddress["ZipCode"])
-            maintenance.validateCimpl(cimplDriver)
-            cimplDriver.Workorders_NavToSummaryTab()
-            cimplDriver.Workorders_WriteNote(subject="Eyesafe Order Placed", noteType="Information Only", status="Completed",content=eyesafeOrderNumber)
-            log.info(f"Ordered Eyesafe device '{workorder["EyesafeAccessoryID"]}' per '{eyesafeOrderNumber}'")
-        else:
-            log.info(f"User requested eyesafe accessory '{workorder["EyesafeAccessoryID"]}', but this accessory is not compatible with the ordere device '{workorder['DeviceID']}'")
+    if(eyesafeAccessoryID):
+        eyesafeOrderNumber = placeEyesafeOrder(eyesafeDriver=eyesafeDriver,eyesafeAccessoryID=eyesafeAccessoryID,
+                                userFirstName=thisPerson.info_FirstName,userLastName=thisPerson.info_LastName,
+                                address1=validatedAddress["Address1"],address2=validatedAddress["Address2"],
+                                city=validatedAddress["City"],state=validatedAddress["State"],zipCode=validatedAddress["ZipCode"])
+        maintenance.validateCimpl(cimplDriver)
+        cimplDriver.Workorders_NavToSummaryTab()
+        cimplDriver.Workorders_WriteNote(subject="Eyesafe Order Placed", noteType="Information Only", status="Completed",content=eyesafeOrderNumber)
+        log.info(f"Ordered Eyesafe device '{workorder["EyesafeAccessoryID"]}' per '{eyesafeOrderNumber}'")
 
     # Confirm workorder, if not already confirmed.
     if(workorder["Status"] == "Pending"):
@@ -705,11 +781,10 @@ def processPostOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,vz
 
     # Get device model ID from Cimpl
     print(f"Cimpl WO {workorderNumber}: Determined as valid WO for Shaman rituals")
-
     if(not workorder["DeviceID"]):
         # Quickly generate a list of devices currently specified in device_cimpl_mappings to prompt the user with.
         commonMappedDevices = set()
-        for thisDeviceID in deviceCimplMappings.values():
+        for thisDeviceID in syscoData["Devices"].keys():
             commonMappedDevices.add(thisDeviceID)
         commonMappedDevices = list(commonMappedDevices)
         playsoundAsync(paths["media"] / "shaman_attention.mp3")
@@ -722,12 +797,19 @@ def processPostOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,vz
         else:
             return False
     else:
-        deviceID = workorder["DeviceID"]
+        deviceID = validateDeviceID(deviceID=workorder["DeviceID"],carrier=carrier)
+    # Get target plans/features to build as costs
+    basePlan,features = getPlansAndFeatures(deviceID=deviceID,carrier=carrier)
+    features.append(basePlan)
+    featuresToBuildOnTMA = []
+    for feature in features:
+        if (feature["WriteToTMA"] == "TRUE"):
+            featuresToBuildOnTMA.append(feature)
 
     # If operation type is a New Install
     if(workorder["OperationType"] == "New Request"):
         print(f"Cimpl WO {workorderNumber}: Building new service {carrierOrder['WirelessNumber']} for user {workorder['UserNetID']}")
-        returnCode = documentTMANewInstall(tmaDriver=tmaDriver,client="Sysco",netID=workorder['UserNetID'],serviceNum=carrierOrder["WirelessNumber"],installDate=carrierOrder["OrderDate"],device=deviceID,imei=carrierOrder["IMEI"],carrier=carrier)
+        returnCode = documentTMANewInstall(tmaDriver=tmaDriver,client="Sysco",netID=workorder['UserNetID'],serviceNum=carrierOrder["WirelessNumber"],installDate=carrierOrder["OrderDate"],device=deviceID,imei=carrierOrder["IMEI"],carrier=carrier,planFeatures=featuresToBuildOnTMA)
         if(returnCode == "Completed"):
             writeServiceToCimplWorkorder(cimplDriver=cimplDriver,serviceNum=carrierOrder["WirelessNumber"],carrier=carrier,installDate=carrierOrder["OrderDate"])
             print(f"Cimpl WO {workorderNumber}: Finished building new service {carrierOrder['WirelessNumber']} for user {workorder['UserNetID']}")
@@ -796,7 +878,7 @@ def placeMissingEyesafeOrderFromCimplWorkorder(tmaDriver : TMADriver,cimplDriver
     print(validatedAddress)
 
     # Handle ordering Eyesafe
-    eyesafeOrderNumber = placeEyesafeOrder(eyesafeDriver=eyesafeDriver, eyesafeAccessoryName=eyesafeAccessory,
+    eyesafeOrderNumber = placeEyesafeOrder(eyesafeDriver=eyesafeDriver, eyesafeAccessoryID=eyesafeAccessory,
                                                userFirstName=thisPerson.info_FirstName,
                                                userLastName=thisPerson.info_LastName,
                                                address1=validatedAddress["Address1"],
@@ -856,6 +938,7 @@ def processPreOrderSCTASK(tmaDriver : TMADriver,snowDriver : SnowDriver,verizonD
     snowDriver.navToRequest(requestNumber=taskNumber)
 
     # Classify the device intended to be ordered.
+    #TODO GET THIS SHIT UP TO DATE STUPID BITCH
     if(scTask["OrderDevice"].lower() == "apple"):
         deviceID = DEFAULT_SNOW_IPHONE
     elif(scTask["OrderDevice"].lower() == "android"):
@@ -874,6 +957,15 @@ def processPreOrderSCTASK(tmaDriver : TMADriver,snowDriver : SnowDriver,verizonD
             accessoryIDs.append(DEFAULT_SNOW_ANDROID_CASE)
     else:
         accessoryIDs = []
+
+    # Validate and get the true plans/features, deviceID, and accessoryIDs for this order.
+    deviceID = validateDeviceID(deviceID=deviceID,carrier="Verizon Wireless")
+    accessoryIDs,eyesafeAccessoryIDs = validateAccessoryIDs(deviceID=deviceID,carrier="Verizon Wireless",accessoryIDs=accessoryIDs)
+    basePlan, features = getPlansAndFeatures(deviceID=deviceID,carrier="Verizon Wireless")
+    featuresToBuildOnCarrier = []
+    for feature in features:
+        if(feature["BuildOnCarrier"] == "TRUE"):
+            featuresToBuildOnCarrier.append(feature)
 
     # Try to determine the employee's info given the order's username and supervisor name.
     maintenance.validateTMA(tmaDriver=tmaDriver,client="Sysco")
@@ -900,7 +992,7 @@ def processPreOrderSCTASK(tmaDriver : TMADriver,snowDriver : SnowDriver,verizonD
 
     # Process the new install.
     print(f"{taskNumber}: Ordering new device ({deviceID}) and service for user {userFirstName} {userLastName}")
-    fullOrderNumber = placeVerizonNewInstall(verizonDriver=verizonDriver,deviceID=deviceID,accessoryIDs=accessoryIDs,companyName="Sysco",
+    fullOrderNumber = placeVerizonNewInstall(verizonDriver=verizonDriver,deviceID=deviceID,accessoryIDs=accessoryIDs,companyName="Sysco",plan=basePlan,features=featuresToBuildOnCarrier,
                                         firstName=userFirstName,lastName=userLastName,userEmail=contactEmail if contactEmail is not None else "sysco_wireless_mac@cimpl.com",
                                         address1=validatedAddress["Address1"],address2=validatedAddress.get("Address2",None),city=validatedAddress["City"],
                                         state=validatedAddress["State"],zipCode=validatedAddress["ZipCode"],reviewMode=reviewMode,contactEmails=contactEmail)
@@ -1000,9 +1092,9 @@ try:
     # NOT DONE WOS: 49190, 49201
 
     # Cimpl processing
-    preProcessWOs = []
-    postProcessWOs = [49285,49286,49287,49288,
-                      49290,49301,49302,49304]
+    preProcessWOs = [49303,49305,49306,49307,49308,49310,49311,
+                     49313,49314,49315]
+    postProcessWOs = []
     for wo in preProcessWOs:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
                               workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D",reviewMode=False)
