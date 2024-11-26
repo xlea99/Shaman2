@@ -459,60 +459,77 @@ class VerizonDriver:
 
     # Assumes we're on the device selection page. Given a Universal Device ID, searches for that
     # device (if supported) on Verizon. # TODO move the search term stuff to higher level - shouldn't need syscoSheet in this file technically
-    def DeviceSelection_SearchForDevice(self,deviceID,orderPath="NewInstall",clearFilters=False):
-        if(clearFilters):
-            clearFiltersButtonXPath = "//div[contains(@class,'filter-badges')]/span[contains(text(),'Clear all')]"
-            clearFiltersButton = self.browser.searchForElement(by=By.XPATH,value=clearFiltersButtonXPath,timeout=60,testClickable=True)
-            self.browser.safeClick(element=clearFiltersButton,timeout=60)
-
-        searchBox = self.browser.searchForElement(by=By.XPATH,value="//input[@id='search']",timeout=15,testClickable=True)
-        searchButton = self.browser.searchForElement(by=By.XPATH,value="//span[contains(@class,'icon-search')]",timeout=15,testClickable=True)
-        searchBox.clear()
-        searchBox.send_keys(syscoData["Devices"][deviceID]["Verizon Wireless Search Term"])
-        self.browser.safeClick(element=searchButton,timeout=60)
-
-        if(orderPath == "NewInstall"):
-            # Now we test to ensure that the proper device card has fully loaded.
-            targetDeviceCardXPath = f"//div/div[contains(@class,'device-name')][contains(text(),'{syscoData["Devices"][deviceID]["Verizon Wireless New Install Card Name"]}')]"
-            self.browser.searchForElement(by=By.XPATH,value=targetDeviceCardXPath,timeout=60,testClickable=True)
-        else:
-            # Now we test to ensure that the proper device card has fully loaded.
-            targetDeviceCardXPath = f"//div/div[contains(@class,'device-title')][text()='{syscoData["Devices"][deviceID]["Verizon Wireless Upgrade Card Name"]}']"
-            targetDeviceCard = self.browser.searchForElement(by=By.XPATH,value=targetDeviceCardXPath,timeout=20,testClickable=True)
-
-            if (targetDeviceCard):
-                return True
-            else:
-                # If a targetDevice is not immediately found, we check if Verizon thinks that there's no results found.
-                noResultsFoundXPath = "//span[contains(text(),'Sorry, no results found. Please try again with other key words.')]"
-                noResultsFound = self.browser.searchForElement(by=By.XPATH, value=noResultsFoundXPath, timeout=5)
-                # If no results were found, we first try to clear all filters and rerun with clearFilters on.
-                if (noResultsFound and not clearFilters):
-                    return self.DeviceSelection_SearchForDevice(deviceID=deviceID, orderPath=orderPath, clearFilters=True)
-                # Otherwise, we just raise an error.
-                elif(noResultsFound):
-                    error = ValueError(f"Verizon is report that no device with id '{deviceID}' can be found.")
-                    log.error(error)
-                    raise error
-                else:
-                    error = ValueError(f"Verizon is halting on the device selection screen for an unknown reason!")
-                    log.error(error)
-                    raise error
-    def DeviceSelection_SelectDevice(self,deviceID,orderPath="NewInstall"):
+    # TODO this function is getting quite slow, which is pretty first world problem esque, but still
+    def DeviceSelection_SearchSelectDevice(self,deviceID,orderPath="NewInstall",searchAttempts = 3):
         if(orderPath == "NewInstall"):
             targetDeviceCardXPath = f"//div/div[contains(@class,'device-name')][normalize-space(text())='{syscoData["Devices"][deviceID]["Verizon Wireless New Install Card Name"]}']"
             deviceDetailsXPath = f"//div[contains(@class,'pdp-header-section')]/div[contains(@class,'left-top-details')]/div[contains(text(),'{syscoData["Devices"][deviceID]["Verizon Wireless New Install Card Name"]}')]"
         else:
             targetDeviceCardXPath = f"//div/div[contains(@class,'device-title')][text()='{syscoData["Devices"][deviceID]["Verizon Wireless Upgrade Card Name"]}']"
             deviceDetailsXPath = f"//div[contains(@class,'pdp-header-section')]//div[normalize-space(text())='{syscoData["Devices"][deviceID]["Verizon Wireless Upgrade Card Name"]}']"
+        print(targetDeviceCardXPath)
+        print(deviceDetailsXPath)
+        shopDevicesHeaderXPath = "//h2[contains(text(),'Shop Devices')]"
 
-        targetDeviceCard = self.browser.searchForElement(by=By.XPATH,value=targetDeviceCardXPath,timeout=5)
-        self.browser.execute_script("arguments[0].scrollIntoView({block: 'center'});", targetDeviceCard)
-        self.browser.safeClick(element=targetDeviceCard,timeout=120)
+        # Helper method to search for a device one time, and wait until (roughly) the loading screen is gone.
+        def searchDevice(clearFilters=False):
+            if(clearFilters):
+                clearFiltersButtonXPath = "//div[contains(@class,'filter-badges')]/span[contains(text(),'Clear all')]"
+                clearFiltersButton = self.browser.searchForElement(by=By.XPATH,value=clearFiltersButtonXPath,timeout=60,testClickable=True)
+                self.browser.safeClick(element=clearFiltersButton,timeout=60)
 
-        # Test for device details to confirm device has been successfully pulled up.
-        self.browser.searchForElement(by=By.XPATH,value=deviceDetailsXPath,timeout=60,minSearchTime=5,
-                                      testClickable=True,testLiteralClick=True)
+            searchBox = self.browser.searchForElement(by=By.XPATH,value="//input[@id='search']",timeout=15,testClickable=True)
+            searchButton = self.browser.searchForElement(by=By.XPATH,value="//span[contains(@class,'icon-search')]",timeout=15,testClickable=True)
+            searchBox.clear()
+            searchBox.send_keys(syscoData["Devices"][deviceID]["Verizon Wireless Search Term"])
+            self.browser.safeClick(element=searchButton,timeout=60)
+
+            # We wait for the "shop devices" header to be clickable again, to roughly assume its finished loading.
+            self.browser.searchForElement(by=By.XPATH,value=shopDevicesHeaderXPath,timeout=20,minSearchTime=4,testClickable=True,testLiteralClick=True)
+        # Helper method to try to select the device by its card.
+        def selectDevice():
+            clickResult = self.browser.safeClick(by=By.XPATH,value=targetDeviceCardXPath, timeout=10,scrollIntoView=True,raiseError=False)
+
+            if(clickResult):
+                # Test for device details to confirm device has been successfully pulled up.
+                return True if self.browser.searchForElement(by=By.XPATH, value=deviceDetailsXPath, timeout=30, minSearchTime=3,
+                                              testClickable=True, testLiteralClick=True) else False
+            else:
+                return False
+
+        tryClearFilters = False
+        selectionSuccessful = False
+        for attempt in range(searchAttempts):
+            # Search device.
+            searchDevice(clearFilters=tryClearFilters)
+            # Add a small post-search wait to avoid weird Verizon shit
+            time.sleep(3)
+            # Try to select the device card.
+            selectResult = selectDevice()
+
+            # If selected successfully, break loop
+            if(selectResult):
+                selectionSuccessful = True
+                break
+            # Otherwise, try again after a wait.
+            else:
+                tryClearFilters = True
+                time.sleep(5)
+                continue
+
+        if(selectionSuccessful):
+            return True
+        # Otherwise, raise an error.
+        else:
+            noResultsFoundXPath = "//span[contains(text(),'Sorry, no results found. Please try again with other key words.')]"
+            if(self.browser.searchForElement(by=By.XPATH,value=noResultsFoundXPath,timeout=3)):
+                error = ValueError(f"Verizon is report that no device with id '{deviceID}' can be found.")
+                log.error(error)
+                raise error
+            else:
+                error = ValueError(f"Verizon is halting on the device selection screen for an unknown reason!")
+                log.error(error)
+                raise error
     # Assumes we're in the quick view menu for a device. Various options for this menu.
     def DeviceSelection_DeviceView_Select2YearContract(self,orderPath="NewInstall"):
         if(orderPath == "NewInstall"):

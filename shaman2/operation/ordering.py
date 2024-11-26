@@ -177,8 +177,7 @@ def placeVerizonNewInstall(verizonDriver : VerizonDriver,deviceID : str,accessor
 
     # Search for the device, click on it, select contract, and add to cart.
     verizonDriver.shopNewDevice()
-    verizonDriver.DeviceSelection_SearchForDevice(deviceID=deviceID,orderPath="NewInstall")
-    verizonDriver.DeviceSelection_SelectDevice(deviceID=deviceID,orderPath="NewInstall")
+    verizonDriver.DeviceSelection_SearchSelectDevice(deviceID=deviceID,orderPath="NewInstall")
     verizonDriver.DeviceSelection_DeviceView_SelectColor(deviceID=deviceID,colorName=deviceColor,orderPath="NewInstall")
     verizonDriver.DeviceSelection_DeviceView_Select2YearContract(orderPath="NewInstall")
     verizonDriver.DeviceSelection_DeviceView_AddToCartAndContinue(orderPath="NewInstall")
@@ -275,8 +274,7 @@ def placeVerizonUpgrade(verizonDriver : VerizonDriver,serviceID,deviceID : str,a
     # This should send us to the device selection page.
 
     # Search for the device, click on it, select contract, and add to cart.
-    verizonDriver.DeviceSelection_SearchForDevice(deviceID=deviceID,orderPath="Upgrade")
-    verizonDriver.DeviceSelection_SelectDevice(deviceID=deviceID,orderPath="Upgrade")
+    verizonDriver.DeviceSelection_SearchSelectDevice(deviceID=deviceID,orderPath="Upgrade")
     verizonDriver.DeviceSelection_DeviceView_SelectColor(deviceID=deviceID, colorName=deviceColor,orderPath="Upgrade")
     verizonDriver.DeviceSelection_DeviceView_Select2YearContract(orderPath="Upgrade")
     verizonDriver.DeviceSelection_DeviceView_DeclineDeviceProtection()
@@ -1105,7 +1103,7 @@ try:
     # NOT DONE WOS: 49190, 49201
 
     # Cimpl processing
-    preProcessWOs = [49196,]
+    preProcessWOs = [49332,49196]
     postProcessWOs = []
     for wo in preProcessWOs:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
