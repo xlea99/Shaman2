@@ -1102,6 +1102,9 @@ try:
 
     # NOT DONE WOS: 49190, 49201
 
+    # Manually log in to Verizon first, just to make life easier atm
+    maintenance.validateVerizon(verizonDriver=vzw)
+
     # Cimpl processing
     preProcessWOs = [49332,49196]
     postProcessWOs = []
