@@ -692,17 +692,6 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
     cimplDriver.Workorders_NavToSummaryTab()
     cimplDriver.Workorders_WriteNote(subject="Order Placed",noteType="Information Only",status="Completed",content=orderNumber)
 
-    # Handle ordering Eyesafe, if specified
-    if(eyesafeAccessoryID):
-        eyesafeOrderNumber = placeEyesafeOrder(eyesafeDriver=eyesafeDriver,eyesafeAccessoryID=eyesafeAccessoryID,
-                                userFirstName=thisPerson.info_FirstName,userLastName=thisPerson.info_LastName,
-                                address1=validatedAddress["Address1"],address2=validatedAddress["Address2"],
-                                city=validatedAddress["City"],state=validatedAddress["State"],zipCode=validatedAddress["ZipCode"])
-        maintenance.validateCimpl(cimplDriver)
-        cimplDriver.Workorders_NavToSummaryTab()
-        cimplDriver.Workorders_WriteNote(subject="Eyesafe Order Placed", noteType="Information Only", status="Completed",content=eyesafeOrderNumber)
-        log.info(f"Ordered Eyesafe device '{workorder["EyesafeAccessoryID"]}' per '{eyesafeOrderNumber}'")
-
     # Confirm workorder, if not already confirmed.
     if(workorder["Status"] == "Pending"):
         if(workorder["OperationType"].lower() == "new request"):
@@ -736,6 +725,17 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
         subjectLine = subjectLine.replace("%D",datetime.now().strftime('%m/%d/%Y'))
         cimplDriver.Workorders_WriteSubject(subject=subjectLine)
         cimplDriver.Workorders_ApplyChanges()
+
+    # Handle ordering Eyesafe, if specified
+    if(eyesafeAccessoryID):
+        eyesafeOrderNumber = placeEyesafeOrder(eyesafeDriver=eyesafeDriver,eyesafeAccessoryID=eyesafeAccessoryID,
+                                userFirstName=thisPerson.info_FirstName,userLastName=thisPerson.info_LastName,
+                                address1=validatedAddress["Address1"],address2=validatedAddress["Address2"],
+                                city=validatedAddress["City"],state=validatedAddress["State"],zipCode=validatedAddress["ZipCode"])
+        maintenance.validateCimpl(cimplDriver)
+        cimplDriver.Workorders_NavToSummaryTab()
+        cimplDriver.Workorders_WriteNote(subject="Eyesafe Order Placed", noteType="Information Only", status="Completed",content=eyesafeOrderNumber)
+        log.info(f"Ordered Eyesafe device '{eyesafeAccessoryID}' per '{eyesafeOrderNumber}'")
 
     return True
 
@@ -1105,8 +1105,7 @@ try:
     # NOT DONE WOS: 49190, 49201
 
     # Cimpl processing
-    preProcessWOs = [49307,49308,49310,49311,
-                     49313,49314,49315]
+    preProcessWOs = [49196,]
     postProcessWOs = []
     for wo in preProcessWOs:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
