@@ -1,6 +1,7 @@
 import re
 import time
 import random
+import unicodedata
 from shaman2.utilities.async_sound import playsoundAsync
 from shaman2.common.paths import paths
 from shaman2.common.logger import log
@@ -115,4 +116,13 @@ def validateCarrier(carrierString):
     else:
         return None
 
-print(validateCarrier("VERIZON VZW"))
+# This method simply normalizes a name (EX: Takes Jeanné and outputs Jeanne) for use with choosy ordering sites.
+def normalizeName(name):
+    # Normalize the name to decompose combined characters into base characters + diacritics
+    normalized = unicodedata.normalize('NFD', name)
+    # Filter out diacritics (Unicode combining marks)
+    asciiName = ''.join(char for char in normalized if not unicodedata.combining(char))
+    # Return the normalized name
+    return asciiName
+
+print(normalizeName("Jeanné"))

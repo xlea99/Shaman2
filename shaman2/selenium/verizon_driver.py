@@ -8,7 +8,7 @@ from shaman2.common.logger import log
 from shaman2.common.paths import paths
 from shaman2.common.config import mainConfig
 from shaman2.utilities.async_sound import playsoundAsync
-from shaman2.utilities.shaman_utils import convertServiceIDFormat
+from shaman2.utilities.shaman_utils import convertServiceIDFormat,normalizeName
 from shaman2.network.sheets_sync import syscoData
 
 class VerizonDriver:
@@ -784,12 +784,12 @@ class VerizonDriver:
         # Write first name
         firstNameField = self.browser.searchForElement(by=By.XPATH,value="//input[@id='firstName']",timeout=30,testClickable=True)
         firstNameField.clear()
-        firstNameField.send_keys(firstName)
+        firstNameField.send_keys(normalizeName(firstName))
 
         # Writ last name
         lastNameField = self.browser.searchForElement(by=By.XPATH,value="//input[@formcontrolname='lastName']",timeout=30,testClickable=True)
         lastNameField.clear()
-        lastNameField.send_keys(lastName)
+        lastNameField.send_keys(normalizeName(lastName))
 
         # Write email
         emailField = self.browser.searchForElement(by=By.XPATH,value="//input[@type='email']",timeout=30,testClickable=True)
@@ -986,7 +986,7 @@ class VerizonDriver:
             attentionFieldXPath = "//input[@id='attention']"
             attentionField = self.browser.searchForElement(by=By.XPATH,value=attentionFieldXPath,timeout=30,testClickable=True)
             attentionField.clear()
-            attentionField.send_keys(attention)
+            attentionField.send_keys(normalizeName(attention))
 
             # Write address1
             address1FieldXPath = "//input[@id='add1']"
