@@ -14,7 +14,7 @@ from shaman2.common.config import mainConfig,emailTemplatesConfig
 from shaman2.common.logger import log
 from shaman2.common.paths import paths
 from shaman2.network.sheets_sync import syscoData
-from shaman2.utilities.shaman_utils import convertServiceIDFormat,convertStateFormat, consoleUserWarning
+from shaman2.utilities.shaman_utils import convertServiceIDFormat,convertStateFormat, consoleUserWarning, validateCarrier
 from shaman2.utilities.async_sound import playsoundAsync
 from shaman2.utilities.address_validation import validateAddress
 from shaman2.utilities.misc import isNumber
@@ -29,8 +29,9 @@ DEFAULT_SNOW_CHARGER = "BelkinWallAdapter"
 
 # Given a deviceID and a carrier, this method returns single plan and a list of extra features.
 def getPlansAndFeatures(deviceID,carrier):
+    carrier = validateCarrier(carrier)
     mainPlanID = syscoData["Devices"][deviceID][f"{carrier} Plan"]
-    featureIDs = syscoData["Devices"][deviceID][f"{carrier} Features"].split(",")
+    featureIDs = syscoData["Devices"][deviceID][f"{carrier} Features"].split(",") if syscoData["Devices"][deviceID][f"{carrier} Features"] else []
     mainPlan = syscoData["Plans/Features"][mainPlanID]
     features = []
     for featureID in featureIDs:
@@ -40,7 +41,8 @@ def getPlansAndFeatures(deviceID,carrier):
 # Given a deviceID and a carrier, returns either a deviceID or None depending on specifications in the SyscoData
 # such as fallbacks and carrier orderability.
 def validateDeviceID(deviceID,carrier):
-    deviceOrderableCarriers = syscoData["Devices"][deviceID]["Orderable Carriers"].split(",")
+    carrier = validateCarrier(carrier)
+    deviceOrderableCarriers = syscoData["Devices"][deviceID]["Orderable Carriers"].split(",") if syscoData["Devices"][deviceID]["Orderable Carriers"] else []
     deviceOrderableCarriers = [thisCarrier.strip() for thisCarrier in deviceOrderableCarriers]
     # If the carrier is listed as orderable for this device, we're good to go and simply return the deviceID as is.
     if(carrier in deviceOrderableCarriers):
@@ -58,8 +60,17 @@ def validateDeviceID(deviceID,carrier):
 # Given a deviceID, a carrier, and a list of accessoryIDs, this returns a list of accessoryIDs (and potentially special
 # accessory types) validated against the device and carrier.
 def validateAccessoryIDs(deviceID,carrier,accessoryIDs,removeDuplicateTypes=True):
+    print(f"INITIAL ACCESSORIES LIST: {accessoryIDs}")
+    carrier = validateCarrier(carrier)
     # First, we ensure the accessoryIDs list has only unique accessoryIDs in it.
     accessoryIDs = list(set(accessoryIDs))
+
+    # Now, we add in any extra "alwaysOrder" accessoryIDs as specified by the spreadsheet.
+    fullAccessoryIDs = accessoryIDs
+    if (f"{carrier} AlwaysOrder Accessories" in syscoData["Devices"][deviceID].values()):
+        extraAccessories = syscoData["Devices"][deviceID][f"{carrier} AlwaysOrder Accessories"].split(",") if syscoData["Devices"][deviceID][f"{carrier} AlwaysOrder Accessories"] else []
+        extraAccessories = [extraAccessory.strip() for extraAccessory in extraAccessories]
+        fullAccessoryIDs.extend(extraAccessories)
 
     # Now, we iterate through all accessories to see if they're listed as "available" on the sheet.
     def validateAvailableAccessories(_carrier,_accessoryIDs):
@@ -76,13 +87,13 @@ def validateAccessoryIDs(deviceID,carrier,accessoryIDs,removeDuplicateTypes=True
             else:
                 log.info(f"Skipping accessory '{_accessoryID}', as it is listed as unavailable in the Sysco Sheet.")
         return _availableAccessoryIDs
-    availableAccessoryIDs = validateAvailableAccessories(_carrier=carrier,_accessoryIDs=accessoryIDs)
+    availableAccessoryIDs = validateAvailableAccessories(_carrier=carrier,_accessoryIDs=fullAccessoryIDs)
 
     # Now, we ensure that all accessories are compatible with the given device and, if not, we either move to the
     # default device (if present) or remove it.
     compatibleAccessoryIDs = []
     for accessoryID in availableAccessoryIDs:
-        compatibleDevices = syscoData["Accessories"][accessoryID]["Compatible Devices"].split(",")
+        compatibleDevices = syscoData["Accessories"][accessoryID]["Compatible Devices"].split(",") if syscoData["Accessories"][accessoryID]["Compatible Devices"] else []
         compatibleDevices = [thisDevice.strip() for thisDevice in compatibleDevices]
         if(deviceID in compatibleDevices):
             compatibleAccessoryIDs.append(accessoryID)
@@ -126,11 +137,11 @@ def validateAccessoryIDs(deviceID,carrier,accessoryIDs,removeDuplicateTypes=True
 
     # We should now be left with a list of nuclear, validated, clean accessoryIDs, as well as potential special
     # accessory type. We return this as a dict.
-    return {"AccessoryIDs" : finalAccessoryIDs, "EyesafeAccessoryIDs" : eyesafeAccessories}
-
+    returnDict = {"AccessoryIDs" : finalAccessoryIDs, "EyesafeAccessoryIDs" : eyesafeAccessories}
+    print(f"FINAL ACCESSORIES DICT: {returnDict}")
+    return returnDict
 
 #endregion === Device, Accessory, and Plan Validation ===
-
 #region === Carrier Order Reading ===
 
 # Searches up, and reads, a full Verizon order number.
@@ -595,7 +606,9 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
 
     # Validate and get the true plans/features, deviceID, and accessoryIDs for this orders.
     deviceID = validateDeviceID(workorder["DeviceID"],carrier=workorder["Carrier"])
-    accessoryIDs,eyesafeAccessoryIDs = validateAccessoryIDs(deviceID=deviceID,carrier=workorder["Carrier"],accessoryIDs=workorder["AccessoryIDs"])
+    validatedAccessories = validateAccessoryIDs(deviceID=deviceID,carrier=workorder["Carrier"],accessoryIDs=workorder["AccessoryIDs"])
+    accessoryIDs = validatedAccessories["AccessoryIDs"]
+    eyesafeAccessoryIDs = validatedAccessories["EyesafeAccessoryIDs"]
     basePlan, features = getPlansAndFeatures(deviceID=deviceID,carrier=workorder["Carrier"])
     featuresToBuildOnCarrier = []
     for feature in features:
@@ -1092,7 +1105,7 @@ try:
     # NOT DONE WOS: 49190, 49201
 
     # Cimpl processing
-    preProcessWOs = [49303,49305,49306,49307,49308,49310,49311,
+    preProcessWOs = [49307,49308,49310,49311,
                      49313,49314,49315]
     postProcessWOs = []
     for wo in preProcessWOs:

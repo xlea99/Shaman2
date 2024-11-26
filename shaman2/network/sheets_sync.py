@@ -137,10 +137,6 @@ class SheetSync:
             response = self.googleService.spreadsheets().batchUpdate(spreadsheetId=self.spreadsheetID, body=body).execute()
             print(f"Batch delete completed, total ranges: {len(rowRangesToRemove)}")
 
-
-
-syscoSheet = SheetSync(spreadsheetID=mainConfig["google"]["ordersSheet"])
-
 # Helper class just to allow the sysco data object to be reloaded from anywhere.
 class __SyscoDataClass:
 
@@ -160,5 +156,7 @@ class __SyscoDataClass:
 
     def __getitem__(self, item):
         return self.data[item]
+
+syscoSheet = SheetSync(spreadsheetID=mainConfig["google"]["ordersSheet"])
 syscoData = __SyscoDataClass(syscoSheet)
 
