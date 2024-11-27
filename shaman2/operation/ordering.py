@@ -1100,14 +1100,13 @@ try:
     #                          taskNumber=task,assignTo="Alex Somheil",reviewMode=True)
     #processPostOrdersSCTASK(snowDriver=snow,verizonDriver=vzw,taskNumber=postProcessSCTASKs)
 
-    # NOT DONE WOS: 49190, 49201
-
     # Manually log in to Verizon first, just to make life easier atm
     maintenance.validateVerizon(verizonDriver=vzw)
 
     # Cimpl processing
-    preProcessWOs = [49332,49196]
-    postProcessWOs = []
+    preProcessWOs = [49190,49201,49209]
+    postProcessWOs = [49099,49237,49266,49267,49290,49293,49294,49295,49296,49297,49298,49299,49300,49303,49306,49307,
+                      49308,49310,49312,49314,49315,49332]
     for wo in preProcessWOs:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
                               workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D",reviewMode=False)
@@ -1118,16 +1117,3 @@ try:
 except Exception as e:
     playsoundAsync(paths["media"] / "shaman_error.mp3")
     raise e
-
-# TEMPLATES
-#
-# ORDERING A NEW PHONE:
-# placeVerizonNewInstall(verizonDriver=vzw,deviceID="iPhone14_128GB",accessoryIDs=["BelkinWallAdapter","iPhone14Defender"],
-#                        firstName="",lastName="",userEmail="",address1="",address2="",city="",state="",zipCode="",companyName="Sysco",contactEmails="")
-# placeVerizonUpgrade(verizonDriver=vzw,serviceID="",deviceID="iPhone14_128GB",accessoryIDs=["BelkinWallAdapter","iPhone14Defender"],
-#                        firstName="",lastName="",address1="",address2="",city="",state="",zipCode="",companyName="Sysco",contactEmails="")
-#
-# DOCUMENTING A PHONE IN TMA:
-# documentTMANewInstall(tmaDriver=tma,client="Sysco",netID="",serviceNum="",installDate="",device="iPhone14_128GB",imei="",carrier="Verizon Wireless")
-# documentTMAUpgrade(tmaDriver=tma,client="Sysco",serviceNum="",installDate="",device="iPhone14_128GB",imei="")
-

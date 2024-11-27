@@ -317,7 +317,7 @@ class TMAAssignment:
         self.info_Vendor = vendor
 
 
-        self.info_Account = syscoData["Carrier"][self.info_Vendor]
+        self.info_Account = syscoData["Carriers"][self.info_Vendor]
 
         self.info_SiteCode = siteCode
         self.info_Address = None
@@ -2220,7 +2220,7 @@ class TMADriver():
             log.error(f"Incorrect vendor selected to make assignment: {vendor}")
         self.browser.safeClick(element=vendorDropdownSelection)
         # Now select the appropriate account as found based on the vendor.
-        accountNumber = syscoData["Carrier"][vendor]
+        accountNumber = syscoData["Carriers"][vendor]
         accountNumberDropdownSelectionXPath = f"//tr/td/div/fieldset/ol/li/select[contains(@id,'wizFindExistingAssigment_ddlAccount')]/option[text()='{accountNumber}']"
         accountNumberDropdownSelection = self.browser.searchForElement(by=By.XPATH,value=accountNumberDropdownSelectionXPath,timeout=10)
         self.browser.safeClick(element=accountNumberDropdownSelection)
