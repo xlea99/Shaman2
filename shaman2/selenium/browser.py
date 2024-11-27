@@ -142,10 +142,13 @@ class Browser(webdriver.Chrome):
                 if(headResponse.status_code == 200):
                     # If it does, download it to our install folder.
                     fileResponse = requests.get(chromeDriverURL)
-                    with open(installFolder / f"chromedriver_{self.userChromeVersion}.zip", "wb") as f:
+                    zipPath = installFolder / f"chromedriver_{self.userChromeVersion}.zip"
+                    with open(zipPath, "wb") as f:
                         for chunk in fileResponse.iter_content(chunk_size=8192):
                             f.write(chunk)
                         log.info(f"Downloaded new chromedriver.zip version ({self.userChromeVersion})")
+                    time.sleep(1)
+                    os.chmod(zipPath,0o777)
 
                     # Extract chromedriver.exe
                     with zipfile.ZipFile(installFolder / f"chromedriver_{self.userChromeVersion}.zip","r") as zipRef:
