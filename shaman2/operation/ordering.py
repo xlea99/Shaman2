@@ -21,8 +21,8 @@ from shaman2.utilities.misc import isNumber
 
 DEFAULT_SNOW_IPHONE = "iPhone14_128GB"
 DEFAULT_SNOW_ANDROID = "GalaxyS23_128GB"
-DEFAULT_SNOW_IPHONE_CASE = "iPhone14Symmetry"
-DEFAULT_SNOW_ANDROID_CASE = "SamsungS23Symmetry"
+DEFAULT_SNOW_IPHONE_CASE = "iPhone14_Symmetry"
+DEFAULT_SNOW_ANDROID_CASE = "SamsungS23_Symmetry"
 DEFAULT_SNOW_CHARGER = "BelkinWallAdapter"
 
 #region === Device, Accessory, and Plan Validation ===
@@ -1093,27 +1093,52 @@ try:
     eyesafe = EyesafeDriver(br)
 
     # SCTASK processing
-    #preProcessSCTASKs = []
-    #postProcessSCTASKs = [] # Note that, if no postProcessSCTASKs are specified, all valid SCTASKs in the sheet will be closed. Input just "None" to NOT do this.
-    #for task in preProcessSCTASKs:
-    #    processPreOrderSCTASK(tmaDriver=tma,snowDriver=snow,verizonDriver=vzw,
-    #                          taskNumber=task,assignTo="Alex Somheil",reviewMode=True)
+    preProcessSCTASKs = ["SCTASK1097393","SCTASK1098318","SCTASK1097304"]
+    postProcessSCTASKs = [] # Note that, if no postProcessSCTASKs are specified, all valid SCTASKs in the sheet will be closed. Input just "None" to NOT do this.
+    for task in preProcessSCTASKs:
+        processPreOrderSCTASK(tmaDriver=tma,snowDriver=snow,verizonDriver=vzw,
+                              taskNumber=task,assignTo="Alex Somheil",reviewMode=True)
     #processPostOrdersSCTASK(snowDriver=snow,verizonDriver=vzw,taskNumber=postProcessSCTASKs)
 
     # Manually log in to Verizon first, just to make life easier atm
     maintenance.validateVerizon(verizonDriver=vzw)
 
     # Cimpl processing
-    preProcessWOs = [49190,49201,49209]
-    postProcessWOs = [49099,49237,49266,49267,49290,49293,49294,49295,49296,49297,49298,49299,49300,49303,49306,49307,
-                      49308,49310,49312,49314,49315,49332]
-    for wo in preProcessWOs:
-        processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
-                              workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D",reviewMode=False)
-    for wo in postProcessWOs:
-        processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,
-                              workorderNumber=wo)
+    #preProcessWOs = [49190,49201,49209]
+    #postProcessWOs = [49099,49237,49266,49267,49290,49293,49294,49295,49296,49297,49298,49299,49300,49303,49306,49307,
+    #                  49308,49310,49312,49314,49315,49332]
+    #for wo in preProcessWOs:
+    #    processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
+    #                          workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D",reviewMode=False)
+    #for wo in postProcessWOs:
+    #    processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,
+    #                          workorderNumber=wo)
 
 except Exception as e:
     playsoundAsync(paths["media"] / "shaman_error.mp3")
     raise e
+
+
+# TEMPLATES
+#
+# ORDERING A NEW PHONE:
+# _firstName, _lastName, _userEmail = "", "", ""
+# _address1, _address2, _city, _state, _zipCode = "", "", "", "", ""
+# _deviceID, _accessoryIDs = "iPhone14_128GB", ["BelkinWallAdapter","iPhone14Defender"]
+# _contactEmails = []
+# placeVerizonNewInstall(verizonDriver=vzw,deviceID=_deviceID,accessoryIDs=_accessoryIDs,
+#                        plan=getPlansAndFeatures(deviceID=_deviceID,carrier="Verizon Wireless")[0],features=getPlansAndFeatures(deviceID=_deviceID,carrier="Verizon Wireless")[1],
+#                        firstName=_firstName,lastName=_lastName,userEmail=_userEmail,address1=_address1,address2=_address2,city=_city,state=_state,zipCode=_zipCode,companyName="Sysco",contactEmails=_contactEmails)
+#
+# ORDERING AN UPGRADE
+# _serviceID = ""
+# _firstName, _lastName, _userEmail = "", "", ""
+# _address1, _address2, _city, _state, _zipCode = "", "", "", "", ""
+# _deviceID, _accessoryIDs = "iPhone14_128GB", ["BelkinWallAdapter","iPhone14Defender"]
+# _contactEmails = []
+# placeVerizonUpgrade(verizonDriver=vzw,serviceID=_serviceID,deviceID=_deviceID,accessoryIDs=_accessoryIDs,
+#                        firstName=_firstName,lastName=_lastName,address1=_address1,address2=_address2,city=_city,state=_state,zipCode=_zipCode,companyName="Sysco",contactEmails=_contactEmails)
+#
+# DOCUMENTING A PHONE IN TMA:
+# documentTMANewInstall(tmaDriver=tma,client="Sysco",netID="",serviceNum="",installDate="",device="iPhone14_128GB",imei="",carrier="Verizon Wireless")
+# documentTMAUpgrade(tmaDriver=tma,client="Sysco",serviceNum="",installDate="",device="iPhone14_128GB",imei="")
