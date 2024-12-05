@@ -9,7 +9,7 @@ from shaman2.common.paths import paths
 from shaman2.common.config import mainConfig
 from shaman2.utilities.async_sound import playsoundAsync
 from shaman2.utilities.shaman_utils import convertServiceIDFormat,normalizeName, BAD_ELEMENT_EXCEPTIONS
-from shaman2.utilities.status_code import StatusCode
+from shaman2.utilities.action_handler import action,ActionResult,StatusCode
 from shaman2.network.sheets_sync import syscoData
 
 class VerizonDriver:
@@ -36,13 +36,14 @@ class VerizonDriver:
 
     # This method sets the page to the Verizon log in screen, then goes through the process of
     # logging in.
+    @action
     def logInToVerizon(self,manual=False):
         self.browser.switchToTab("Verizon")
 
         # Test if already signed in.
         if("https://mb.verizonwireless.com" in self.browser.current_url):
             log.info("Already logged in to Verizon.")
-            return StatusCode.SUCCESS
+            return ActionResult(status=StatusCode.SUCCESS)
         else:
             self.browser.get("https://mblogin.verizonwireless.com/account/business/login/unifiedlogin")
             if(manual):
@@ -51,10 +52,9 @@ class VerizonDriver:
                 userResponse = input("Press enter once logged in to Verizon. Press any other key to cancel.")
                 if(userResponse != ""):
                     log.warning("User cancelled manual login process.")
-                    return StatusCode.USER_ABORT
+                    return ActionResult(status=StatusCode.USER_ABORT)
                 log.info("User finished manual login process.")
             else:
-
                 # Build the map of possible login pages.
                 usernameFieldXPath = "//input[@id='pwdUserID']"
                 passwordFieldXPath = "//input[@type='password']"
@@ -67,77 +67,56 @@ class VerizonDriver:
                 # Begin loop to manage login logic.
                 for i in range(10):
                     # First, get the current page we're on.
-                    try:
-                        foundElement,pageName = self.browser.searchForElement(by=By.XPATH,value=loginPagesMap,debug=True,
+                    foundElement,pageName = self.browser.searchForElement(by=By.XPATH,value=loginPagesMap,
                                                                           testClickable=True,testLiteralClick=True,
                                                                           timeout=30,raiseError=True,logError=False)
-                    except BAD_ELEMENT_EXCEPTIONS as e:
-                        log.error(f"Verizon Log In didn't load, or loaded a non-process page:\n {e}", exc_info=True)
-                        return StatusCode.LOGIN_ERROR
 
                     # If we're on the username page, foundElement is our usernameField.
                     if(pageName == "Username"):
-                        try:
-                            foundElement.send_keys(mainConfig["authentication"]["verizonUser"])
-                            foundElement.send_keys(Keys.ENTER)
-                            # Wait for username field to disappear before proceeding.
-                            self.browser.searchForElement(element=foundElement,timeout=60,testNotStale=False,
-                                                          invertedSearch=True,raiseError=True)
-                        except BAD_ELEMENT_EXCEPTIONS as e:
-                            log.error(f"Failed to fill username:\n {e}",exc_info=True)
-                            return StatusCode.BAD_ELEMENT
+                        foundElement.send_keys(mainConfig["authentication"]["verizonUser"])
+                        foundElement.send_keys(Keys.ENTER)
+                        # Wait for username field to disappear before proceeding.
+                        self.browser.searchForElement(element=foundElement,timeout=60,testNotStale=False,
+                                                      invertedSearch=True,raiseError=True)
                     # If we're on the password page, foundElement is our passwordField.
                     elif(pageName == "Password"):
-                        try:
-                            foundElement.clear()
-                            foundElement.send_keys(mainConfig["authentication"]["verizonPass"])
-                            foundElement.send_keys(Keys.ENTER)
-                            # Wait for pass log in header to disappear before proceeding.
-                            self.browser.searchForElement(element=foundElement, timeout=60, testNotStale=False,
-                                                          invertedSearch=True)
-                        except BAD_ELEMENT_EXCEPTIONS as e:
-                            log.error(f"Failed to fill password:\n {e}", exc_info=True)
-                            return StatusCode.BAD_ELEMENT
+                        foundElement.clear()
+                        foundElement.send_keys(mainConfig["authentication"]["verizonPass"])
+                        foundElement.send_keys(Keys.ENTER)
+                        # Wait for pass log in header to disappear before proceeding.
+                        self.browser.searchForElement(element=foundElement, timeout=60, testNotStale=False,
+                                                      invertedSearch=True)
                     # If we're on the "How Do You Want To Log In" page, we just need to find and click "log in with password" option.
                     elif(pageName == "HDYWTLI"):
-                        try:
-                            logInWithPasswordOptionXPath = "//div[@class='pwdless_option_text']/a[normalize-space(text())='Password']"
-                            logInWithPasswordOption = self.browser.searchForElement(by=By.XPATH,value=logInWithPasswordOptionXPath,testClickable=True,timeout=30)
-                            logInWithPasswordOption.click()
-                            # Wait for HDYWTLI header to disappear before proceeding.
-                            self.browser.searchForElement(element=foundElement, timeout=60,testNotStale=False,
-                                                          invertedSearch=True)
-                        except BAD_ELEMENT_EXCEPTIONS as e:
-                            log.error(f"Failed to move past 'HDYWTLI' screen:\n {e}",exc_info=True)
-                            return StatusCode.BAD_ELEMENT
+                        logInWithPasswordOptionXPath = "//div[@class='pwdless_option_text']/a[normalize-space(text())='Password']"
+                        logInWithPasswordOption = self.browser.searchForElement(by=By.XPATH,value=logInWithPasswordOptionXPath,testClickable=True,timeout=30)
+                        logInWithPasswordOption.click()
+                        # Wait for HDYWTLI header to disappear before proceeding.
+                        self.browser.searchForElement(element=foundElement, timeout=60,testNotStale=False,
+                                                      invertedSearch=True)
                     # If we're on the OTP page, we need to get the OTP from the user.
                     elif(pageName == "OTP"):
-                        try:
-                            playsoundAsync(paths['media'] / "shaman_attention.mp3")
-                            userInput = input("VERIZON WIRELESS: Requesting one time code. Please enter 2FA code, then enter once at VZW main page to continue. Enter anything else to cancel.")
-                            if (userInput != ""):
-                                error = ValueError("User cancelled login process.")
-                                log.error(error)
-                                raise error
-                            # Wait for OTP header to disappear before proceeding.
-                            self.browser.searchForElement(element=foundElement, timeout=15,testNotStale=False,
-                                                          invertedSearch=True)
-                        except BAD_ELEMENT_EXCEPTIONS as e:
-                            log.error(f"Failed to fill username:\n {e}",exc_info=True)
-                            return StatusCode.BAD_ELEMENT
+                        playsoundAsync(paths['media'] / "shaman_attention.mp3")
+                        userInput = print("VERIZON WIRELESS: Requesting one time code. Please enter 2FA code - you have 3 minutes before self-destruction.")
+                        if (userInput != ""):
+                            error = ValueError("User cancelled login process.")
+                            log.error(error)
+                            raise error
+                        # Wait for HomePage to load deliberately here.
+                        self.browser.searchForElement(by=By.XPATH,value=homepageXPath, timeout=180,testClickable=True,testLiteralClick=True)
                     # If we're at the HomePage screen, we're done.
                     elif(pageName == "Homepage"):
                         self.testForUnregisteredPopup()
-                        log.info("Successfully logged in to Verizon Wireless.")
-                        return StatusCode.SUCCESS
+                        return ActionResult(status=StatusCode.SUCCESS)
 
                 # If we've left the loop, that means we went through 10 iterations of login logic without exiting,
                 # signaling a bizarre process change.
                 log.error(f"Went through more than 10 iterations of login logic without exiting - review process.",exc_info=True)
-                return StatusCode.LOGIN_ERROR
+                return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
 
     # This method tests for and handles the "X users are still unregistered" popup that sometimes occurs on the
     # Homescreen page.
+    @action
     def testForUnregisteredPopup(self):
         unregisteredUsersPopupXPath = "//app-notification-dialog//div[contains(text(),'users are still unregistered')]/parent::div/parent::app-notification-dialog"
         unregisteredUsersCloseButtonXPath = f"{unregisteredUsersPopupXPath}//i[contains(@class,'icon-close')]"
@@ -145,40 +124,52 @@ class VerizonDriver:
         unregisteredUsersCloseButton = self.browser.searchForElement(by=By.XPATH,value=unregisteredUsersCloseButtonXPath,timeout=2)
         if(unregisteredUsersCloseButton):
             unregisteredUsersCloseButton.click()
+            log.info("Closed unregistered users popup.")
             self.browser.searchForElement(by=By.XPATH,value=unregisteredUsersCloseButtonXPath,timeout=30,invertedSearch=True,
                                           testClickable=True)
-            return True
+            return ActionResult(status=StatusCode.SUCCESS)
         else:
-            return True
+            log.debug("Found no unregistered popup to close.")
+            return ActionResult(status=StatusCode.SUCCESS)
 
     # This method navigates to the MyBiz homescreen from whatever page Verizon is currently on.
+    @action
     def navToHomescreen(self):
         self.browser.switchToTab("Verizon")
-        homeLink = self.browser.searchForElement(by=By.XPATH,value="//a[@title='Home Link']",timeout=10,testClickable=True)
-        homeLink.click()
+
+        # Go to the link directly.
+        self.browser.get("https://mb.verizonwireless.com/mbt/secure/index?appName=esm#/esm/dashboard")
 
         # Wait for shop new device button to confirm page load.
-        self.browser.searchForElement(by=By.XPATH,value="//label[contains(@class,'custom-search-input-label')][contains(normalize-space(text()),'Welcome,')]",timeout=30,testClickable=True)
-        self.testForUnregisteredPopup()
+        testResult = self.browser.searchForElement(by=By.XPATH,value="//label[contains(@class,'custom-search-input-label')][contains(normalize-space(text()),'Welcome,')]",
+                                      timeout=30, testClickable=True)
+        if(testResult):
+            # TODO ????? deal with status code here too for unregistered popup DO WE EVEN NEED IT????
+            #self.testForUnregisteredPopup()
+            return ActionResult(status=StatusCode.SUCCESS)
+        else:
+            log.error(RuntimeError(f"Verizon homescreen never loaded!"),exc_info=True)
+            return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
 
     # This method navigates to the Verizon order viewer.
+    @action
     def navToOrderViewer(self):
         self.browser.switchToTab("Verizon")
-        self.testForUnregisteredPopup()
+        # Yes, the typo is intentional lmfao
+        viewOrdersHeaderXPath = "//div[contains(@class,'view-orders-conatiner')]//h2[contains(text(),'Orders')]"
 
-        if(not self.browser.searchForElement(by=By.XPATH,value="//app-view-orders",timeout=2)):
-            self.navToHomescreen()
-            #try:
-            #    viewOrdersLink = self.browser.searchForElement(by=By.XPATH,value="//span[contains(text(),'View Orders')]",timeout=10,raiseError=True)
-            #except selenium.common.exceptions.NoSuchElementException:
-            #    viewOrdersLink = self.browser.searchForElement(by=By.XPATH,value="//div[contains(@class,'ordersPosition')]",timeout=15,raiseError=True)
-            #viewOrdersLink.click()
+        if(not self.browser.searchForElement(by=By.XPATH,value=viewOrdersHeaderXPath,timeout=2)):
+            # Navigate to the link directly.
             self.browser.get("https://mb.verizonwireless.com/mbt/secure/index?transType=ORDERSTATUS#/vieworders")
 
-            # Yes, the typo is intentional lmfao
-            viewOrdersHeaderXPath = "//div[contains(@class,'view-orders-conatiner')]//h2[contains(text(),'Orders')]"
-            self.browser.searchForElement(by=By.XPATH,value=viewOrdersHeaderXPath,timeout=120,
+            # Test to ensure we got to the expected page.
+            testResult = self.browser.searchForElement(by=By.XPATH,value=viewOrdersHeaderXPath,timeout=60,
                                           testClickable=True,testLiteralClick=True)
+            if(testResult):
+                return ActionResult(status=StatusCode.SUCCESS)
+            else:
+                log.error(RuntimeError(f"Verizon order viewer never loaded!"), exc_info=True)
+                return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
 
     #endregion === Site Navigation ===
 
@@ -1173,7 +1164,3 @@ class VerizonDriver:
         return self.browser.searchForElement(by=By.XPATH,value=fullOrderInfoString,timeout=30,testClickable=True).text
 
     #endregion === Device Ordering ===
-
-br = Browser()
-v = VerizonDriver(br)
-print(v.logInToVerizon(manual=False))
