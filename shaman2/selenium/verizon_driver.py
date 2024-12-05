@@ -97,11 +97,7 @@ class VerizonDriver:
                     # If we're on the OTP page, we need to get the OTP from the user.
                     elif(pageName == "OTP"):
                         playsoundAsync(paths['media'] / "shaman_attention.mp3")
-                        userInput = print("VERIZON WIRELESS: Requesting one time code. Please enter 2FA code - you have 3 minutes before self-destruction.")
-                        if (userInput != ""):
-                            error = ValueError("User cancelled login process.")
-                            log.error(error)
-                            raise error
+                        print("VERIZON WIRELESS: Requesting one time code. Please enter 2FA code - you have 3 minutes before self-destruction.")
                         # Wait for HomePage to load deliberately here.
                         self.browser.searchForElement(by=By.XPATH,value=homepageXPath, timeout=180,testClickable=True,testLiteralClick=True)
                     # If we're at the HomePage screen, we're done.
@@ -1164,3 +1160,7 @@ class VerizonDriver:
         return self.browser.searchForElement(by=By.XPATH,value=fullOrderInfoString,timeout=30,testClickable=True).text
 
     #endregion === Device Ordering ===
+
+#br = Browser()
+#v = VerizonDriver(br)
+#print(v.logInToVerizon())
