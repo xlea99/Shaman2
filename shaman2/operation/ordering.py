@@ -22,7 +22,7 @@ from shaman2.utilities.misc import isNumber
 DEFAULT_SNOW_IPHONE = "iPhone14_128GB"
 DEFAULT_SNOW_ANDROID = "GalaxyS23_128GB"
 DEFAULT_SNOW_IPHONE_CASE = "iPhone14_Symmetry"
-DEFAULT_SNOW_ANDROID_CASE = "SamsungS23_Symmetry"
+DEFAULT_SNOW_ANDROID_CASE = "SamsungS23_Commuter"
 DEFAULT_SNOW_CHARGER = "BelkinWallAdapter"
 
 #region === Device, Accessory, and Plan Validation ===
@@ -971,7 +971,7 @@ def processPreOrderSCTASK(tmaDriver : TMADriver,snowDriver : SnowDriver,verizonD
 
     # Validate and get the true plans/features, deviceID, and accessoryIDs for this order.
     deviceID = validateDeviceID(deviceID=deviceID,carrier="Verizon Wireless")
-    accessoryIDs,eyesafeAccessoryIDs = validateAccessoryIDs(deviceID=deviceID,carrier="Verizon Wireless",accessoryIDs=accessoryIDs)
+    #accessoryIDs,eyesafeAccessoryIDs = validateAccessoryIDs(deviceID=deviceID,carrier="Verizon Wireless",accessoryIDs=accessoryIDs)
     basePlan, features = getPlansAndFeatures(deviceID=deviceID,carrier="Verizon Wireless")
     featuresToBuildOnCarrier = []
     for feature in features:
@@ -1093,11 +1093,32 @@ try:
     eyesafe = EyesafeDriver(br)
 
     # SCTASK processing
-    preProcessSCTASKs = ["SCTASK1097393","SCTASK1098318","SCTASK1097304"]
+    preProcessSCTASKs = ["SCTASK1099181",
+                         "SCTASK1099171",
+                         "SCTASK1099160",
+                         "SCTASK1100147",
+                         "SCTASK1100120",
+                         "SCTASK1099719",
+                         "SCTASK1099711",
+                         "SCTASK1099689",
+                         "SCTASK1099687",
+                         "SCTASK1099686",
+                         "SCTASK1099683",
+                         "SCTASK1099631",
+                         "SCTASK1099600",
+                         "SCTASK1099562",
+                         "SCTASK1099549",
+                         "SCTASK1099512",
+                         "SCTASK1099511",
+                         "SCTASK1099461",
+                         "SCTASK1099456",
+                         "SCTASK1099408",
+                         "SCTASK1099384",
+                         "SCTASK1099377"]
     postProcessSCTASKs = [] # Note that, if no postProcessSCTASKs are specified, all valid SCTASKs in the sheet will be closed. Input just "None" to NOT do this.
     for task in preProcessSCTASKs:
         processPreOrderSCTASK(tmaDriver=tma,snowDriver=snow,verizonDriver=vzw,
-                              taskNumber=task,assignTo="Alex Somheil",reviewMode=True)
+                              taskNumber=task,assignTo="Alex Somheil",reviewMode=False)
     #processPostOrdersSCTASK(snowDriver=snow,verizonDriver=vzw,taskNumber=postProcessSCTASKs)
 
     # Manually log in to Verizon first, just to make life easier atm

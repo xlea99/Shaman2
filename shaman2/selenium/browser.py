@@ -307,7 +307,9 @@ class Browser(webdriver.Chrome):
     # element, new or existing, on the page, as well as returning it.
     #
     # by -      Search method for the given value (By.XPATH, By.CSS_SELECTOR). Requires a value to be specified
-    # value -   Search term to search for using the method specified by "by" (a literal xpath or CSS selector) Supports MULTIPLE values as a list - will search each value sequentially, considering the first one found the first success.
+    # value -   Search term to search for using the method specified by "by" (a literal xpath or CSS selector)
+    #           Supports MULTIPLE values as a list - will search each value sequentially, considering the first one found the first success.
+    #           If a DICT is provided, mapped as {SeleniumIdentifier : "Alias"}, it'll return both the alias and the found element when the given value is found.
     # element - An existing WebElement to test on. Can't use with by/value
     # timeout - How long to search for, at minimum. Defaults to zero to run exactly one test.
     # minSearchTime -           Ensures that, even if the test initially passes, it keeps searching for the element until this time has been reached. If the search fails even after first succeeding, the whole search is considered failed.
@@ -322,7 +324,7 @@ class Browser(webdriver.Chrome):
     # shadowRootStack -         Specifies an element that exists in a shadowRoot, or a nested shadowRoot. First attempts to scope into the root (first to last), before searching for the element. Each entry should be a dict as (by:by,value:value,extraElementTests:extraElementTests,withSubElement:withSubElement)
     # extraElementTests -       Provides the ability to run extra tests on the element after it's found, but before declaring the search successful. Provides as a stack of lambdas evaluating a boolean (lambda el: el.get_attribute("beans") == "pinto")
     # TODO is this enough to defeat Verizon's weird elements that selenium believes are clickable, but secretly aren't yet?
-    def searchForElement(self,by = None,value : (str,list) = None,element : WebElement = None,timeout : float = 0, minSearchTime : float = 0,
+    def searchForElement(self,by = None,value : (str,list,dict) = None,element : WebElement = None,timeout : float = 0, minSearchTime : float = 0,
                          testNotStale = True,testClickable = False,testScrolledInView = False,testLiteralClick = False,
                          invertedSearch = False,scrollIntoView=False,raiseError = False,logError = None,singleTestInterval = 0.1,debug=False,
                          shadowRootStack : list = None,extraElementTests : list = None):
@@ -335,9 +337,13 @@ class Browser(webdriver.Chrome):
         if(logError is None):
             logError = raiseError
 
-        # Convert value to a list for standardized processing.
-        if(type(value) is not list):
-            value = [value]
+        # Convert value to a identifierList for standardized processing.
+        if(type(value) is str or value is None):
+            identifierList = [value]
+        elif(type(value) is dict):
+            identifierList = list(value.keys())
+        else:
+            identifierList = value
 
         lastException = None
         minTestTime = time.time() + minSearchTime
@@ -368,7 +374,7 @@ class Browser(webdriver.Chrome):
 
                         # Raise error (fail test) if no valid shadow hosts are found.
                         if (len(allValidShadowHosts) == 0):
-                            raise ValueError(f"No valid shadow hosts found with selector '{selector['value']}'")
+                            raise selenium.common.exceptions.NoSuchElementException(f"No valid shadow hosts found with selector '{selector['value']}'")
 
                         # Test for any specific sub elements if specified.
                         if(selector.get("withSubElement")):
@@ -397,7 +403,7 @@ class Browser(webdriver.Chrome):
                                 if(targetShadowHost):
                                     break
                             if(not targetShadowHost):
-                                raise ValueError(f"No valid shadow hosts found with selector '{selector['value']}'")
+                                raise selenium.common.exceptions.NoSuchElementException(f"No valid shadow hosts found with selector '{selector['value']}'")
                         else:
                             targetShadowHost = allValidShadowHosts[0]
 
@@ -407,8 +413,12 @@ class Browser(webdriver.Chrome):
 
                 # If element is not provided, test to find it by locator
                 if(not element):
-                    targetElement = root.find_element(by=by,value=value[searchAttempt % len(value)])
+                    nextIdentifier = identifierList[searchAttempt % len(identifierList)]
+                    if(debug):
+                        log.debug(f"Attempting selenium find_element for next identifier: {nextIdentifier}")
+                    targetElement = root.find_element(by=by,value=nextIdentifier)
                 else:
+                    nextIdentifier = None
                     targetElement = element
                     # If it's an inverted search AND a given element, we simply try to take a sample attribute to ensure
                     # it still exists.
@@ -428,11 +438,10 @@ class Browser(webdriver.Chrome):
                 if(testLiteralClick):
                     self.safeClick(element=targetElement,timeout=singleTestInterval,raiseError=True,logging=False)
 
-
                 if(extraElementTests):
                     for extraElementTest in extraElementTests:
                         if not extraElementTest(targetElement):
-                            raise ValueError(f"Extra test {extraElementTest} failed on element {targetElement}.")
+                            raise selenium.common.exceptions.NoSuchElementException(f"Extra test {extraElementTest} failed on element {targetElement}.")
 
                 # === TESTS PASS ===
                 # If all tests pass, and this is an inverted search, that means the element is still present and we
@@ -447,7 +456,10 @@ class Browser(webdriver.Chrome):
                     if(time.time() >= minTestTime):
                         if(debug):
                             log.debug(f"Searched successfully for element with {searchAttempt} search attempts.")
-                        return targetElement
+                        if(type(value) is dict):
+                            return targetElement,value[nextIdentifier]
+                        else:
+                            return targetElement
                     else:
                         time.sleep(0.1)
                         # Set the next valueIndex to test, in case there's multiple.
@@ -463,7 +475,10 @@ class Browser(webdriver.Chrome):
                     if(time.time() >= minTestTime):
                         if(debug):
                             log.debug(f"InvertedSearched successfully for element with {searchAttempt} search attempts.")
-                        return True
+                        if(type(value) is dict):
+                            return True,None
+                        else:
+                            return True
                     else:
                         time.sleep(0.1)
                         continue
@@ -476,7 +491,7 @@ class Browser(webdriver.Chrome):
         # If timeout expires without success, return False or raise an error
         if(raiseError):
             if(invertedSearch):
-                error = ValueError(f"InvertedSearched for element, but element persisted on page past timeout after {searchAttempt} search attempts.")
+                error = selenium.common.exceptions.NoSuchElementException(f"InvertedSearched for element, but element persisted on page past timeout after {searchAttempt} search attempts.")
                 if(logError):
                     log.error(error,stack_info=True)
                 raise error
@@ -487,7 +502,10 @@ class Browser(webdriver.Chrome):
         else:
             if(debug):
                 log.debug(f"Failed to successfully{" inverted" if invertedSearch else ""} search for element after {searchAttempt} search attempts.")
-            return False
+            if(type(value) is dict):
+                return False,None
+            else:
+                return False
 
     # Similar, but much simpler searchForElements which searches for multiple elements at once and is only concerned
     # with the amount of elements returned.

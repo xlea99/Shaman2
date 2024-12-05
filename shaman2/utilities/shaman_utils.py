@@ -5,6 +5,9 @@ import unicodedata
 from shaman2.utilities.async_sound import playsoundAsync
 from shaman2.common.paths import paths
 from shaman2.common.logger import log
+from selenium.common.exceptions import NoSuchElementException,StaleElementReferenceException,ElementNotInteractableException,ElementClickInterceptedException
+
+BAD_ELEMENT_EXCEPTIONS = (NoSuchElementException,StaleElementReferenceException,ElementNotInteractableException,ElementClickInterceptedException)
 
 # This function accepts a phone number in ANY format (assuming it contains an actual phone number an
 # no extra numbers), and converts it to one of three forms:
