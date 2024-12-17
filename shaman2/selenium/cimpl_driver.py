@@ -859,9 +859,3 @@ class CimplDriver:
                 return True
 
     #endregion === Utility ===
-
-
-br = Browser()
-c = CimplDriver(br)
-c.logInToCimpl()
-c.navToWorkorderCenter()

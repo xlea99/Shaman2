@@ -1209,28 +1209,43 @@ class VerizonDriver:
         # Finally, we continue back to payment.
         continueToPaymentButtonXPath = "//button[contains(text(),'Continue to Payment')]"
         continueToPaymentButton = self.browser.searchForElement(by=By.XPATH, value=continueToPaymentButtonXPath,testClickable=True,scrollIntoView=True)
+        self.browser.safeClick(element=continueToPaymentButton, timeout=120)
 
-        staticShippingMethodLabelXPath = "//div[@class='shipdisplay-method']/h4[normalize-space(text())='Shipping method']"
         addressCouldNotBeValidatedXPath = "//div[contains(text(),'Address could not be validated.')]"
-        self.browser.safeClick(element=continueToPaymentButton, timeout=120)#,retryClicks=True,clickDelay=10,
-                               #successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=[staticShippingMethodLabelXPath,addressCouldNotBeValidatedXPath]))
-
-        # Handle cases where Verizon reports the address as invalid.
-        if(self.browser.searchForElement(by=By.XPATH,value=addressCouldNotBeValidatedXPath,
-                                         timeout=1,testClickable=True)):
-            # If address could not be validated, but override is on, simply click continue again.
-            if (overrideVerizonInvalidAddress):
-                continueToPaymentButton = self.browser.searchForElement(by=By.XPATH, value=continueToPaymentButtonXPath,testClickable=True)
-                self.browser.safeClick(element=continueToPaymentButton, timeout=120, retryClicks=True, clickDelay=10,
-                                       successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH, value=staticShippingMethodLabelXPath))
-            else:
-                log.warning("Verizon believes that the given address could not be validated.")
-                return ActionResult(status=StatusCode.VERIZON_INVALID_ADDRESS)
+        shippingAddressFullXPath = "//div[@class='shipdisplay-left']/p[contains(@class,'collapse-shipping')]"
+        pageMap = {addressCouldNotBeValidatedXPath : "AddressNotValid",shippingAddressFullXPath: "ShippingReady"}
+        shippingWritten = False
+        for i in range(4):
+            foundElement,pageName = self.browser.searchForElement(by=By.XPATH,value=pageMap,testClickable=True,
+                                                                  timeout=30,scrollIntoView=True,raiseError=True)
+            # Handle cases where Verizon reports the address as invalid.
+            if(pageName == "AddressNotValid"):
+                # If address could not be validated, but override is on, simply click continue again.
+                if (overrideVerizonInvalidAddress):
+                    continueToPaymentButton = self.browser.searchForElement(by=By.XPATH, value=continueToPaymentButtonXPath,testClickable=True)
+                    self.browser.safeClick(element=continueToPaymentButton, timeout=120)
+                else:
+                    #TODO GLUEUEUEUEUEUEUEUE
+                    userResponse = input(f"Verizon's claiming that the address is invalid. Please review - press enter to continue, press any other keys to cancel.")
+                    if (userResponse):
+                        error = ValueError(f"Verizon believes address is invalid")
+                        log.error(error)
+                        raise error
+                        #log.warning("Verizon believes that the given address could not be validated.")
+                        #return ActionResult(status=StatusCode.VERIZON_INVALID_ADDRESS)
+                    else:
+                        continueToPaymentButton = self.browser.searchForElement(by=By.XPATH,value=continueToPaymentButtonXPath,testClickable=True)
+                        self.browser.safeClick(element=continueToPaymentButton, timeout=120)
+            elif(pageName == "ShippingReady"):
+                shippingWritten = True
+                break
+        if(not shippingWritten):
+            log.warning("Tried to continue from shipping address input 4 times, but never succeeded.")
+            return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
 
         #endregion === Writing Shipping Info ===
 
         # Now, we test to make sure that Verizon Wireless didn't ninja-edit the shipping address into something else.
-        shippingAddressFullXPath = "//div[@class='shipdisplay-left']/p[contains(@class,'collapse-shipping')]"
         shippingAddressFull = self.browser.searchForElement(by=By.XPATH,value=shippingAddressFullXPath,timeout=30,testClickable=True,testLiteralClick=True,scrollIntoView=True).text
         rawVerizonAddressString = shippingAddressFull.lower().strip()
         # Helper function for helping to compare the expected address and verizon's final address
