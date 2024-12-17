@@ -36,7 +36,7 @@ class VerizonDriver:
 
     # This method sets the page to the Verizon log in screen, then goes through the process of
     # logging in.
-    @action
+    @action()
     def logInToVerizon(self,manual=False):
         self.browser.switchToTab("Verizon")
 
@@ -112,7 +112,7 @@ class VerizonDriver:
 
     # This method tests for and handles the "X users are still unregistered" popup that sometimes occurs on the
     # Homescreen page.
-    @action
+    @action()
     def testForUnregisteredPopup(self):
         unregisteredUsersPopupXPath = "//app-notification-dialog//div[contains(text(),'users are still unregistered')]/parent::div/parent::app-notification-dialog"
         unregisteredUsersCloseButtonXPath = f"{unregisteredUsersPopupXPath}//i[contains(@class,'icon-close')]"
@@ -129,7 +129,7 @@ class VerizonDriver:
             return ActionResult(status=StatusCode.SUCCESS)
 
     # This method navigates to the MyBiz homescreen from whatever page Verizon is currently on.
-    @action
+    @action()
     def navToHomescreen(self):
         self.browser.switchToTab("Verizon")
 
@@ -148,7 +148,7 @@ class VerizonDriver:
             return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
 
     # This method navigates to the Verizon order viewer.
-    @action
+    @action()
     def navToOrderViewer(self):
         self.browser.switchToTab("Verizon")
         # Yes, the typo is intentional lmfao
@@ -166,6 +166,7 @@ class VerizonDriver:
             else:
                 log.error(RuntimeError(f"Verizon order viewer never loaded!"), exc_info=True)
                 return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
+        return ActionResult(status=StatusCode.SUCCESS)
 
     #endregion === Site Navigation ===
 
@@ -174,7 +175,7 @@ class VerizonDriver:
     # This method reads the entire displayed order and converts it into a formatted Python
     # dictionary. readUnloadingOrder is a special method for when Verizon orders show up but won't load
     # for unknown reasons, so that it still returns something.
-    @action
+    @action()
     def OrderViewer_ReadDisplayedOrder(self):
         self.browser.switchToTab("Verizon")
         order = {}
@@ -252,7 +253,7 @@ class VerizonDriver:
 
     # This method uses an orderNumber to search for an order on the OrderViewer. Returns True if the order is
     # found, and False if it isn't found. #TODO there used to be "Are you still there?" detection in here, but we're going to move it externally. See Shaman1 for implementation
-    @action
+    @action()
     def OrderViewer_SearchOrder(self,orderNumber : str):
         self.browser.switchToTab("Verizon")
 
@@ -280,7 +281,7 @@ class VerizonDriver:
             return ActionResult(status=StatusCode.NO_RESULTS)
 
     # This method sets the "view date" dropdown to the given selection (30, 60, 90, 120, 150, 180 Days and 13 months)
-    @action
+    @action()
     def OrderViewer_UpdateOrderViewDropdown(self,viewPeriod : str):
         viewPeriod = viewPeriod.title()
         validChoices = ["30 Days","60 Days","90 Days","120 Days","150 Days","180 Days","13 Months"]
@@ -318,7 +319,7 @@ class VerizonDriver:
 
     # This method pulls up the given serviceID in Verizon, from anywhere. It cancels out whatever
     # was previously happening.
-    @action
+    @action()
     def pullUpLine(self,serviceID):
         self.navToHomescreen()
 
@@ -354,7 +355,7 @@ class VerizonDriver:
     # Assumes we're on the line viewer for a specific line, and clicks "Upgrade device" to begin
     # an upgrade. Also handles ETF shenanigans, so that either way, this function either ends up
     # at the Device Selection page or returns false for lines that can't use waivers.
-    @action
+    @action()
     def LineViewer_UpgradeLine(self,useETFWaiver=True):
         upgradeDeviceEligibleButtonXPath = "//button[contains(text(),'Upgrade device')]"
         upgradeDeviceIneligibleButtonXPath = "//a[@type='button'][contains(text(),'Upgrade Options')]"
@@ -415,7 +416,12 @@ class VerizonDriver:
 
                     continueButtonString = "//app-choose-upgrade//button[contains(text(),'Continue')]"
                     continueButton = self.browser.searchForElement(by=By.XPATH,value=continueButtonString,testClickable=True,timeout=15)
-                    continueButton.click()
+                    # Sometimes, a very very strange thing happens where something clicks this BEFORE the search.
+                    # Literally no idea what, or how. I've looked everywhere, I've tried to reproduce it manually.
+                    # Genuinely believe that this section of the code is haunted so, uh, hi Selenium spirit. Don't mind
+                    # me.
+                    if(continueButton):
+                        continueButton.click()
                     log.info("Applied ETF waiver to line during upgrade.")
                 else:
                     log.warning("Line requires ETF waiver to be upgraded, and action was run with useETFWaiver set to False.")
@@ -439,7 +445,7 @@ class VerizonDriver:
 
     # This method navigates to homescreen, then navigates to the shop new device URL to begin a new install
     # request.
-    @action
+    @action()
     def shopNewDevice(self):
         self.browser.switchToTab("Verizon")
         self.testForUnregisteredPopup()
@@ -459,7 +465,7 @@ class VerizonDriver:
     # happening, but ensures the cart is fully empty for future automation. Since Verizon is a miserable
     # excuse for a website, sometimes clicking on "clear cart" just literally does nothing. Therefore, this
     # method contains "attempts" parameter which will repeat trying to clear the cart if it seems unsuccessful.
-    @action
+    @action()
     def emptyCart(self):
         self.browser.switchToTab("Verizon")
         verizonCartURL = "https://mb.verizonwireless.com/mbt/secure/index?appName=comm&transType=NSE&navtrk=globalnav%3Ashop%3Asmartphones#/device-shopping-cart"
@@ -501,7 +507,7 @@ class VerizonDriver:
     # Assumes we're on the device selection page. Given a Universal Device ID, searches for that
     # device (if supported) on Verizon. # TODO move the search term stuff to higher level - shouldn't need syscoSheet in this file technically
     # TODO this function is getting quite slow, which is pretty first world problem esque, but still
-    @action
+    @action()
     def DeviceSelection_SearchSelectDevice(self,deviceID,orderPath="NewInstall",searchAttempts = 3):
         if(orderPath == "NewInstall"):
             targetDeviceCardXPath = f"//div/div[contains(@class,'device-name')][normalize-space(text())='{syscoData["Devices"][deviceID]["Verizon Wireless New Install Card Name"]}']"
@@ -569,7 +575,7 @@ class VerizonDriver:
                 log.error(f"Verizon is getting stuck on device selection page.")
                 return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
     # Assumes we're in the quick view menu for a device. Various options for this menu.
-    @action
+    @action()
     def DeviceSelection_DeviceView_Select2YearContract(self,orderPath="NewInstall"):
         if(orderPath == "NewInstall"):
             yearlyContractXPath = "//div[contains(@class,'payment-option-each')]/div[contains(text(),'Yearly contract')]/parent::div"
@@ -584,14 +590,14 @@ class VerizonDriver:
             twoYearContractSelection = self.browser.searchForElement(by=By.XPATH,value=twoYearContractXPath,timeout=15,testClickable=True,raiseError=True)
             self.browser.safeClick(element=twoYearContractSelection,timeout=60,scrollIntoView=True)
         return ActionResult(status=StatusCode.SUCCESS)
-    @action
+    @action()
     def DeviceSelection_DeviceView_DeclineDeviceProtection(self):
         declineDeviceProtectionOptionBaseXPath = "//div[contains(text(),'Decline Device Protection')]"
         declineDeviceProtectionOption = self.browser.searchForElement(by=By.XPATH,value=f"{declineDeviceProtectionOptionBaseXPath}/parent::div/parent::div",timeout=15,testClickable=True)
         self.browser.safeClick(element=declineDeviceProtectionOption,timeout=30,scrollIntoView=True,
                                successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=f"{declineDeviceProtectionOptionBaseXPath}[contains(@class,'bold')]"))
         return ActionResult(status=StatusCode.SUCCESS)
-    @action
+    @action()
     def DeviceSelection_DeviceView_SelectColor(self,deviceID=None,colorName=None,orderPath="NewInstall"):
         if(colorName is None):
             if(deviceID):
@@ -639,7 +645,7 @@ class VerizonDriver:
             else:
                 log.warning(f"Supplied color '{colorName}' does not seem to exist in Verizon Wireless for the searched device!")
                 return ActionResult(status=StatusCode.VERIZON_MISSING_COLOR)
-    @action
+    @action()
     def DeviceSelection_DeviceView_AddToCartAndContinue(self,orderPath="NewInstall"):
         if(orderPath == "NewInstall"):
             addToCartButtonXPath = "//button[@id='dtm_addcart']"
@@ -674,7 +680,7 @@ class VerizonDriver:
 
     # Assumes we're on the accessory selection page. Given a Universal Accessory ID, searches
     # for that accessory (if supported) on Verizon.
-    @action
+    @action()
     def AccessorySelection_SearchForAccessory(self,accessoryID):
         searchBox = self.browser.searchForElement(by=By.XPATH,value="//input[@id='search']",timeout=15,testClickable=True)
         searchButton = self.browser.searchForElement(by=By.XPATH,value="//span[@class='onedicon icon-search']",timeout=15,testClickable=True)
@@ -690,7 +696,7 @@ class VerizonDriver:
             return ActionResult(status=StatusCode.SUCCESS)
         else:
             return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
-    @action
+    @action()
     def AccessorySelection_AddAccessoryToCart(self,accessoryID):
         targetAccessoryCardXPath = f"//app-accessory-tile/div/div/div[contains(@class,'product-name')][contains(text(),'{syscoData["Accessories"][accessoryID]["Verizon Wireless Card Name"]}')]//ancestor::div[contains(@class,'accessory-card')]"
         targetAccessoryAddToCartButtonXPath = f"{targetAccessoryCardXPath}//button[contains(@class,'add-cart-btn')]"
@@ -707,7 +713,7 @@ class VerizonDriver:
         else:
             return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
     # Method to manually continue to the next page after the accessory selection.
-    @action
+    @action()
     def AccessorySelection_Continue(self,orderPath="NewInstall"):
         continueButtonString = "//div[contains(@class,'mobile-button')]/button[contains(@class,'continue-btn')]"
         continueButton = self.browser.searchForElement(by=By.XPATH,value=continueButtonString,timeout=60)
@@ -729,7 +735,7 @@ class VerizonDriver:
 
     # Assumes we're on the plan selection page. Given a Plan ID and a plan type,
     # selects it from this page.
-    @action
+    @action()
     def PlanSelection_SelectPlan(self,planID):
         # Should start on the Plan selection page. #TODO get into the habit of checking the page before every function?
         selectPlanHeaderXPath = "//div[contains(@class,'select-plan-container')]//h1[contains(text(),'Select plan')]"
@@ -748,7 +754,7 @@ class VerizonDriver:
         else:
             return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
     # Method to continue to the next page after the plan selection.
-    @action
+    @action()
     def PlanSelection_Continue(self):
         continueButtonString = "//div/div/button[@id='stickybutton'][contains(text(),'Continue')]"
         continueButton = self.browser.searchForElement(by=By.XPATH,value=continueButtonString,timeout=60)
@@ -765,7 +771,7 @@ class VerizonDriver:
 
     # Assumes we're on the device protection page. Clicks on "decline". Note that this also serves
     # as the "continue" button for this page.
-    @action
+    @action()
     def DeviceProtection_DeclineAndContinue(self):
         #TODO sometimes weird shit happens on this page with multiple lines. Handle.
         # Check that the device protection header is found, meaning we're on the right page.
@@ -785,7 +791,7 @@ class VerizonDriver:
 
     # Assumes we're on the number selection page. Given an initial zip code, tests zip code and sequential
     # zip codes to determine, select, and apply the first available.
-    @action
+    @action()
     def NumberSelection_SelectAreaCode(self,zipCode):
         # First we check for the number assignment page header to load, meaning we're on the right page.
         numberAssignPageHeaderXPath = "//div[contains(text(),'Assign numbers and users to your new devices.')]"
@@ -870,7 +876,7 @@ class VerizonDriver:
             return ActionResult(status=StatusCode.VERIZON_ZIP_SELECTION_FAILURE)
 
     # Assumes a number has been selected, and navigates to the add user information page.
-    @action
+    @action()
     def NumberSelection_NavToAddUserInformation(self):
         addUserInfoButtonXPath = "//button[text()='Add user information']"
         addUserInfoButton = self.browser.searchForElement(by=By.XPATH,value=addUserInfoButtonXPath,timeout=30,testClickable=True)
@@ -884,7 +890,7 @@ class VerizonDriver:
         else:
             return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
     # Assumes we're on the user information page. Enters in basic user information.
-    @action
+    @action()
     def UserInformation_EnterBasicInfo(self,firstName,lastName,email):
         # Check to ensure we're actually on the info page.
         userInfoHeaderXPath = "//div[contains(text(),'Add user information to your selected device.')]"
@@ -911,7 +917,7 @@ class VerizonDriver:
         else:
             return ActionResult(status=StatusCode.SUCCESS)
     # Assumes we're on the user information page. Enters in address information.
-    @action
+    @action()
     def UserInformation_EnterAddressInfo(self,address1,address2,city,stateAbbrev,zipCode):
         # First, click on "edit address"
         editAddressButtonXPath = "//span[contains(@class,'edit-add-label')][contains(text(),'Edit address')]"
@@ -950,7 +956,7 @@ class VerizonDriver:
 
         return ActionResult(status=StatusCode.SUCCESS)
     # Saves the user information inputted, which takes us back to the NumberSelection
-    @action
+    @action()
     def UserInformation_SaveInfo(self):
         saveButtonXPath = "//button[contains(text(),'Save')]"
         saveButton = self.browser.searchForElement(by=By.XPATH,value=saveButtonXPath,timeout=30)
@@ -965,7 +971,7 @@ class VerizonDriver:
             return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
     # Continues to the next screen from the Number Selection screen, assuming a number has been
     # selected and all user inputted.
-    @action
+    @action()
     def NumberSelection_Continue(self):
         continueButtonXPath = "//app-nse-multistep-progress-bar/following-sibling::div/button[contains(@class,'continue-btn')]"
         continueButton = self.browser.searchForElement(by=By.XPATH,value=continueButtonXPath,timeout=30,testClickable=True)
@@ -986,7 +992,7 @@ class VerizonDriver:
             return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
 
     # Assumes we're currently on the feature selection page, and attempts to toggle ON the given feature.
-    @action
+    @action()
     def FeatureSelection_SelectFeature(self,featureName):
         featureFormXPathPrefix = "//app-choose-feature-single-line//div[contains(@class,'inner-grid-header')]"
         specificFeatureTitleXPathPrefix = f"{featureFormXPathPrefix}//span[text()='{featureName}']"
@@ -1005,7 +1011,7 @@ class VerizonDriver:
         else:
             return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
     # Simply continues from the FeatureSelection screen
-    @action
+    @action()
     def FeatureSelection_Continue(self):
         continueButtonXPath = "//div[contains(@class,'header-button')]/button[contains(text(),'Continue')]"
         continueButton = self.browser.searchForElement(by=By.XPATH,value=continueButtonXPath,timeout=30,testClickable=True)
@@ -1021,7 +1027,7 @@ class VerizonDriver:
 
     # Helper method verifies that there is only one line listed in the shopping cart, AND that that line
     # is currently expanded.
-    @action
+    @action()
     def ShoppingCart_ValidateSingleLine(self):
         allCartLinesXPath = "//*[contains(@class,'dsc-line-list')]/*[@class='ng-star-inserted']"
         allCartLines = self.browser.find_elements(by=By.XPATH,value=allCartLinesXPath)
@@ -1036,13 +1042,13 @@ class VerizonDriver:
             if(closedExpandLineButton):
                 self.browser.safeClick(element=closedExpandLineButton,timeout=5,
                                        successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=f"{expandLineButtonXPath}[contains(@class,'icon-minus')]"))
-                return ActionResult(status=StatusCode.SUCCESS)
+            return ActionResult(status=StatusCode.SUCCESS)
         else:
             log.error(f"Attempted to validate a single line in the shopping cart, but found {len(allCartLines)} lines instead!")
             return ActionResult(status=StatusCode.SUCCESS)
     # From shopping cart, clicks back to add accessories to the given order. For use with upgrades,
     # which ATM bypass the accessory selection screen by default.
-    @action
+    @action()
     def ShoppingCart_AddAccessories(self):
         # First, validate that they're only one line added.
         validateSingleLineResult = self.ShoppingCart_ValidateSingleLine()
@@ -1063,7 +1069,7 @@ class VerizonDriver:
         else:
             return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
     # From shopping cart, clicks back to add features to the given order.
-    @action
+    @action()
     def ShoppingCart_AddFeatures(self):
         # First, validate that they're only one line added.
         self.ShoppingCart_ValidateSingleLine()
@@ -1075,11 +1081,15 @@ class VerizonDriver:
 
         # Finally, wait for Accessories screen to load.
         selectFeaturesHeaderXPath = "//h3[contains(text(),'Select features')]"
-        self.browser.searchForElement(by=By.XPATH, value=selectFeaturesHeaderXPath, timeout=60,
+        testResult = self.browser.searchForElement(by=By.XPATH, value=selectFeaturesHeaderXPath, timeout=60,
                                       testClickable=True, testLiteralClick=True)
+        if (testResult):
+            return ActionResult(status=StatusCode.SUCCESS)
+        else:
+            return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
     # Assumes we're on the shopping cart overview screen. Simply clicks "check out" to continue
     # to check out screen.
-    @action
+    @action()
     def ShoppingCart_ContinueToCheckOut(self):
         checkOutButtonXPaths = ["//div[@class='progress']//button[normalize-space(text())='Checkout']","//div[contains(@class,'device-shopping-cart-content-right')]//button[normalize-space(text())='Checkout']"]
         checkOutButton = self.browser.searchForElement(by=By.XPATH,value=checkOutButtonXPaths,timeout=30,testClickable=True)
@@ -1095,7 +1105,7 @@ class VerizonDriver:
 
     # Assumes we're on the checkout screen. Attempts to click on "add address" to add
     # a full address info.
-    @action
+    @action()
     def Checkout_AddAddressInfo(self,company,attention,address1,city,stateAbbrev,zipCode,contactPhone,
                                 notificationEmails : list = None,address2 = "",overrideVerizonInvalidAddress=False):
         if(address2 is None):
@@ -1189,10 +1199,10 @@ class VerizonDriver:
         continueToPaymentButtonXPath = "//button[contains(text(),'Continue to Payment')]"
         continueToPaymentButton = self.browser.searchForElement(by=By.XPATH, value=continueToPaymentButtonXPath,testClickable=True)
 
-        staticShippingMethodLabelXPath = "//div[@class='shipdisplay-method']/h4[text()='Shipping method']"
+        staticShippingMethodLabelXPath = "//div[@class='shipdisplay-method']/h4[normalize-space(text())='Shipping method']"
         addressCouldNotBeValidatedXPath = "//div[contains(text(),'Address could not be validated.')]"
-        self.browser.safeClick(element=continueToPaymentButton, timeout=120,retryClicks=True,clickDelay=10,
-                               successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=[staticShippingMethodLabelXPath,addressCouldNotBeValidatedXPath]))
+        self.browser.safeClick(element=continueToPaymentButton, timeout=120)#,retryClicks=True,clickDelay=10,
+                               #successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=[staticShippingMethodLabelXPath,addressCouldNotBeValidatedXPath]))
 
         # Handle cases where Verizon reports the address as invalid.
         if(self.browser.searchForElement(by=By.XPATH,value=addressCouldNotBeValidatedXPath,
@@ -1210,7 +1220,7 @@ class VerizonDriver:
 
         # Now, we test to make sure that Verizon Wireless didn't ninja-edit the shipping address into something else.
         shippingAddressFullXPath = "//div[@class='shipdisplay-left']/p[contains(@class,'collapse-shipping')]"
-        shippingAddressFull = self.browser.searchForElement(by=By.XPATH,value=shippingAddressFullXPath,timeout=30,testClickable=True,testLiteralClick=True).text
+        shippingAddressFull = self.browser.searchForElement(by=By.XPATH,value=shippingAddressFullXPath,timeout=30,testClickable=True,testLiteralClick=True,scrollIntoView=True).text
         rawVerizonAddressString = shippingAddressFull.lower().strip()
         # Helper function for helping to compare the expected address and verizon's final address
         def classifyVerizonFinalAddress(verizonAddressString):
@@ -1257,11 +1267,11 @@ class VerizonDriver:
             else:
                 return ActionResult(status=StatusCode.SUCCESS)
     # Assumes address info has been filled, and places the order, returning the order info.
-    @action
+    @action()
     def Checkout_PlaceOrder(self,billingAccountNum):
         #TODO some glue here. Truncates the second half of
         billToAccountButtonXPath = f"//div[@id='billToAccount']//span[contains(text(),'{billingAccountNum.split('-')[0]}')]/parent::label/span[@class='checkmark']"
-        billToAccountButton = self.browser.searchForElement(by=By.XPATH,value=billToAccountButtonXPath,timeout=30,testClickable=True)
+        billToAccountButton = self.browser.searchForElement(by=By.XPATH,value=billToAccountButtonXPath,timeout=30,testClickable=True,scrollIntoView=True)
         self.browser.safeClick(element=billToAccountButton,timeout=30)
 
         # Click submit

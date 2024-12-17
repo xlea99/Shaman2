@@ -146,7 +146,7 @@ class EyesafeDriver:
 
     # One giant writeShipping method, as eyesafe's shipping validation is one of the strangest, most inconsistent
     # I've ever seen and needs to be handeled very delicately.
-    def writeShippingInformation(self,firstName,lastName,address1,city,state,zipCode,address2=None,maxAttempts=5):
+    def writeShippingInformation(self,firstName,lastName,address1,city,state,zipCode,phoneNumber,address2=None,maxAttempts=5):
         # Fix zip code to be just 5 numbers
         zipCode = zipCode[:5]
 
@@ -311,6 +311,13 @@ class EyesafeDriver:
                 address2Field.clear()
                 address2Field.send_keys(address2)
                 commitField()
+
+            print(f"Attempting to write this to Eyesafe phone number: {phoneNumber}")
+            phoneFieldXPath = "//input[@id='phoneInput']"
+            phoneField = self.browser.searchForElement(by=By.XPATH, value=phoneFieldXPath, timeout=30)
+            phoneField.clear()
+            phoneField.send_keys(phoneNumber)
+            commitField()
 
             # If we got here, we've succeeded - return True yay!
             return True
