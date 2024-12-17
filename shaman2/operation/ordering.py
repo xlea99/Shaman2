@@ -340,11 +340,9 @@ def placeEyesafeOrder(eyesafeDriver : EyesafeDriver,eyesafeAccessoryID : str,
     eyesafeDriver.navToShop()
     eyesafeDriver.addItemToCart(itemName=syscoData["Accessories"][eyesafeAccessoryID]["Eyesafe Card Name"])
     eyesafeDriver.checkOutFromCart()
-    eyesafeDriver.writeShippingInformation(firstName=userFirstName,lastName=userLastName,
+    return eyesafeDriver.checkOutAndSubmit(firstName=userFirstName,lastName=userLastName,
                                            address1=address1,address2=address2,city=city,state=state,zipCode=zipCode,
                                            phoneNumber=phoneNumber)
-    eyesafeDriver.continueFromShipping()
-    return eyesafeDriver.submitOrder()
 
 # Adds service information to Cimpl (service num, install date, account) and applies it.
 def writeServiceToCimplWorkorder(cimplDriver : CimplDriver,serviceNum,carrier,installDate):
@@ -866,60 +864,6 @@ def processPostOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,vz
     print(f"Cimpl WO {workorderNumber}: Finished all Cimpl work")
     return True
 
-# Does what it says on the tin
-def placeMissingEyesafeOrderFromCimplWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,eyesafeDriver : EyesafeDriver,
-                                               workorderNumber):
-    maintenance.validateCimpl(cimplDriver)
-    print(f"Cimpl WO {workorderNumber}: Beginning automation")
-    workorder = readCimplWorkorder(cimplDriver=cimplDriver,workorderNumber=workorderNumber)
-
-    # Test to ensure the operation type is valid
-    if(workorder["OperationType"] not in ("New Request","Upgrade")):
-        print(f"Cimpl WO {workorderNumber}: Can't complete WO, as order type '{workorder['OperationType']}' is not understood by the Shaman.")
-        return False
-
-    # Test to ensure it hasn't already been placed
-    for note in workorder["Notes"]:
-        if("eyesafe" in note["Subject"].lower()):
-            print(f"Cimpl WO {workorderNumber}: An eyesafe order has already been submitted for this Cimpl WO.")
-            return False
-
-    # Get device model ID from Cimpl
-    if(not workorder["DeviceID"]):
-        print(f"Cimpl WO {workorderNumber}: Failed to validate hardware info, likely due to missing device in order.")
-        return False
-    eyesafeAccessory = workorder["EyesafeAccessoryID"]
-
-    if(not eyesafeAccessory):
-        print(f"Cimpl WO {workorderNumber}: No eyesafe device was requested.")
-        return False
-
-    # Read the people object from TMA.
-    maintenance.validateTMA(tmaDriver,"Sysco")
-    tmaDriver.navToLocation(TMALocation(client="Sysco", entryType="People", entryID=workorder['UserNetID']))
-    thisPerson = tmaDriver.People_ReadAllInformation()
-
-    # Validate the shipping address
-    validatedAddress = validateAddress(rawAddressString=workorder["UserShipping"])
-    print(validatedAddress)
-
-    # Handle ordering Eyesafe
-    eyesafeOrderNumber = placeEyesafeOrder(eyesafeDriver=eyesafeDriver, eyesafeAccessoryID=eyesafeAccessory,
-                                               userFirstName=thisPerson.info_FirstName,
-                                               userLastName=thisPerson.info_LastName,
-                                               address1=validatedAddress["Address1"],
-                                               address2=validatedAddress["Address2"],
-                                               city=validatedAddress["City"], state=validatedAddress["State"],
-                                               zipCode=validatedAddress["ZipCode"])
-
-    maintenance.validateCimpl(cimplDriver)
-    if(workorder["Status"] != "Completed"):
-        cimplDriver.Workorders_NavToSummaryTab()
-        cimplDriver.Workorders_WriteNote(subject="Eyesafe Order Placed", noteType="Information Only",
-                                         status="Completed", content=eyesafeOrderNumber)
-
-    print(f"Cimpl WO {workorderNumber}: Eyesafe Order completed - '{eyesafeOrderNumber}'")
-
 #endregion === Full Cimpl Workflows ===
 #region === Full SNow Workflows ===
 
@@ -1123,7 +1067,7 @@ try:
     #
 
     # Cimpl processing
-    preProcessWOs = [49629,49630,49631,49632,49633,49635,49638,49640,49641,49643,49644,49645,49646,
+    preProcessWOs = [49646,
                      46948,49649,49651,49652]
     postProcessWOs = []
     for wo in preProcessWOs:
