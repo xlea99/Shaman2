@@ -172,7 +172,10 @@ class CimplWO:
                 self.vals["UserNetID"] = netID
             # This action string contains our raw shipping address.
             elif(actionString.startswith("Shipping Address")):
-                self.vals["UserShipping"] = actionString.split("-",1)[1].strip()
+                if(actionString.startswith("Shipping Address (company):")):
+                    self.vals["UserShipping"] = actionString.split(":", 1)[1].strip()
+                else:
+                    self.vals["UserShipping"] = actionString.split("-",1)[1].strip()
     # This method attempts to classify a singe note dict into something more specific.
     @staticmethod
     def __classifyNote(noteDict):

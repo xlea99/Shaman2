@@ -22,7 +22,7 @@ from shaman2.utilities.misc import isNumber
 DEFAULT_SNOW_IPHONE = "iPhone14_128GB"
 DEFAULT_SNOW_ANDROID = "GalaxyS23_128GB"
 DEFAULT_SNOW_IPHONE_CASE = "iPhone14_Symmetry"
-DEFAULT_SNOW_ANDROID_CASE = "SamsungS23_Commuter"
+DEFAULT_SNOW_ANDROID_CASE = "SamsungS23_Sustainable"
 DEFAULT_SNOW_CHARGER = "BelkinWallAdapter"
 
 #region === Device, Accessory, and Plan Validation ===
@@ -67,32 +67,15 @@ def validateAccessoryIDs(deviceID,carrier,accessoryIDs,removeDuplicateTypes=True
 
     # Now, we add in any extra "alwaysOrder" accessoryIDs as specified by the spreadsheet.
     fullAccessoryIDs = accessoryIDs
-    if (f"{carrier} AlwaysOrder Accessories" in syscoData["Devices"][deviceID].values()):
+    if (f"{carrier} AlwaysOrder Accessories" in syscoData["Devices"][deviceID].keys()):
         extraAccessories = syscoData["Devices"][deviceID][f"{carrier} AlwaysOrder Accessories"].split(",") if syscoData["Devices"][deviceID][f"{carrier} AlwaysOrder Accessories"] else []
         extraAccessories = [extraAccessory.strip() for extraAccessory in extraAccessories]
         fullAccessoryIDs.extend(extraAccessories)
 
-    # Now, we iterate through all accessories to see if they're listed as "available" on the sheet.
-    def validateAvailableAccessories(_carrier,_accessoryIDs):
-        _availableAccessoryIDs = []
-        for _accessoryID in _accessoryIDs:
-            if(_accessoryID not in syscoData["Accessories"].keys()):
-                error = ValueError(f"Invalid accessoryID in list: '{_accessoryID}'")
-                log.error(error)
-                raise error
-
-            accessoryAvailable = syscoData["Accessories"][_accessoryID][f"Available ({_carrier})"] == "TRUE"
-            if(accessoryAvailable):
-                _availableAccessoryIDs.append(_accessoryID)
-            else:
-                log.info(f"Skipping accessory '{_accessoryID}', as it is listed as unavailable in the Sysco Sheet.")
-        return _availableAccessoryIDs
-    availableAccessoryIDs = validateAvailableAccessories(_carrier=carrier,_accessoryIDs=fullAccessoryIDs)
-
     # Now, we ensure that all accessories are compatible with the given device and, if not, we either move to the
     # default device (if present) or remove it.
     compatibleAccessoryIDs = []
-    for accessoryID in availableAccessoryIDs:
+    for accessoryID in fullAccessoryIDs:
         compatibleDevices = syscoData["Accessories"][accessoryID]["Compatible Devices"].split(",") if syscoData["Accessories"][accessoryID]["Compatible Devices"] else []
         compatibleDevices = [thisDevice.strip() for thisDevice in compatibleDevices]
         if(deviceID in compatibleDevices):
@@ -113,18 +96,35 @@ def validateAccessoryIDs(deviceID,carrier,accessoryIDs,removeDuplicateTypes=True
         # If we got here, the accessory is NOT compatible, so we don't add it.
         log.info(f"Skipping accessory '{accessoryID}', as it is listed as incompatible with device '{deviceID}' in the Sysco Sheet.")
 
+    # Now, we iterate through all accessories to see if they're listed as "available" on the sheet.
+    def validateAvailableAccessories(_carrier,_accessoryIDs):
+        _availableAccessoryIDs = []
+        for _accessoryID in _accessoryIDs:
+            if(_accessoryID not in syscoData["Accessories"].keys()):
+                error = ValueError(f"Invalid accessoryID in list: '{_accessoryID}'")
+                log.error(error)
+                raise error
+
+            accessoryAvailable = syscoData["Accessories"][_accessoryID][f"Available ({_carrier})"] == "TRUE"
+            if(accessoryAvailable):
+                _availableAccessoryIDs.append(_accessoryID)
+            else:
+                log.info(f"Skipping accessory '{_accessoryID}', as it is listed as unavailable in the Sysco Sheet.")
+        return _availableAccessoryIDs
+    availableAccessoryIDs = validateAvailableAccessories(_carrier=carrier,_accessoryIDs=compatibleAccessoryIDs)
+
     # If set to removeDuplicateTypes, we do that here, simply prioritizing the first valid accessory of each type.
     if(removeDuplicateTypes):
         cleanedAccessoryIDs = []
         usedAccessoryTypes = set()
-        for accessoryID in compatibleAccessoryIDs:
+        for accessoryID in availableAccessoryIDs:
             if(syscoData["Accessories"][accessoryID]["Accessory Type"] not in usedAccessoryTypes):
                 usedAccessoryTypes.add(syscoData["Accessories"][accessoryID]["Accessory Type"])
                 cleanedAccessoryIDs.append(accessoryID)
             else:
                 log.info(f"Skipping accessory '{accessoryID}', as it has a duplicate type to other accessories in the list.")
     else:
-        cleanedAccessoryIDs = compatibleAccessoryIDs
+        cleanedAccessoryIDs = availableAccessoryIDs
 
     # Finally, we filter out any special accessories, putting them in their own return structures.
     finalAccessoryIDs = []
@@ -152,7 +152,8 @@ def readVerizonOrder(verizonDriver : VerizonDriver,verizonOrderNumber,orderViewP
     verizonDriver.OrderViewer_UpdateOrderViewDropdown(orderViewPeriod)
     verizonDriver.OrderViewer_SearchOrder(orderNumber=verizonOrderNumber)
 
-    return verizonDriver.OrderViewer_ReadDisplayedOrder()
+    result = verizonDriver.OrderViewer_ReadDisplayedOrder()
+    return result.data
 
 # Searches up, and reads, a full Baka order number.
 def readBakaOrder(bakaDriver : BakaDriver,bakaOrderNumber):
@@ -185,8 +186,9 @@ def placeVerizonNewInstall(verizonDriver : VerizonDriver,deviceID : str,accessor
 
     # Search for each requested accessory, add it to the cart, then continue.
     for accessoryID in accessoryIDs:
-        verizonDriver.AccessorySelection_SearchForAccessory(accessoryID=accessoryID)
-        verizonDriver.AccessorySelection_AddAccessoryToCart(accessoryID=accessoryID)
+        if(accessoryID):
+            verizonDriver.AccessorySelection_SearchForAccessory(accessoryID=accessoryID)
+            verizonDriver.AccessorySelection_AddAccessoryToCart(accessoryID=accessoryID)
     verizonDriver.AccessorySelection_Continue(orderPath="NewInstall")
     # This should send us to the plan selection page.
 
@@ -332,16 +334,15 @@ def placeVerizonUpgrade(verizonDriver : VerizonDriver,serviceID,deviceID : str,a
 # Places an entire Eyesafe order.
 def placeEyesafeOrder(eyesafeDriver : EyesafeDriver,eyesafeAccessoryID : str,
                       userFirstName : str, userLastName : str,
-                      address1,city,state,zipCode,address2 = None):
+                      address1,city,state,zipCode,phoneNumber,address2 = None):
     maintenance.validateEyesafe(eyesafeDriver)
 
     eyesafeDriver.navToShop()
     eyesafeDriver.addItemToCart(itemName=syscoData["Accessories"][eyesafeAccessoryID]["Eyesafe Card Name"])
     eyesafeDriver.checkOutFromCart()
-    eyesafeDriver.writeShippingInformation(firstName=userFirstName,lastName=userLastName,
-                                           address1=address1,address2=address2,city=city,state=state,zipCode=zipCode)
-    eyesafeDriver.continueFromShipping()
-    return eyesafeDriver.submitOrder()
+    return eyesafeDriver.checkOutAndSubmit(firstName=userFirstName,lastName=userLastName,
+                                           address1=address1,address2=address2,city=city,state=state,zipCode=zipCode,
+                                           phoneNumber=phoneNumber)
 
 # Adds service information to Cimpl (service num, install date, account) and applies it.
 def writeServiceToCimplWorkorder(cimplDriver : CimplDriver,serviceNum,carrier,installDate):
@@ -643,24 +644,27 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
         cimplDriver.Workorders_ApplyChanges()
 
     # Validate the shipping address
+    print(workorder["UserShipping"])
     validatedAddress = validateAddress(rawAddressString=workorder["UserShipping"])
     print(f"Cimpl WO {workorderNumber}: Validated address as: {validatedAddress}")
 
     # If operation type is a New Install
     if(workorder["OperationType"] == "New Request"):
         print(f"Cimpl WO {workorderNumber}: Ordering new device ({deviceID}) and service for user {workorder['UserNetID']}")
-        orderNumber = placeVerizonNewInstall(verizonDriver=verizonDriver,deviceID=deviceID,accessoryIDs=accessoryIDs,companyName="Sysco",plan=basePlan,features=featuresToBuildOnCarrier,
+        results = placeVerizonNewInstall(verizonDriver=verizonDriver,deviceID=deviceID,accessoryIDs=accessoryIDs,companyName="Sysco",plan=basePlan,features=featuresToBuildOnCarrier,
                                             firstName=workorder["UserFirstName"],lastName=workorder["UserLastName"],userEmail=thisPerson.info_Email,
                                             address1=validatedAddress["Address1"],address2=validatedAddress.get("Address2",None),city=validatedAddress["City"],
                                             state=validatedAddress["State"],zipCode=validatedAddress["ZipCode"],reviewMode=reviewMode,contactEmails=thisPerson.info_Email)
         print(f"Cimpl WO {workorderNumber}: Finished ordering new device and service for user {workorder['UserNetID']}")
+        orderNumber = results.data
     # If op type is Upgrade
     elif(workorder["OperationType"] == "Upgrade"):
         print(f"Cimpl WO {workorderNumber}: Ordering upgrade ({workorder['DeviceID']}) and service for user {workorder['UserNetID']} with service {workorder['ServiceID']}")
-        orderNumber = placeVerizonUpgrade(verizonDriver=verizonDriver,deviceID=deviceID,serviceID=workorder['ServiceID'],accessoryIDs=accessoryIDs,
+        results = placeVerizonUpgrade(verizonDriver=verizonDriver,deviceID=deviceID,serviceID=workorder['ServiceID'],accessoryIDs=accessoryIDs,
                                           firstName=workorder["UserFirstName"],lastName=workorder["UserLastName"],companyName="Sysco",
                                           address1=validatedAddress["Address1"],address2=validatedAddress.get("Address2", None),city=validatedAddress["City"],
                                           state=validatedAddress["State"], zipCode=validatedAddress["ZipCode"],reviewMode=reviewMode,contactEmails=thisPerson.info_Email)
+        orderNumber = results.data
         if(orderNumber == "NotETFEligible"):
             playsoundAsync(paths["media"] / "shaman_attention.mp3")
             input(f"Cimpl WO {workorderNumber}: Not yet eligible for ETF upgrade. Open SNow ticket and cancel request. Press any key to continue to next request.")
@@ -726,10 +730,19 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
 
     # Handle ordering Eyesafe, if specified
     if(eyesafeAccessoryID):
+        if(workorder["OperationType"] == "New Request"):
+            eyesafePhoneNumberFieldEntry = workorder['UserNetID']
+        elif(workorder["OperationType"] == "Upgrade"):
+            eyesafePhoneNumberFieldEntry = workorder['ServiceID']
+        else:
+            error = ValueError(f"Tried to place eyesafe order on a non New Install/Upgrade!")
+            log.error(error)
+            raise error
         eyesafeOrderNumber = placeEyesafeOrder(eyesafeDriver=eyesafeDriver,eyesafeAccessoryID=eyesafeAccessoryID,
                                 userFirstName=thisPerson.info_FirstName,userLastName=thisPerson.info_LastName,
                                 address1=validatedAddress["Address1"],address2=validatedAddress["Address2"],
-                                city=validatedAddress["City"],state=validatedAddress["State"],zipCode=validatedAddress["ZipCode"])
+                                city=validatedAddress["City"],state=validatedAddress["State"],zipCode=validatedAddress["ZipCode"],
+                                               phoneNumber=eyesafePhoneNumberFieldEntry)
         maintenance.validateCimpl(cimplDriver)
         cimplDriver.Workorders_NavToSummaryTab()
         cimplDriver.Workorders_WriteNote(subject="Eyesafe Order Placed", noteType="Information Only", status="Completed",content=eyesafeOrderNumber)
@@ -851,60 +864,6 @@ def processPostOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,vz
     print(f"Cimpl WO {workorderNumber}: Finished all Cimpl work")
     return True
 
-# Does what it says on the tin
-def placeMissingEyesafeOrderFromCimplWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,eyesafeDriver : EyesafeDriver,
-                                               workorderNumber):
-    maintenance.validateCimpl(cimplDriver)
-    print(f"Cimpl WO {workorderNumber}: Beginning automation")
-    workorder = readCimplWorkorder(cimplDriver=cimplDriver,workorderNumber=workorderNumber)
-
-    # Test to ensure the operation type is valid
-    if(workorder["OperationType"] not in ("New Request","Upgrade")):
-        print(f"Cimpl WO {workorderNumber}: Can't complete WO, as order type '{workorder['OperationType']}' is not understood by the Shaman.")
-        return False
-
-    # Test to ensure it hasn't already been placed
-    for note in workorder["Notes"]:
-        if("eyesafe" in note["Subject"].lower()):
-            print(f"Cimpl WO {workorderNumber}: An eyesafe order has already been submitted for this Cimpl WO.")
-            return False
-
-    # Get device model ID from Cimpl
-    if(not workorder["DeviceID"]):
-        print(f"Cimpl WO {workorderNumber}: Failed to validate hardware info, likely due to missing device in order.")
-        return False
-    eyesafeAccessory = workorder["EyesafeAccessoryID"]
-
-    if(not eyesafeAccessory):
-        print(f"Cimpl WO {workorderNumber}: No eyesafe device was requested.")
-        return False
-
-    # Read the people object from TMA.
-    maintenance.validateTMA(tmaDriver,"Sysco")
-    tmaDriver.navToLocation(TMALocation(client="Sysco", entryType="People", entryID=workorder['UserNetID']))
-    thisPerson = tmaDriver.People_ReadAllInformation()
-
-    # Validate the shipping address
-    validatedAddress = validateAddress(rawAddressString=workorder["UserShipping"])
-    print(validatedAddress)
-
-    # Handle ordering Eyesafe
-    eyesafeOrderNumber = placeEyesafeOrder(eyesafeDriver=eyesafeDriver, eyesafeAccessoryID=eyesafeAccessory,
-                                               userFirstName=thisPerson.info_FirstName,
-                                               userLastName=thisPerson.info_LastName,
-                                               address1=validatedAddress["Address1"],
-                                               address2=validatedAddress["Address2"],
-                                               city=validatedAddress["City"], state=validatedAddress["State"],
-                                               zipCode=validatedAddress["ZipCode"])
-
-    maintenance.validateCimpl(cimplDriver)
-    if(workorder["Status"] != "Completed"):
-        cimplDriver.Workorders_NavToSummaryTab()
-        cimplDriver.Workorders_WriteNote(subject="Eyesafe Order Placed", noteType="Information Only",
-                                         status="Completed", content=eyesafeOrderNumber)
-
-    print(f"Cimpl WO {workorderNumber}: Eyesafe Order completed - '{eyesafeOrderNumber}'")
-
 #endregion === Full Cimpl Workflows ===
 #region === Full SNow Workflows ===
 
@@ -1003,10 +962,11 @@ def processPreOrderSCTASK(tmaDriver : TMADriver,snowDriver : SnowDriver,verizonD
 
     # Process the new install.
     print(f"{taskNumber}: Ordering new device ({deviceID}) and service for user {userFirstName} {userLastName}")
-    fullOrderNumber = placeVerizonNewInstall(verizonDriver=verizonDriver,deviceID=deviceID,accessoryIDs=accessoryIDs,companyName="Sysco",plan=basePlan,features=featuresToBuildOnCarrier,
+    orderResult = placeVerizonNewInstall(verizonDriver=verizonDriver,deviceID=deviceID,accessoryIDs=accessoryIDs,companyName="Sysco",plan=basePlan,features=featuresToBuildOnCarrier,
                                         firstName=userFirstName,lastName=userLastName,userEmail=contactEmail if contactEmail is not None else "sysco_wireless_mac@cimpl.com",
                                         address1=validatedAddress["Address1"],address2=validatedAddress.get("Address2",None),city=validatedAddress["City"],
                                         state=validatedAddress["State"],zipCode=validatedAddress["ZipCode"],reviewMode=reviewMode,contactEmails=contactEmail)
+    fullOrderNumber = orderResult.data
     verizonOrderNumber = re.search(r"(MB\d+)",fullOrderNumber).group(1).strip()
     print(f"{taskNumber}: Finished ordering new device and service for user {userFirstName} {userLastName} ({verizonOrderNumber})")
 
@@ -1093,28 +1053,7 @@ try:
     eyesafe = EyesafeDriver(br)
 
     # SCTASK processing
-    preProcessSCTASKs = ["SCTASK1099181",
-                         "SCTASK1099171",
-                         "SCTASK1099160",
-                         "SCTASK1100147",
-                         "SCTASK1100120",
-                         "SCTASK1099719",
-                         "SCTASK1099711",
-                         "SCTASK1099689",
-                         "SCTASK1099687",
-                         "SCTASK1099686",
-                         "SCTASK1099683",
-                         "SCTASK1099631",
-                         "SCTASK1099600",
-                         "SCTASK1099562",
-                         "SCTASK1099549",
-                         "SCTASK1099512",
-                         "SCTASK1099511",
-                         "SCTASK1099461",
-                         "SCTASK1099456",
-                         "SCTASK1099408",
-                         "SCTASK1099384",
-                         "SCTASK1099377"]
+    preProcessSCTASKs = []
     postProcessSCTASKs = [] # Note that, if no postProcessSCTASKs are specified, all valid SCTASKs in the sheet will be closed. Input just "None" to NOT do this.
     for task in preProcessSCTASKs:
         processPreOrderSCTASK(tmaDriver=tma,snowDriver=snow,verizonDriver=vzw,
@@ -1124,16 +1063,20 @@ try:
     # Manually log in to Verizon first, just to make life easier atm
     maintenance.validateVerizon(verizonDriver=vzw)
 
+    # ROG: 49546, 49547, 49580
+    #
+
     # Cimpl processing
-    #preProcessWOs = [49190,49201,49209]
-    #postProcessWOs = [49099,49237,49266,49267,49290,49293,49294,49295,49296,49297,49298,49299,49300,49303,49306,49307,
-    #                  49308,49310,49312,49314,49315,49332]
-    #for wo in preProcessWOs:
-    #    processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
-    #                          workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D",reviewMode=False)
-    #for wo in postProcessWOs:
-    #    processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,
-    #                          workorderNumber=wo)
+    preProcessWOs = [49664,49666,49667,49668,49673,49674,49679,49680,49681,
+                     49682,49683,49684,49685,49686,49687,49688,49689,49690,49692,49693,49694,49696,49697,49698,49699,
+                     49700,49701,49702,49703,49704,49705,49706,49707,49708,49709,49710]
+    postProcessWOs = []
+    for wo in preProcessWOs:
+        processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
+                              workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D",reviewMode=False)
+    for wo in postProcessWOs:
+        processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,
+                              workorderNumber=wo)
 
 except Exception as e:
     playsoundAsync(paths["media"] / "shaman_error.mp3")

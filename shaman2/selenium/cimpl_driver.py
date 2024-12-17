@@ -210,18 +210,21 @@ class CimplDriver:
         self.browser.switchToTab("Cimpl")
         # Click apply.
         applyButtonString = "//div/div/cimpl-button[@class='ng-isolate-scope']/button[@automation-id='__button']/div[@class='button-content']/span[@class='button-label ng-binding uppercase'][text()='Apply']/parent::div/parent::button"
-        applyButton = self.browser.find_element(by=By.XPATH,value=applyButtonString)
-        applyButton.click()
+        applyButton = self.browser.searchForElement(by=By.XPATH,value=applyButtonString,timeout=3)
+        if(not self.browser.searchForElement(element=applyButton,testClickable=True)):
+            self.Filters_OpenFilterMenu()
+        self.browser.safeClick(element=applyButton,timeout=3)
         self.waitForLoadingScreen()
     def Filters_Clear(self):
         self.browser.switchToTab("Cimpl")
         self.waitForLoadingScreen()
         # Clear all filters.
         clearAllButtonString = "//div/div/cimpl-button[@class='ng-isolate-scope']/button[@automation-id='__button']/div[@class='button-content']/span[@class='button-label ng-binding uppercase'][text()='Clear All']/parent::div/parent::button"
-        clearAllButton = self.browser.searchForElement(by=By.XPATH,value=clearAllButtonString,timeout=3,testClickable=True)
-        if(clearAllButton):
-            self.browser.safeClick(element=clearAllButton,timeout=10,raiseError=False)
-            self.waitForLoadingScreen()
+        clearAllButton = self.browser.searchForElement(by=By.XPATH,value=clearAllButtonString,timeout=3)
+        if(not self.browser.searchForElement(element=clearAllButton,testClickable=True)):
+            self.Filters_OpenFilterMenu()
+        self.browser.safeClick(element=clearAllButton,timeout=3)
+        self.waitForLoadingScreen()
 
     # Methods to add specific filters, along with their status and value.
     def Filters_AddEmployeeNumber(self,status : str,employeeNumber):
@@ -856,5 +859,3 @@ class CimplDriver:
                 return True
 
     #endregion === Utility ===
-
-
