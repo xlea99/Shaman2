@@ -1067,8 +1067,9 @@ try:
     #
 
     # Cimpl processing
-    preProcessWOs = [49646,
-                     46948,49649,49651,49652]
+    preProcessWOs = [49651,49659,49660,49661,49663,49664,49666,49667,49668,49673,49674,49679,49680,49681,
+                     49682,49683,49684,49685,49686,49687,49688,49689,49690,49692,49693,49694,49696,49697,49698,49699,
+                     49700,49701,49702,49703,49704,49705,49706,49707,49708,49709,49710]
     postProcessWOs = []
     for wo in preProcessWOs:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,

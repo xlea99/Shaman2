@@ -513,6 +513,7 @@ class EyesafeDriver:
                 if(shippingEnteredSuccessfully):
                     # This can sometimes be intercepted by late arriving messages. If so, give it grace and don't
                     # raise error - just continue with logic.
+                    print("trying to click submit")
                     self.browser.safeClick(element=foundElement, scrollIntoView=True, timeout=15,raiseError=False)
                 # If shipping wasn't entered, open it up here and continue with logic.
                 else:
@@ -525,8 +526,8 @@ class EyesafeDriver:
                 orderConfirmationNumberText = foundElement.text
                 return orderConfirmationNumberText
 
-            error = RuntimeError(f"Went through more than 12 iterations of checkout logic without exiting - review process.")
-            log.error(error)
-            raise error
+        error = RuntimeError(f"Went through more than 12 iterations of checkout logic without exiting - review process.")
+        log.error(error)
+        raise error
 
     #endregion === Ordering ===
