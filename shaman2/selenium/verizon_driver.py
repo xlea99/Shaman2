@@ -1179,11 +1179,22 @@ class VerizonDriver:
         for newEmail in notificationEmails:
             addNewNotifyButtonXPath = "//div[contains(@class,'add-notify')]/div[contains(text(),'Add new notification')]/parent::div"
             addNewNotifyButton = self.browser.searchForElement(by=By.XPATH,value=addNewNotifyButtonXPath,timeout=30,testClickable=True)
-            self.browser.safeClick(element=addNewNotifyButton,timeout=30)
 
-            allNewEmailFields = self.browser.find_elements(by=By.XPATH, value="//input[@type='email']")
-            allNewEmailFields[-1].clear()
-            allNewEmailFields[-1].send_keys(newEmail)
+            # Try this until a new email field actually appears.
+            successfullyWroteEmail = False
+            for i in range(10):
+                self.browser.safeClick(element=addNewNotifyButton,timeout=30)
+                try:
+                    allNewEmailFields = self.browser.find_elements(by=By.XPATH, value="//input[@type='email']")
+                    allNewEmailFields[-1].clear()
+                    allNewEmailFields[-1].send_keys(newEmail)
+                    successfullyWroteEmail = True
+                    break
+                except IndexError:
+                    continue
+            if not successfullyWroteEmail:
+                log.warning(f"Failed to add a new field to write email '{newEmail}' 10 times.")
+                return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
 
         # Write zip code last, as this triggers a load
         zipCodeFieldXPath = "//input[@name='zipCode']"
@@ -1197,7 +1208,7 @@ class VerizonDriver:
 
         # Finally, we continue back to payment.
         continueToPaymentButtonXPath = "//button[contains(text(),'Continue to Payment')]"
-        continueToPaymentButton = self.browser.searchForElement(by=By.XPATH, value=continueToPaymentButtonXPath,testClickable=True)
+        continueToPaymentButton = self.browser.searchForElement(by=By.XPATH, value=continueToPaymentButtonXPath,testClickable=True,scrollIntoView=True)
 
         staticShippingMethodLabelXPath = "//div[@class='shipdisplay-method']/h4[normalize-space(text())='Shipping method']"
         addressCouldNotBeValidatedXPath = "//div[contains(text(),'Address could not be validated.')]"

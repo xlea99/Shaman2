@@ -67,32 +67,15 @@ def validateAccessoryIDs(deviceID,carrier,accessoryIDs,removeDuplicateTypes=True
 
     # Now, we add in any extra "alwaysOrder" accessoryIDs as specified by the spreadsheet.
     fullAccessoryIDs = accessoryIDs
-    if (f"{carrier} AlwaysOrder Accessories" in syscoData["Devices"][deviceID].values()):
+    if (f"{carrier} AlwaysOrder Accessories" in syscoData["Devices"][deviceID].keys()):
         extraAccessories = syscoData["Devices"][deviceID][f"{carrier} AlwaysOrder Accessories"].split(",") if syscoData["Devices"][deviceID][f"{carrier} AlwaysOrder Accessories"] else []
         extraAccessories = [extraAccessory.strip() for extraAccessory in extraAccessories]
         fullAccessoryIDs.extend(extraAccessories)
 
-    # Now, we iterate through all accessories to see if they're listed as "available" on the sheet.
-    def validateAvailableAccessories(_carrier,_accessoryIDs):
-        _availableAccessoryIDs = []
-        for _accessoryID in _accessoryIDs:
-            if(_accessoryID not in syscoData["Accessories"].keys()):
-                error = ValueError(f"Invalid accessoryID in list: '{_accessoryID}'")
-                log.error(error)
-                raise error
-
-            accessoryAvailable = syscoData["Accessories"][_accessoryID][f"Available ({_carrier})"] == "TRUE"
-            if(accessoryAvailable):
-                _availableAccessoryIDs.append(_accessoryID)
-            else:
-                log.info(f"Skipping accessory '{_accessoryID}', as it is listed as unavailable in the Sysco Sheet.")
-        return _availableAccessoryIDs
-    availableAccessoryIDs = validateAvailableAccessories(_carrier=carrier,_accessoryIDs=fullAccessoryIDs)
-
     # Now, we ensure that all accessories are compatible with the given device and, if not, we either move to the
     # default device (if present) or remove it.
     compatibleAccessoryIDs = []
-    for accessoryID in availableAccessoryIDs:
+    for accessoryID in fullAccessoryIDs:
         compatibleDevices = syscoData["Accessories"][accessoryID]["Compatible Devices"].split(",") if syscoData["Accessories"][accessoryID]["Compatible Devices"] else []
         compatibleDevices = [thisDevice.strip() for thisDevice in compatibleDevices]
         if(deviceID in compatibleDevices):
@@ -113,18 +96,35 @@ def validateAccessoryIDs(deviceID,carrier,accessoryIDs,removeDuplicateTypes=True
         # If we got here, the accessory is NOT compatible, so we don't add it.
         log.info(f"Skipping accessory '{accessoryID}', as it is listed as incompatible with device '{deviceID}' in the Sysco Sheet.")
 
+    # Now, we iterate through all accessories to see if they're listed as "available" on the sheet.
+    def validateAvailableAccessories(_carrier,_accessoryIDs):
+        _availableAccessoryIDs = []
+        for _accessoryID in _accessoryIDs:
+            if(_accessoryID not in syscoData["Accessories"].keys()):
+                error = ValueError(f"Invalid accessoryID in list: '{_accessoryID}'")
+                log.error(error)
+                raise error
+
+            accessoryAvailable = syscoData["Accessories"][_accessoryID][f"Available ({_carrier})"] == "TRUE"
+            if(accessoryAvailable):
+                _availableAccessoryIDs.append(_accessoryID)
+            else:
+                log.info(f"Skipping accessory '{_accessoryID}', as it is listed as unavailable in the Sysco Sheet.")
+        return _availableAccessoryIDs
+    availableAccessoryIDs = validateAvailableAccessories(_carrier=carrier,_accessoryIDs=compatibleAccessoryIDs)
+
     # If set to removeDuplicateTypes, we do that here, simply prioritizing the first valid accessory of each type.
     if(removeDuplicateTypes):
         cleanedAccessoryIDs = []
         usedAccessoryTypes = set()
-        for accessoryID in compatibleAccessoryIDs:
+        for accessoryID in availableAccessoryIDs:
             if(syscoData["Accessories"][accessoryID]["Accessory Type"] not in usedAccessoryTypes):
                 usedAccessoryTypes.add(syscoData["Accessories"][accessoryID]["Accessory Type"])
                 cleanedAccessoryIDs.append(accessoryID)
             else:
                 log.info(f"Skipping accessory '{accessoryID}', as it has a duplicate type to other accessories in the list.")
     else:
-        cleanedAccessoryIDs = compatibleAccessoryIDs
+        cleanedAccessoryIDs = availableAccessoryIDs
 
     # Finally, we filter out any special accessories, putting them in their own return structures.
     finalAccessoryIDs = []
@@ -1067,7 +1067,7 @@ try:
     #
 
     # Cimpl processing
-    preProcessWOs = [49651,49659,49660,49661,49663,49664,49666,49667,49668,49673,49674,49679,49680,49681,
+    preProcessWOs = [49664,49666,49667,49668,49673,49674,49679,49680,49681,
                      49682,49683,49684,49685,49686,49687,49688,49689,49690,49692,49693,49694,49696,49697,49698,49699,
                      49700,49701,49702,49703,49704,49705,49706,49707,49708,49709,49710]
     postProcessWOs = []
