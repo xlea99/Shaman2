@@ -448,6 +448,8 @@ class EyesafeDriver:
                             submitOrderReadyXPath : "SubmitReady", orderConfirmationNumberTextXPath: "OrderConfirmation",
                             useSuggestionButtonXPath: "UseSuggestionAlert",}
 
+        editShippingButtonXPath = "//li[contains(@class,'checkout-step--shipping')]//button[@data-test='step-edit-button']"
+
         # Begin loop to manage checkout logic.
         shippingEnteredSuccessfully = False
         for i in range(12):
@@ -481,12 +483,13 @@ class EyesafeDriver:
                     # hopefully try again.
                     else:
                         self.__checkout_refreshCheckoutScreen()
-            # If billing is open, simply try to close it here.
+            # If billing is open, reopen shipping to re-enter it.
             elif(pageName == "BillingOpen"):
-                self.__checkout_continueFromShippingBilling()
-                # Wait until billing is closed.
-                self.browser.searchForElement(by=By.XPATH, value=shippingAddressOpenXPath, timeout=30,
-                                              invertedSearch=True, raiseError=True)
+                editShippingButton = self.browser.searchForElement(by=By.XPATH, value=editShippingButtonXPath,
+                                                                   testClickable=True, scrollIntoView=True)
+                self.browser.safeClick(element=editShippingButton, scrollIntoView=True, timeout=10)
+                # Trigger shipping to write again.
+                shippingEnteredSuccessfully = False
             # If the "Use Suggestion" popup is open, handle it here.
             elif(pageName == "UseSuggestionAlert"):
                 continueAsEnteredButtonXPath = "//span[contains(text(),'CONTINUE WITH ADDRESS AS ENTERED')]"
@@ -517,7 +520,6 @@ class EyesafeDriver:
                     self.browser.safeClick(element=foundElement, scrollIntoView=True, timeout=15,raiseError=False)
                 # If shipping wasn't entered, open it up here and continue with logic.
                 else:
-                    editShippingButtonXPath = "//li[contains(@class,'checkout-step--shipping')]//button[@data-test='step-edit-button']"
                     editShippingButton = self.browser.searchForElement(by=By.XPATH,value=editShippingButtonXPath,testClickable=True,scrollIntoView=True)
                     self.browser.safeClick(element=editShippingButton,scrollIntoView=True,timeout=10)
                     time.sleep(2)

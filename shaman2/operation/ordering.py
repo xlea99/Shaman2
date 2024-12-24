@@ -369,6 +369,22 @@ def readSnowTask(snowDriver : SnowDriver,taskNumber):
     maintenance.validateSnow(snowDriver)
     snowDriver.navToRequest(requestNumber=taskNumber)
     return snowDriver.Tasks_ReadFullTask()
+# Extract and return a list of Verizon order numbers found in an SCTask.
+def getSCTaskOrders(scTask):
+    verizonOrderPattern = r"MB\d+"
+    foundOrders = []
+    # Loop through the activities to find order numbers
+    for activity in scTask["Activities"]:
+        # Check "BaseContent" for matches
+        if activity["BaseContent"]:
+            foundOrders.extend(re.findall(verizonOrderPattern, activity["BaseContent"]))
+
+        # Check "EmailContent" for matches
+        if activity["EmailContent"]:
+            foundOrders.extend(re.findall(verizonOrderPattern, activity["EmailContent"]))
+
+    # Return the list of found order numbers
+    return foundOrders
 
 # Searches up, and reads, a full Cimpl workorder given by workorderNumber.
 def readCimplWorkorder(cimplDriver : CimplDriver,workorderNumber):
@@ -882,16 +898,7 @@ def processPreOrderSCTASK(tmaDriver : TMADriver,snowDriver : SnowDriver,verizonD
             return False
     snowDriver.Tasks_WriteAssignedTo(assignedTo=assignTo)
 
-    # Look through the Activities to make sure there are no Verizon Orders already present
-    verizonOrderPattern = r"MB\d+"
-    foundVerizonOrders = False
-    for activity in scTask["Activities"]:
-        if(re.findall(verizonOrderPattern,activity["BaseContent"])):
-            foundVerizonOrders = True
-            break
-        if(activity["EmailContent"] is not None and re.findall(verizonOrderPattern,activity["EmailContent"])):
-            foundVerizonOrders = True
-            break
+    foundVerizonOrders = getSCTaskOrders(scTask=scTask)
     if(foundVerizonOrders):
         warningMessage = f"WARNING: There are existing Verizon orders on the SCTASK."
         if (not consoleUserWarning(warningMessage)):
@@ -984,45 +991,63 @@ def processPreOrderSCTASK(tmaDriver : TMADriver,snowDriver : SnowDriver,verizonD
 
 # This method attempts to close an SCTASK (simply updating the ticket with tracking, and close) based
 # on the given SCTASK number.
-def processPostOrdersSCTASK(snowDriver : SnowDriver,verizonDriver : VerizonDriver,taskNumber : (str,list) = None):
-    # First, get the full list of pending SCTASKs to close.
-    scTasks = documentation.downloadSCTASKs()
+def processPostOrdersSCTASK(snowDriver : SnowDriver,verizonDriver : VerizonDriver,taskNumber : (str,list) = None,useDriveSCTasks=True):
+    if (taskNumber):
+        if (type(taskNumber) is not list):
+            taskNumber = [taskNumber]
+
+    if (useDriveSCTasks):
+        # First, get the full list of pending SCTASKs to close.
+        scTasks = documentation.downloadSCTASKs()
+    else:
+        scTasks = taskNumber
 
     # Validate Verizon
     maintenance.validateVerizon(verizonDriver)
     verizonDriver.navToOrderViewer()
 
-    if(taskNumber):
-        if(type(taskNumber) is not list):
-            taskNumber = [taskNumber]
-
     # Now, iterate through each one and close.
     for scTask in scTasks:
+        thisTaskNumber = scTask["ServiceNow Ticket"] if useDriveSCTasks else scTask
+
         # Filter for specific tasks, if necessary.
-        if(taskNumber):
-            if(scTask["ServiceNow Ticket"] not in taskNumber):
+        if(useDriveSCTasks and taskNumber):
+            if(thisTaskNumber not in taskNumber):
                 continue
 
-        print(f"{scTask['ServiceNow Ticket']}: Beginning request close.")
-
-        # First, try to pull up the order in Verizon.
-        maintenance.validateVerizon(verizonDriver)
-        carrierOrder = readVerizonOrder(verizonDriver=verizonDriver, verizonOrderNumber=scTask["Order"],orderViewPeriod="180 Days")
-        if (carrierOrder is None):
-            print(f"{scTask['ServiceNow Ticket']}: Can't close request, as order number '{scTask['Order']}' is not yet showing in the Verizon Order Viewer.")
-            continue
-        elif (carrierOrder["Status"] != "Completed"):
-            print(f"{scTask['ServiceNow Ticket']}: Can't complete WO, as order number '{scTask['Order']}' has status '{carrierOrder['Status']}' and not Complete.")
-            continue
+        print(f"{thisTaskNumber}: Beginning request close.")
 
         # Nav to the SNow request.
         maintenance.validateSnow(snowDriver)
-        snowDriver.navToRequest(scTask["ServiceNow Ticket"])
+        snowDriver.navToRequest(thisTaskNumber)
         thisSnowRequest = snowDriver.Tasks_ReadFullTask()
+
+        # If using the sheets doc, simply pull stored order. Otherwise, read from the literal task.
+        if(useDriveSCTasks):
+            orderNumber = scTask["Order"]
+        else:
+            allVerizonOrders = getSCTaskOrders(scTask=thisSnowRequest)
+            if(allVerizonOrders):
+                # Use latest order number by default #TODO glue?
+                orderNumber = allVerizonOrders[-1]
+            else:
+                print(f"Skipping {thisTaskNumber}, as no Verizon order was found.")
+                log.warning(f"Skipping {thisTaskNumber}, as no Verizon order was found.")
+                continue
+
+        # First, try to pull up the order in Verizon.
+        maintenance.validateVerizon(verizonDriver)
+        carrierOrder = readVerizonOrder(verizonDriver=verizonDriver, verizonOrderNumber=orderNumber,orderViewPeriod="180 Days")
+        if (carrierOrder is None):
+            print(f"{thisTaskNumber}: Can't close request, as order number '{orderNumber}' is not yet showing in the Verizon Order Viewer.")
+            continue
+        elif (carrierOrder["Status"] != "Completed"):
+            print(f"{thisTaskNumber}: Can't complete WO, as order number '{orderNumber}' has status '{carrierOrder['Status']}' and not Complete.")
+            continue
 
         # Check to make sure the request is still open.
         if(thisSnowRequest["State"] in ["Closed Complete","Closed Incomplete","Closed Skipped"]):
-            print(f"{scTask['ServiceNow Ticket']}: Task is already in state '{thisSnowRequest['State']}'")
+            print(f"{thisTaskNumber}: Task is already in state '{thisSnowRequest['State']}'")
         else:
             trackingNote = f"Service Number: {carrierOrder['WirelessNumber']}\n"
             # Get tracking number if provided, and write to the SNow ticket.
@@ -1035,9 +1060,10 @@ def processPostOrdersSCTASK(snowDriver : SnowDriver,verizonDriver : VerizonDrive
             snowDriver.Tasks_Update()
 
         # Archive the task in the Google sheet.
-        documentation.archiveSCTASKOnGoogle(taskNumber=scTask["ServiceNow Ticket"], closedBy="Alex", serviceNumber="", fullSCTASKSheet=scTasks)
+        if(useDriveSCTasks):
+            documentation.archiveSCTASKOnGoogle(taskNumber=thisTaskNumber, closedBy="Alex", serviceNumber="", fullSCTASKSheet=scTasks)
 
-        print(f"{scTask['ServiceNow Ticket']}: Closed request.")
+        print(f"{thisTaskNumber}: Closed request.")
 
 
 #endregion === Full SNow Workflows
@@ -1058,18 +1084,17 @@ try:
     for task in preProcessSCTASKs:
         processPreOrderSCTASK(tmaDriver=tma,snowDriver=snow,verizonDriver=vzw,
                               taskNumber=task,assignTo="Alex Somheil",reviewMode=False)
-    #processPostOrdersSCTASK(snowDriver=snow,verizonDriver=vzw,taskNumber=postProcessSCTASKs)
+    processPostOrdersSCTASK(snowDriver=snow,verizonDriver=vzw,taskNumber=postProcessSCTASKs,useDriveSCTasks=False)
 
     # Manually log in to Verizon first, just to make life easier atm
     maintenance.validateVerizon(verizonDriver=vzw)
 
-    # ROG: 49546, 49547, 49580
+    # ROG: 49547, 49580
     #
 
     # Cimpl processing
-    preProcessWOs = [49664,49666,49667,49668,49673,49674,49679,49680,49681,
-                     49682,49683,49684,49685,49686,49687,49688,49689,49690,49692,49693,49694,49696,49697,49698,49699,
-                     49700,49701,49702,49703,49704,49705,49706,49707,49708,49709,49710]
+    preProcessWOs = [49715,49716,49717,49718,49719,49720,49723,49724,49730,49731,49732,49733,49736,
+                      49737,49742,49743,49744,49745,49746]
     postProcessWOs = []
     for wo in preProcessWOs:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
