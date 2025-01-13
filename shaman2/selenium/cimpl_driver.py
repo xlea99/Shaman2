@@ -413,7 +413,7 @@ class CimplDriver:
         return statusElement.text
     def Workorders_ReadWONumber(self):
         workorderString = "//div/div/div/div/div/div[contains(@class,'workorder-details__woNumber')]"
-        workorderElement = self.browser.find_element(by=By.XPATH,value=workorderString)
+        workorderElement = self.browser.searchForElement(by=By.XPATH,value=workorderString,timeout=10)
         return workorderElement.text
     # Front (Summary) page read methods
     def Workorders_ReadComment(self):

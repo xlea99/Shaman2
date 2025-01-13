@@ -1093,9 +1093,8 @@ try:
     #
 
     # Cimpl processing
-    preProcessWOs = [49715,49716,49717,49718,49719,49720,49723,49724,49730,49731,49732,49733,49736,
-                      49737,49742,49743,49744,49745,49746]
-    postProcessWOs = []
+    preProcessWOs = []
+    postProcessWOs = [41511]
     for wo in preProcessWOs:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
                               workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D",reviewMode=False)
@@ -1106,6 +1105,7 @@ try:
 except Exception as e:
     playsoundAsync(paths["media"] / "shaman_error.mp3")
     raise e
+
 
 
 # TEMPLATES

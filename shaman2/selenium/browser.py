@@ -211,6 +211,49 @@ class Browser(webdriver.Chrome):
             else:
                 log.warning(f"Could not close tab with name '{tabName}', as it doesn't exist.")
                 return False
+    # This method simply allows for the renaming of one tabName to another. If previousTabName
+    # doesn't exist OR newTabName already exists, it'll raise an error.
+    def renameTab(self,previousTabName,newTabName,popup=False,raiseError=True):
+        # Always prevent renaming to or of Base
+        if(previousTabName == "Base" or newTabName == "Base"):
+            error = ValueError("Cannot rename a tab to/from Base!")
+            if(raiseError):
+                log.error(error)
+                raise error
+            else:
+                log.warning(error)
+                return False
+
+        # Protect against renaming a tab to a tabName that already exists
+        if(newTabName in self.tabs.keys() or newTabName in self.popupTabs.keys()):
+            error = ValueError(f"New tab name '{newTabName}' already exists!")
+            if (raiseError):
+                log.error(error)
+                raise error
+            else:
+                log.warning(error)
+                return False
+
+        # If the previousTabName is a normal tab.
+        if(not popup and previousTabName in self.tabs.keys()):
+            thisTabContent = self.tabs[previousTabName]
+            self.tabs[newTabName] = thisTabContent
+            del self.tabs[previousTabName]
+        elif(popup and previousTabName in self.popupTabs.keys()):
+            thisTabContent = self.popupTabs[previousTabName]
+            self.popupTabs[newTabName] = thisTabContent
+            del self.popupTabs[previousTabName]
+        # Handle the previousTabName not existing.
+        else:
+            error = ValueError(f"Could not rename tab with name '{previousTabName}', as it doesn't exist.")
+            if(raiseError):
+                log.error(error)
+                raise error
+            else:
+                log.warning(error)
+                return False
+
+
 
     # This method allows switching to the given tabName. If the tabName does not
     # exist, it throws an error.

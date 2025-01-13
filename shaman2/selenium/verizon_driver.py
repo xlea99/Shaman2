@@ -593,8 +593,8 @@ class VerizonDriver:
     @action()
     def DeviceSelection_DeviceView_DeclineDeviceProtection(self):
         declineDeviceProtectionOptionBaseXPath = "//div[contains(text(),'Decline Device Protection')]"
-        declineDeviceProtectionOption = self.browser.searchForElement(by=By.XPATH,value=f"{declineDeviceProtectionOptionBaseXPath}/parent::div/parent::div",timeout=15,testClickable=True)
-        self.browser.safeClick(element=declineDeviceProtectionOption,timeout=30,scrollIntoView=True,
+        declineDeviceProtectionOptionXPath = f"{declineDeviceProtectionOptionBaseXPath}/parent::div/parent::div"
+        self.browser.safeClick(by=By.XPATH,value=declineDeviceProtectionOptionXPath,timeout=30,scrollIntoView=True,
                                successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=f"{declineDeviceProtectionOptionBaseXPath}[contains(@class,'bold')]"))
         return ActionResult(status=StatusCode.SUCCESS)
     @action()
