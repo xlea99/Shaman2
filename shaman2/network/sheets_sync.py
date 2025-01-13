@@ -41,15 +41,23 @@ class SheetSync:
                 returnDict[row[keyColumn]] = row
             return returnDict
 
+
     # Simply returns a range of columns on the given sheetName
     def getSheetColumns(self, sheetName):
-        # Fetch the sheet metadata
+        # Helper function to calculate column name, given a column index
+        def getColumnName(index):
+            column_name = ""
+            while index > 0:
+                index, remainder = divmod(index - 1, 26)
+                column_name = chr(65 + remainder) + column_name
+            return column_name
         sheet_metadata = self.googleService.spreadsheets().get(spreadsheetId=self.spreadsheetID).execute()
         sheets = sheet_metadata.get('sheets', '')
         for sheet in sheets:
             if sheet['properties']['title'] == sheetName:
                 columnCount = sheet['properties']['gridProperties']['columnCount']
-                rangeString = f'A:{chr(64 + columnCount)}'
+                lastColumnName = getColumnName(columnCount)  # Get the correct last column name
+                rangeString = f'A:{lastColumnName}'
                 return rangeString
         return None
     # Simply returns the sheetID, given the sheetName

@@ -18,9 +18,7 @@ class OutlookDriver:
     def __init__(self,browserObject : Browser):
         logMessage = "Initialized new unassigned Outlook object"
         self.browser = browserObject
-        self.browser.openNewTab("Eyesafe")
-
-        self.currentTabIndex = 0
-        self.previousTabIndex = 0
-
+        self.browser.openNewTab("Outlook_UNASSIGNED")
         log.debug(logMessage)
+
+

@@ -253,8 +253,6 @@ class Browser(webdriver.Chrome):
                 log.warning(error)
                 return False
 
-
-
     # This method allows switching to the given tabName. If the tabName does not
     # exist, it throws an error.
     def switchToTab(self,tabName,popup=False):
