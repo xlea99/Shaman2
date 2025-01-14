@@ -384,7 +384,7 @@ class CimplDriver:
         filterDropdownArrow = self.browser.searchForElement(by=By.XPATH,value=filterDropdownArrowString,timeout=30)
         # This means we have to click to expand the filter submenu.
         if("headerArrowClose" in filterDropdownArrow.get_attribute("class")):
-            filterDropdownArrow.click()
+            self.browser.safeClick(element=filterDropdownArrow,timeout=20)
 
     #endregion === Workorder Filtering ===
 

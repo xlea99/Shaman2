@@ -212,6 +212,7 @@ class CimplWO:
         if("order" in noteDict["Subject"].lower()):
             verizonOrderPattern = r"MB\d+"
             bakaOrderPattern = r"N\d{8}"
+            rogersOrderPattern = r"Order Completed\s+-\s+(\d{7})"
 
             # Value to eventually store the matches we found.
             orderMatch = None
@@ -221,6 +222,7 @@ class CimplWO:
             # Search for order numbers.
             verizonOrderMatch = re.findall(verizonOrderPattern,noteDict["Content"])
             bakaOrderMatch = re.findall(bakaOrderPattern,noteDict["Content"])
+            rogersOrderMatch = re.findall(rogersOrderPattern,noteDict["Content"])
 
             if(verizonOrderMatch):
                 if(orderMatch):
@@ -236,6 +238,14 @@ class CimplWO:
                     raise error
                 orderMatch = bakaOrderMatch
                 orderType = "BakaOrder"
+            if(rogersOrderMatch):
+                if(orderMatch):
+                    error = ValueError(f"Multiple order numbers from different carriers detected in this note: '{noteDict['Content']}'. Tf?")
+                    log.error(error)
+                    raise error
+                orderMatch = rogersOrderMatch
+                orderType = "RogersOrder"
+
 
             # If no match was found, assume this isn't an order number, or is an order number that the
             # Shaman doesn't recognize, and move to the next classification test.

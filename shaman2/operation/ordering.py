@@ -8,6 +8,7 @@ from shaman2.selenium.tma_driver import TMADriver, TMALocation, TMAPeople, TMASe
 from shaman2.selenium.verizon_driver import VerizonDriver
 from shaman2.selenium.eyesafe_driver import EyesafeDriver
 from shaman2.selenium.snow_driver import SnowDriver
+from shaman2.selenium.outlook_driver import OutlookDriver
 from shaman2.operation import maintenance
 from shaman2.operation import documentation
 from shaman2.common.config import mainConfig,emailTemplatesConfig
@@ -24,6 +25,11 @@ DEFAULT_SNOW_ANDROID = "GalaxyS23_128GB"
 DEFAULT_SNOW_IPHONE_CASE = "iPhone14_Symmetry"
 DEFAULT_SNOW_ANDROID_CASE = "SamsungS23_Sustainable"
 DEFAULT_SNOW_CHARGER = "BelkinWallAdapter"
+
+
+VERIZON_DATE_FORMAT = "%m/%d/%Y"
+BELL_DATE_FORMAT = "%m/%d/%Y"
+ROGERS_DATE_FORMAT = "%B %d %Y %I:%M %p"
 
 #region === Device, Accessory, and Plan Validation ===
 
@@ -162,6 +168,46 @@ def readBakaOrder(bakaDriver : BakaDriver,bakaOrderNumber):
     bakaDriver.navToOrderHistory()
     bakaDriver.openOrder(bakaOrderNumber)
     return bakaDriver.readOrder()
+
+def readRogersOrder(uplandOutlookDriver : OutlookDriver, sysOrdBoxOutlookDriver : OutlookDriver,
+                    rogersOrderNumber):
+    maintenance.validateSysOrdBoxOutlook(sysOrdBoxOutlookDriver=sysOrdBoxOutlookDriver,uplandOutlookDriver=uplandOutlookDriver)
+
+    # This helper method parses a raw Rogers order email string into a neat python dictionary.
+    def parseRawRogersOrder(rogersOrderString):
+        rogersOrderParse = {
+            "OrderNumber": r"Order Number\s+(\d+)",
+            "OrderDate": r"Order Date\s+(.*)",
+            "OrderType": r"(?:.|\n)*Order Type\s+(.*)",
+            "TrackingNumber": r"Waybill No.\s+(\w+)",
+            "UserName": r"Subscriber Name\s+(.*)",
+            "WirelessNumber": r"Phone Number\s+(.*)",
+            "IMEI": r"IMEI\s+(\d+)"
+        }
+
+        returnDict = {}
+        for key, pattern in rogersOrderParse.items():
+            matches = re.findall(pattern, rogersOrderString)
+            if (matches):
+                returnDict[key] = matches[0]
+        return returnDict
+
+    sysOrdBoxOutlookDriver.searchForTerm(searchTerm=rogersOrderNumber)
+    searchResults = sysOrdBoxOutlookDriver.readAllVisibleEmailSummaries()
+
+    targetEmail = None
+    print(searchResults)
+    for result in searchResults:
+        if(result["Subject"].strip() == f"Order {rogersOrderNumber} Closed" and result["SenderEmail"] == "mheather@imaginewireless.net"):
+            targetEmail = result
+    if(not targetEmail):
+        return False
+
+    print(targetEmail)
+    sysOrdBoxOutlookDriver.openVisibleEmail(targetEmail)
+    rawRogersOrderString = sysOrdBoxOutlookDriver.readOpenEmailFullContent()
+    print(rawRogersOrderString)
+    return parseRawRogersOrder(rawRogersOrderString)
 
 #endregion === Carrier Order Reading ===
 #region === Carrier Order Placing ===
@@ -428,11 +474,21 @@ def documentTMANewInstall(tmaDriver : TMADriver,client,netID,serviceNum,installD
     newService.info_ServiceNumber = serviceNum.strip()
     newService.info_ServiceType = syscoData["Devices"][device]["TMA Service Type"]
 
-    newService.info_InstalledDate = installDate
-    expDateObj = datetime.strptime(installDate,"%m/%d/%Y")
-    expDateObj = expDateObj.replace(year=expDateObj.year + 2)
-    newService.info_ContractEndDate = expDateObj.strftime("%m/%d/%Y")
-    newService.info_UpgradeEligibilityDate = expDateObj.strftime("%m/%d/%Y")
+
+    if(carrier == "Verizon Wireless"):
+        installDateObj = datetime.strptime(installDate,VERIZON_DATE_FORMAT)
+        expirationDateObj = installDateObj.replace(year=installDateObj.year + 2)
+    elif(carrier == "Bell Mobility"):
+        installDateObj = datetime.strptime(installDate,BELL_DATE_FORMAT)
+        expirationDateObj = installDateObj.replace(year=installDateObj.year + 3)
+    elif(carrier == "Rogers"):
+        installDateObj = datetime.strptime(installDate,ROGERS_DATE_FORMAT)
+        expirationDateObj = installDateObj.replace(year=installDateObj.year + 3)
+    else:
+        raise ValueError(f"INVALID CARRIER SOMEHOW GOT THIS FAR, HOW?!?!")
+    newService.info_InstalledDate = installDateObj.strftime("%m/%d/%Y")
+    newService.info_ContractEndDate = expirationDateObj.strftime("%m/%d/%Y")
+    newService.info_UpgradeEligibilityDate = expirationDateObj.strftime("%m/%d/%Y")
 
     thisEquipment = TMAEquipment(linkedService=newService,
                                      mainType=syscoData["Devices"][device]["TMA Main Type"],
@@ -768,8 +824,8 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
 
 # Given a workorderNumber, this method examines it, tries to figure out the type of workorder it is and whether
 # it has a relevant order number, looks up to see if order is completed, and then closes it in TMA.
-def processPostOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,vzwDriver : VerizonDriver,bakaDriver : BakaDriver,workorderNumber,
-                              orderViewPeriod="180 Days"):
+def processPostOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,vzwDriver : VerizonDriver,bakaDriver : BakaDriver,uplandOutlookDriver : OutlookDriver, sysOrdBoxOutlookDriver : OutlookDriver,
+                              workorderNumber,orderViewPeriod="180 Days"):
     # Read full workorder.
     print(f"Cimpl WO {workorderNumber}: Beginning automation")
     workorder = readCimplWorkorder(cimplDriver=cimplDriver,workorderNumber=workorderNumber)
@@ -785,12 +841,9 @@ def processPostOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,vz
         return False
 
     # Test for correct carrier
-    if(workorder["Carrier"].lower() == "verizon wireless"):
-        carrier = "Verizon Wireless"
-    elif(workorder["Carrier"].lower() == "bell mobility"):
-        carrier = "Bell Mobility"
-    else:
-        print(f"Cimpl WO {workorderNumber}: Can't complete WO, as carrier is not Verizon or Bell ({workorder['Carrier']})")
+    carrier = validateCarrier(workorder["Carrier"])
+    if(not carrier):
+        print(f"Cimpl WO {workorderNumber}: Can't complete WO, as carrier is not Verizon, Bell, or Rogers: ({workorder['Carrier']})")
         return False
 
     # Test to ensure it can properly locate the order number
@@ -815,6 +868,13 @@ def processPostOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,vz
         carrierOrder = readBakaOrder(bakaDriver=bakaDriver,bakaOrderNumber=carrierOrderNumber)
         if(carrierOrder["Status"] != "Complete"):
             print(f"Cimpl WO {workorderNumber}: Can't complete WO, as order number '{carrierOrderNumber}' has status '{carrierOrder['Status']}' and not Complete.")
+            return False
+    # Read Rogers Order
+    elif(carrier == "Rogers"):
+        carrierOrder = readRogersOrder(uplandOutlookDriver=uplandOutlookDriver,sysOrdBoxOutlookDriver=sysOrdBoxOutlookDriver,
+                        rogersOrderNumber=carrierOrderNumber)
+        if(not carrierOrder):
+            print(f"Cimpl WO {workorderNumber}: Can't complete WO, as no completed order info email for order number '{carrierOrderNumber}' has been received by the SysOrdBox.")
             return False
     else:
         raise ValueError("This should never happen. This means a non-supported carrier was validated by function - fix code immediately.")
@@ -1077,6 +1137,8 @@ try:
     vzw = VerizonDriver(br)
     baka = BakaDriver(br)
     eyesafe = EyesafeDriver(br)
+    uplandOutlook = OutlookDriver(br)
+    sysOrdBoxOutlook = OutlookDriver(br)
 
     # SCTASK processing
     preProcessSCTASKs = []
@@ -1089,26 +1151,24 @@ try:
     # Manually log in to Verizon first, just to make life easier atm
     #maintenance.validateVerizon(verizonDriver=vzw)
 
-    # ROG: 49547, 49580
-    #
-
     # Cimpl processing
     preProcessWOs = []
-    postProcessWOs = []
+    postProcessWOs = [49622]
     for wo in preProcessWOs:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
                               workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D",reviewMode=False)
     for wo in postProcessWOs:
-        processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,
+        processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,uplandOutlookDriver=uplandOutlook,sysOrdBoxOutlookDriver=sysOrdBoxOutlook,
                               workorderNumber=wo)
 
 except Exception as e:
     playsoundAsync(paths["media"] / "shaman_error.mp3")
     raise e
 
-# Some temporary constants, ignore
-rogersSmartphoneBasePlan,rogersSmartphoneFeatures = getPlansAndFeatures("iPhone14_128GB","Rogers")
-rogersMIFIBasePlan,rogersMIFIFeatures = getPlansAndFeatures("Inseego","Rogers")
+results = readRogersOrder(uplandOutlookDriver=uplandOutlook,sysOrdBoxOutlookDriver=sysOrdBoxOutlook,rogersOrderNumber="1065688")
+
+
+
 # TEMPLATES
 #
 # ORDERING A NEW PHONE:
@@ -1133,9 +1193,3 @@ rogersMIFIBasePlan,rogersMIFIFeatures = getPlansAndFeatures("Inseego","Rogers")
 # documentTMANewInstall(tmaDriver=tma,client="Sysco",netID="",serviceNum="",installDate="",device="iPhone14_128GB",imei="",carrier="Verizon Wireless")
 # documentTMAUpgrade(tmaDriver=tma,client="Sysco",serviceNum="",installDate="",device="iPhone14_128GB",imei="")
 
-# USE THESE in the planFeatures arguments for rogers tma documentations
-ROGERS_SMARTPHONE_PLAN_FEATURES = rogersSmartphoneFeatures + [rogersSmartphoneBasePlan]
-ROGERS_MIFI_PLAN_FEATURES = rogersMIFIFeatures + [rogersMIFIBasePlan]
-
-
-documentTMANewInstall(tmaDriver=tma,client="Sysco",netID="sali7143",serviceNum="4377071509",installDate="12/12/2024",device="Pixel9_128GB",imei="357939334885009",carrier="Rogers",planFeatures=ROGERS_SMARTPHONE_PLAN_FEATURES)

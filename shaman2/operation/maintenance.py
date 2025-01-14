@@ -6,6 +6,7 @@ from shaman2.selenium.tma_driver import TMADriver, TMALocation
 from shaman2.selenium.verizon_driver import VerizonDriver
 from shaman2.selenium.eyesafe_driver import EyesafeDriver
 from shaman2.selenium.snow_driver import SnowDriver
+from shaman2.selenium.outlook_driver import OutlookDriver
 from shaman2.utilities.async_sound import playsoundAsync
 from shaman2.common.paths import paths
 from shaman2.common.logger import log
@@ -52,5 +53,15 @@ def validateEyesafe(eyesafeDriver : EyesafeDriver):
 def validateSnow(snowDriver : SnowDriver):
     snowDriver.browser.switchToTab("Snow")
     snowDriver.logInToSnow()
+
+# Validates that Outlook is logged in to specific Outlook accounts.
+def validateUplandOutlook(uplandOutlookDriver : OutlookDriver):
+    uplandOutlookDriver.logInToOutlook_Upland()
+    uplandOutlookDriver.browser.switchToTab(f"Outlook_Upland")
+def validateSysOrdBoxOutlook(sysOrdBoxOutlookDriver : OutlookDriver, uplandOutlookDriver : OutlookDriver):
+    uplandOutlookDriver.logInToOutlook_Upland()
+    sysOrdBoxOutlookDriver.logInToOutlook_SyscoOrdBox()
+    sysOrdBoxOutlookDriver.browser.switchToTab(f"Outlook_SyscoOrdBox")
+
 
 #endregion === DRIVER VALIDATION ===
