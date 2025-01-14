@@ -2058,8 +2058,12 @@ class TMADriver():
 
         def writeIMEI():
             IMEIXPath = "//div/fieldset/div/fieldset/fieldset/ol/li/input[contains(@id,'txtimei')]"
-            IMEIElement = self.browser.searchForElement(by=By.XPATH, value=IMEIXPath,testClickable=True,timeout=10)
+            IMEIElement = self.browser.searchForElement(by=By.XPATH, value=IMEIXPath,testClickable=True,
+                                                        testLiteralClick=True,timeout=20)
             IMEIElement.clear()
+            time.sleep(1)
+            IMEIElement = self.browser.searchForElement(by=By.XPATH, value=IMEIXPath,testClickable=True,
+                                                        testLiteralClick=True,timeout=20)
             IMEIElement.send_keys(valToWrite)
             log.debug(f"Successfully wrote '{valToWrite}'")
             return True
@@ -2266,7 +2270,7 @@ class TMADriver():
             # we'd select 000. There are a couple other special cases which are handled as well.
             if (currentTab == "company"):
                 log.debug(f"{logMessage} Found company page on assignment wizard")
-                if (siteCode in ["000","262","331"]):
+                if (siteCode in ["000","262","331","264"]):
                     selectorForSiteCodeXPath = f"//table/tbody/tr/td/div/div/table/tbody/tr[contains(@class,'sgvitems')]/td[text()='{siteCode}']"
                     self.browser.safeClick(by=By.XPATH,value=selectorForSiteCodeXPath,retryClicks=True,timeout=60,clickDelay=3,
                                            successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=sideTabXPathTemplate.format(tabName="company"),invertedSearch=True))

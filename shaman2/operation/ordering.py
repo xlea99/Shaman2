@@ -72,6 +72,20 @@ def validateAccessoryIDs(deviceID,carrier,accessoryIDs,removeDuplicateTypes=True
         extraAccessories = [extraAccessory.strip() for extraAccessory in extraAccessories]
         fullAccessoryIDs.extend(extraAccessories)
 
+    def validateAvailableAccessories(_carrier,_accessoryIDs):
+        _availableAccessoryIDs = []
+        for _accessoryID in _accessoryIDs:
+            if(_accessoryID not in syscoData["Accessories"].keys()):
+                error = ValueError(f"Invalid accessoryID in list: '{_accessoryID}'")
+                log.error(error)
+                raise error
+
+            accessoryAvailable = syscoData["Accessories"][_accessoryID][f"Available ({_carrier})"] == "TRUE"
+            if(accessoryAvailable):
+                _availableAccessoryIDs.append(_accessoryID)
+            else:
+                log.info(f"Skipping accessory '{_accessoryID}', as it is listed as unavailable in the Sysco Sheet.")
+        return _availableAccessoryIDs
     # Now, we ensure that all accessories are compatible with the given device and, if not, we either move to the
     # default device (if present) or remove it.
     compatibleAccessoryIDs = []
@@ -97,20 +111,6 @@ def validateAccessoryIDs(deviceID,carrier,accessoryIDs,removeDuplicateTypes=True
         log.info(f"Skipping accessory '{accessoryID}', as it is listed as incompatible with device '{deviceID}' in the Sysco Sheet.")
 
     # Now, we iterate through all accessories to see if they're listed as "available" on the sheet.
-    def validateAvailableAccessories(_carrier,_accessoryIDs):
-        _availableAccessoryIDs = []
-        for _accessoryID in _accessoryIDs:
-            if(_accessoryID not in syscoData["Accessories"].keys()):
-                error = ValueError(f"Invalid accessoryID in list: '{_accessoryID}'")
-                log.error(error)
-                raise error
-
-            accessoryAvailable = syscoData["Accessories"][_accessoryID][f"Available ({_carrier})"] == "TRUE"
-            if(accessoryAvailable):
-                _availableAccessoryIDs.append(_accessoryID)
-            else:
-                log.info(f"Skipping accessory '{_accessoryID}', as it is listed as unavailable in the Sysco Sheet.")
-        return _availableAccessoryIDs
     availableAccessoryIDs = validateAvailableAccessories(_carrier=carrier,_accessoryIDs=compatibleAccessoryIDs)
 
     # If set to removeDuplicateTypes, we do that here, simply prioritizing the first valid accessory of each type.
@@ -1084,17 +1084,16 @@ try:
     for task in preProcessSCTASKs:
         processPreOrderSCTASK(tmaDriver=tma,snowDriver=snow,verizonDriver=vzw,
                               taskNumber=task,assignTo="Alex Somheil",reviewMode=False)
-    processPostOrdersSCTASK(snowDriver=snow,verizonDriver=vzw,taskNumber=postProcessSCTASKs,useDriveSCTasks=False)
+    #processPostOrdersSCTASK(snowDriver=snow,verizonDriver=vzw,taskNumber=postProcessSCTASKs,useDriveSCTasks=False)
 
     # Manually log in to Verizon first, just to make life easier atm
-    maintenance.validateVerizon(verizonDriver=vzw)
+    #maintenance.validateVerizon(verizonDriver=vzw)
 
     # ROG: 49547, 49580
     #
 
     # Cimpl processing
-    preProcessWOs = [49715,49716,49717,49718,49719,49720,49723,49724,49730,49731,49732,49733,49736,
-                      49737,49742,49743,49744,49745,49746]
+    preProcessWOs = []
     postProcessWOs = []
     for wo in preProcessWOs:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
@@ -1107,7 +1106,9 @@ except Exception as e:
     playsoundAsync(paths["media"] / "shaman_error.mp3")
     raise e
 
-
+# Some temporary constants, ignore
+rogersSmartphoneBasePlan,rogersSmartphoneFeatures = getPlansAndFeatures("iPhone14_128GB","Rogers")
+rogersMIFIBasePlan,rogersMIFIFeatures = getPlansAndFeatures("Inseego","Rogers")
 # TEMPLATES
 #
 # ORDERING A NEW PHONE:
@@ -1131,3 +1132,10 @@ except Exception as e:
 # DOCUMENTING A PHONE IN TMA:
 # documentTMANewInstall(tmaDriver=tma,client="Sysco",netID="",serviceNum="",installDate="",device="iPhone14_128GB",imei="",carrier="Verizon Wireless")
 # documentTMAUpgrade(tmaDriver=tma,client="Sysco",serviceNum="",installDate="",device="iPhone14_128GB",imei="")
+
+# USE THESE in the planFeatures arguments for rogers tma documentations
+ROGERS_SMARTPHONE_PLAN_FEATURES = rogersSmartphoneFeatures + [rogersSmartphoneBasePlan]
+ROGERS_MIFI_PLAN_FEATURES = rogersMIFIFeatures + [rogersMIFIBasePlan]
+
+
+documentTMANewInstall(tmaDriver=tma,client="Sysco",netID="sali7143",serviceNum="4377071509",installDate="12/12/2024",device="Pixel9_128GB",imei="357939334885009",carrier="Rogers",planFeatures=ROGERS_SMARTPHONE_PLAN_FEATURES)
