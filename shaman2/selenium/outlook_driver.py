@@ -235,7 +235,8 @@ class OutlookDriver:
 
         searchInputFieldXPath = "//input[@id='topSearchInput']"
         searchInputField = self.browser.searchForElement(by=By.XPATH,value=searchInputFieldXPath,timeout=60,testClickable=True)
-        searchInputField.clear()
+        searchInputField.send_keys(Keys.CONTROL + "a")
+        searchInputField.send_keys(Keys.BACKSPACE)
         searchInputField.send_keys(str(searchTerm))
         searchInputField.send_keys(Keys.ENTER)
 

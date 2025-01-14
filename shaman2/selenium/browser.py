@@ -151,11 +151,11 @@ class Browser(webdriver.Chrome):
                     os.chmod(zipPath,0o777)
 
                     # Extract chromedriver.exe
-                    with zipfile.ZipFile(installFolder / f"chromedriver_{self.userChromeVersion}.zip","r") as zipRef:
-                        zipRef.extractall(installFolder)
+                    #with zipfile.ZipFile(installFolder / f"chromedriver_{self.userChromeVersion}.zip","r") as zipRef:
+                    #    zipRef.extractall(installFolder)
 
                     # Clean up the zip file
-                    os.remove(installFolder / f"chromedriver_{self.userChromeVersion}.zip")
+                    #os.remove(installFolder / f"chromedriver_{self.userChromeVersion}.zip")
 
                     # Set the new chromedriver path.
                     self.chromeDriverPath = installFolder / "chromedriver-win64/chromedriver.exe"

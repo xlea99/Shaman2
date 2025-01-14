@@ -26,10 +26,21 @@ DEFAULT_SNOW_IPHONE_CASE = "iPhone14_Symmetry"
 DEFAULT_SNOW_ANDROID_CASE = "SamsungS23_Sustainable"
 DEFAULT_SNOW_CHARGER = "BelkinWallAdapter"
 
+def standardizeToDateObject(dateString,carrier):
+    VERIZON_DATE_FORMAT = "%m/%d/%Y"
+    BELL_DATE_FORMAT = "%m/%d/%Y"
+    ROGERS_DATE_FORMAT = "%B %d %Y %I:%M %p"
 
-VERIZON_DATE_FORMAT = "%m/%d/%Y"
-BELL_DATE_FORMAT = "%m/%d/%Y"
-ROGERS_DATE_FORMAT = "%B %d %Y %I:%M %p"
+    if(carrier == "Verizon Wireless"):
+        return datetime.strptime(dateString,VERIZON_DATE_FORMAT)
+    elif(carrier == "Bell Mobility"):
+        return datetime.strptime(dateString,BELL_DATE_FORMAT)
+    elif(carrier == "Rogers"):
+        return datetime.strptime(dateString,ROGERS_DATE_FORMAT)
+    else:
+        error = ValueError(f"Invalid carrier to convert date format for: {carrier}")
+        log.error(error)
+        raise error
 
 #region === Device, Accessory, and Plan Validation ===
 
@@ -190,23 +201,23 @@ def readRogersOrder(uplandOutlookDriver : OutlookDriver, sysOrdBoxOutlookDriver 
             matches = re.findall(pattern, rogersOrderString)
             if (matches):
                 returnDict[key] = matches[0]
+        #TODO glue?
+        returnDict["Courier"] = "Purolator"
         return returnDict
 
     sysOrdBoxOutlookDriver.searchForTerm(searchTerm=rogersOrderNumber)
     searchResults = sysOrdBoxOutlookDriver.readAllVisibleEmailSummaries()
 
     targetEmail = None
-    print(searchResults)
     for result in searchResults:
         if(result["Subject"].strip() == f"Order {rogersOrderNumber} Closed" and result["SenderEmail"] == "mheather@imaginewireless.net"):
             targetEmail = result
     if(not targetEmail):
         return False
 
-    print(targetEmail)
+
     sysOrdBoxOutlookDriver.openVisibleEmail(targetEmail)
     rawRogersOrderString = sysOrdBoxOutlookDriver.readOpenEmailFullContent()
-    print(rawRogersOrderString)
     return parseRawRogersOrder(rawRogersOrderString)
 
 #endregion === Carrier Order Reading ===
@@ -403,7 +414,7 @@ def writeServiceToCimplWorkorder(cimplDriver : CimplDriver,serviceNum,carrier,in
     cimplDriver.Workorders_NavToDetailsTab()
     cimplDriver.Workorders_WriteServiceID(serviceID=convertServiceIDFormat(serviceNum,targetFormat="raw"))
     cimplDriver.Workorders_WriteAccount(accountNum=syscoData['Carriers'][carrier]["Account Number"])
-    cimplDriver.Workorders_WriteStartDate(startDate=installDate)
+    cimplDriver.Workorders_WriteStartDate(startDate=standardizeToDateObject(dateString=installDate,carrier=carrier).strftime("%m/%d/%Y"))
 
     cimplDriver.Workorders_ApplyChanges()
 
@@ -475,17 +486,13 @@ def documentTMANewInstall(tmaDriver : TMADriver,client,netID,serviceNum,installD
     newService.info_ServiceType = syscoData["Devices"][device]["TMA Service Type"]
 
 
-    if(carrier == "Verizon Wireless"):
-        installDateObj = datetime.strptime(installDate,VERIZON_DATE_FORMAT)
-        expirationDateObj = installDateObj.replace(year=installDateObj.year + 2)
-    elif(carrier == "Bell Mobility"):
-        installDateObj = datetime.strptime(installDate,BELL_DATE_FORMAT)
-        expirationDateObj = installDateObj.replace(year=installDateObj.year + 3)
-    elif(carrier == "Rogers"):
-        installDateObj = datetime.strptime(installDate,ROGERS_DATE_FORMAT)
-        expirationDateObj = installDateObj.replace(year=installDateObj.year + 3)
+    installDateObj = standardizeToDateObject(dateString=installDate,carrier=carrier)
+    if(carrier in ["Verizon Wireless"]):
+        contractEndDateYears = 2
     else:
-        raise ValueError(f"INVALID CARRIER SOMEHOW GOT THIS FAR, HOW?!?!")
+        contractEndDateYears = 3
+    expirationDateObj = installDateObj.replace(year=installDateObj.year + contractEndDateYears)
+
     newService.info_InstalledDate = installDateObj.strftime("%m/%d/%Y")
     newService.info_ContractEndDate = expirationDateObj.strftime("%m/%d/%Y")
     newService.info_UpgradeEligibilityDate = expirationDateObj.strftime("%m/%d/%Y")
@@ -586,7 +593,7 @@ def documentTMANewInstall(tmaDriver : TMADriver,client,netID,serviceNum,installD
 
     return "Completed"
 # Performs a full Upgrade in TMA, editing an existing service based on the provided information.
-def documentTMAUpgrade(tmaDriver : TMADriver,client,serviceNum,installDate,device,imei):
+def documentTMAUpgrade(tmaDriver : TMADriver,client,serviceNum,installDate,device,imei,carrier):
     maintenance.validateTMA(tmaDriver,client=client)
     if(device not in syscoData["Devices"].keys()):
         error = ValueError(f"Specified device '{device}' is not configured in devices.toml.")
@@ -597,8 +604,8 @@ def documentTMAUpgrade(tmaDriver : TMADriver,client,serviceNum,installDate,devic
     tmaDriver.navToLocation(TMALocation(client="Sysco", entryType="Service", entryID=serviceNum.strip()))
 
     # First thing to update in the upgrade elib and expiration dates.
-    upgradeEligibilityDate = datetime.strptime(installDate,"%m/%d/%Y")
-    upgradeEligibilityDate = upgradeEligibilityDate.replace(year=upgradeEligibilityDate.year + 2)
+    installDateObject = standardizeToDateObject(dateString=installDate,carrier=carrier)
+    upgradeEligibilityDate = installDateObject.replace(year=installDateObject.year + 2)
     tmaDriver.Service_WriteUpgradeEligibilityDate(rawValue=upgradeEligibilityDate.strftime("%m/%d/%Y"))
     tmaDriver.Service_WriteContractEndDate(rawValue=upgradeEligibilityDate.strftime("%m/%d/%Y"))
     tmaDriver.Service_InsertUpdate()
@@ -922,7 +929,7 @@ def processPostOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,vz
     # If operation type is an Upgrade
     elif(workorder["OperationType"] == "Upgrade"):
         print(f"Cimpl WO {workorderNumber}: Processing Upgrade for service {carrierOrder['WirelessNumber']}")
-        returnCode = documentTMAUpgrade(tmaDriver=tmaDriver,client="Sysco",serviceNum=workorder["ServiceID"],installDate=carrierOrder["OrderDate"],device=deviceID,imei=carrierOrder["IMEI"])
+        returnCode = documentTMAUpgrade(tmaDriver=tmaDriver,client="Sysco",serviceNum=workorder["ServiceID"],installDate=carrierOrder["OrderDate"],device=deviceID,imei=carrierOrder["IMEI"],carrier=carrier)
         if(returnCode == "Completed"):
             print(f"Cimpl WO {workorderNumber}: Finished upgrading TMA service {carrierOrder['WirelessNumber']}")
         elif(returnCode == "WrongDevice"):
@@ -932,7 +939,7 @@ def processPostOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,vz
     # Write tracking information
     maintenance.validateCimpl(cimplDriver)
     cimplDriver.Workorders_NavToSummaryTab()
-    if(carrierOrder["TrackingNumber"] is not None and carrierOrder["TrackingNumber"].strip() != ""):
+    if(carrierOrder.get("TrackingNumber",None) is not None and carrierOrder["TrackingNumber"].strip() != ""):
         cimplDriver.Workorders_WriteNote(subject="Tracking",noteType="Information Only",status="Completed",content=f"Courier: {carrierOrder['Courier']}\nTracking Number: {carrierOrder['TrackingNumber']}")
 
     # Complete workorder
@@ -1153,7 +1160,9 @@ try:
 
     # Cimpl processing
     preProcessWOs = []
-    postProcessWOs = [49622]
+    postProcessWOs = [49957,49958,49960,49961,49964,49965,49966,49968,49970,49971,49972,49973,49974,
+                      49976,49983,49984,49985,49986,49987,49988,49990,49991,49992,49993,49994,49999,50000,50001,50002,
+                      50003,50005]
     for wo in preProcessWOs:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
                               workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D",reviewMode=False)
@@ -1164,9 +1173,6 @@ try:
 except Exception as e:
     playsoundAsync(paths["media"] / "shaman_error.mp3")
     raise e
-
-results = readRogersOrder(uplandOutlookDriver=uplandOutlook,sysOrdBoxOutlookDriver=sysOrdBoxOutlook,rogersOrderNumber="1065688")
-
 
 
 # TEMPLATES
