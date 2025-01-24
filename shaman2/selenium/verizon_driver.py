@@ -496,16 +496,20 @@ class VerizonDriver:
                     log.debug("Cart is already empty.")
                 return ActionResult(status=StatusCode.SUCCESS)
 
-            # If the clear cart button is currently clickable, we click it to open up the "confirm clear" prompt.
-            elif(elementName == "clearCartButton"):
-                # Click "clear cart".
-                self.browser.safeClick(element=foundElement,scrollIntoView=True,timeout=10,jsClick=True)
-
             # If the "confirm clear" prompt is up, we click clear here.
             elif(elementName == "confirmClearPopupButton"):
                 # Click "confirm" in the popup.
                 self.browser.safeClick(element=foundElement, scrollIntoView=True, timeout=10)
                 haveClearedCart = True
+
+            # If the clear cart button is currently clickable, we click it to open up the "confirm clear" prompt.
+            elif(elementName == "clearCartButton"):
+                # Click "clear cart".
+                self.browser.safeClick(element=foundElement,scrollIntoView=True,timeout=10,jsClick=True)
+
+            time.sleep(1)
+
+
 
         # If we've gone through 10 steps of cart clear logic without confirmation that it actually cleared,
         # we assume it errored out and that we're now on an ambiguous page
