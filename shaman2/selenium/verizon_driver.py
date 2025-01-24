@@ -523,7 +523,7 @@ class VerizonDriver:
             if(clearFilters):
                 clearFiltersButtonXPath = "//div[contains(@class,'filter-badges')]/a[contains(text(),'Clear all')]"
                 clearFiltersButton = self.browser.searchForElement(by=By.XPATH,value=clearFiltersButtonXPath,timeout=60,testClickable=True)
-                self.browser.safeClick(element=clearFiltersButton,timeout=60)
+                self.browser.safeClick(element=clearFiltersButton,timeout=60,scrollIntoView=True)
 
             searchBox = self.browser.searchForElement(by=By.XPATH,value="//input[@id='search']",timeout=15,testClickable=True)
             searchButton = self.browser.searchForElement(by=By.XPATH,value="//span[contains(@class,'icon-search')]",timeout=15,testClickable=True)
