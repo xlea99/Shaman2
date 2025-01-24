@@ -512,12 +512,16 @@ class VerizonDriver:
     def DeviceSelection_SearchSelectDevice(self,deviceID,orderPath="NewInstall",searchAttempts = 3):
         if(orderPath == "NewInstall"):
             targetDeviceCardXPath = f"//div/div[contains(@class,'device-name')][normalize-space(text())='{syscoData["Devices"][deviceID]["Verizon Wireless New Install Card Name"]}']"
-            targetDeviceQuickViewButtonXPath = f"{targetDeviceCardXPath}/following-sibling::div/div[@class='quick-view']/button"
+            targetDeviceOpenButtonXPath = f"{targetDeviceCardXPath}/following-sibling::div/div[@class='quick-view']/button"
             deviceDetailsXPath = f"//div[contains(@class,'pdp-header-section')]/div[contains(@class,'left-top-details')]/div[contains(text(),'{syscoData["Devices"][deviceID]["Verizon Wireless New Install Card Name"]}')]"
         else:
             targetDeviceCardXPath = f"//div/div[contains(@class,'device-title')][text()='{syscoData["Devices"][deviceID]["Verizon Wireless Upgrade Card Name"]}']"
+            targetDeviceOpenButtonXPath = targetDeviceCardXPath
             deviceDetailsXPath = f"//div[contains(@class,'pdp-header-section')]//div[normalize-space(text())='{syscoData["Devices"][deviceID]["Verizon Wireless Upgrade Card Name"]}']"
         shopDevicesHeaderXPath = "//h2[contains(text(),'Shop Devices')]"
+
+
+        f"//div/div[contains(@class,'device-title')][text()='iPhone 14']"
 
         # Helper method to search for a device one time, and wait until (roughly) the loading screen is gone.
         def searchDevice(clearFilters=False):
@@ -536,7 +540,7 @@ class VerizonDriver:
             self.browser.searchForElement(by=By.XPATH,value=shopDevicesHeaderXPath,timeout=20,minSearchTime=4,testClickable=True,testLiteralClick=True)
         # Helper method to try to select the device by its card.
         def selectDevice():
-            clickResult = self.browser.safeClick(by=By.XPATH,value=targetDeviceQuickViewButtonXPath, timeout=10,scrollIntoView=True,raiseError=False)
+            clickResult = self.browser.safeClick(by=By.XPATH,value=targetDeviceOpenButtonXPath, timeout=10,scrollIntoView=True,raiseError=False)
 
             if(clickResult):
                 # Test for device details to confirm device has been successfully pulled up.
