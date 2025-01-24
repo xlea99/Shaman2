@@ -469,41 +469,46 @@ class VerizonDriver:
     @action()
     def emptyCart(self):
         self.browser.switchToTab("Verizon")
-        verizonCartURL = "https://mb.verizonwireless.com/mbt/secure/index?appName=comm&transType=NSE&navtrk=globalnav%3Ashop%3Asmartphones#/device-shopping-cart"
 
         # First, navigate to the cart url.
-        filledShoppingCartHeaderXPath1 = "//h1[normalize-space(text())='Review shopping cart']"
-        filledShoppingCartHeaderXPath2 = "//a[@id='dtm_clearcart']"
-        emptyShoppingCartHeaderXPath = "//*[normalize-space(text())='Your cart is empty.']"
+        verizonCartURL = "https://mb.verizonwireless.com/mbt/secure/index?appName=comm&transType=NSE&navtrk=globalnav%3Ashop%3Asmartphones#/device-shopping-cart"
         self.browser.get(verizonCartURL)
-        if(not self.browser.searchForElement(by=By.XPATH,value=[filledShoppingCartHeaderXPath1,filledShoppingCartHeaderXPath2,emptyShoppingCartHeaderXPath],
-                                      timeout=180,testClickable=True,testLiteralClick=True,raiseError=True)):
-            return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
 
+        clearCartButtonXPath = "//a[@id='dtm_clearcart']"
+        emptyShoppingCartHeaderXPath = "//*[normalize-space(text())='Your cart is empty.']"
+        confirmClearButtonXPath = "//div[contains(@class,'app-clear-cart-popup')]//button[normalize-space(text())='Clear']"
 
-        # Now, test to see if its full or empty.
-        if(self.browser.searchForElement(by=By.XPATH,value=emptyShoppingCartHeaderXPath,timeout=1)):
-            # If it's already empty, there's no cart to empty.
-            log.debug("Cart already empty.")
-            return ActionResult(status=StatusCode.SUCCESS)
-        else:
-            # Click "clear cart".
-            clearCartButtonXPath = "//a[@id='dtm_clearcart']"
-            clearCartButton = self.browser.searchForElement(by=By.XPATH,value=clearCartButtonXPath,timeout=120,testClickable=True,raiseError=True)
-            clearCartButton.click()
+        clearCartPagesMap = {clearCartButtonXPath: "clearCartButton", emptyShoppingCartHeaderXPath: "cartIsEmpty",
+                         confirmClearButtonXPath: "confirmClearPopupButton"}
 
-            # A confirmation box should pop up - click "clear" here.
-            confirmClearButtonXPath = "//div[contains(@class,'app-clear-cart-popup')]//button[normalize-space(text())='Clear']"
-            confirmClearButton = self.browser.searchForElement(by=By.XPATH,value=confirmClearButtonXPath,timeout=120,testClickable=True)
-            confirmClearButton.click()
+        # Begin loop to manage clear cart logic.
+        haveClearedCart = False
+        for i in range(10):
+            # First, get the current page we're on.
+            foundElement, elementName = self.browser.searchForElement(by=By.XPATH, value=clearCartPagesMap,
+                                                                   testClickable=True,timeout=60, raiseError=True, logError=False)
 
-            # Finally, wait to confirm that the cart is empty.
-            testResult = self.browser.searchForElement(by=By.XPATH,value=emptyShoppingCartHeaderXPath,timeout=120,testClickable=True,testLiteralClick=True,raiseError=True)
-            if (testResult):
-                log.debug("Cleared cart successfully.")
+            # If the cart is empty, we're done.
+            if(elementName == "cartIsEmpty"):
+                if(haveClearedCart):
+                    log.debug("Cleared cart successfully.")
+                else:
+                    log.debug("Cart is already empty.")
                 return ActionResult(status=StatusCode.SUCCESS)
-            else:
-                return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
+
+            # If the clear cart button is currently clickable, we click it to open up the "confirm clear" prompt.
+            elif(elementName == "clearCartButton"):
+                # Click "clear cart".
+                self.browser.safeClick(element=elementName,scrollIntoView=True,timeout=10)
+
+            # If the "confirm clear" prompt is up, we click clear here.
+            elif(elementName == "confirmClearPopupButton"):
+                # Click "confirm" in the popup.
+                self.browser.safeClick(element=elementName, scrollIntoView=True, timeout=10)
+
+        # If we've gone through 10 steps of cart clear logic without confirmation that it actually cleared,
+        # we assume it errored out and that we're now on an ambiguous page
+        return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
 
     # Assumes we're on the device selection page. Given a Universal Device ID, searches for that
     # device (if supported) on Verizon. # TODO move the search term stuff to higher level - shouldn't need syscoSheet in this file technically
@@ -781,10 +786,10 @@ class VerizonDriver:
     def DeviceProtection_DeclineAndContinue(self):
         #TODO sometimes weird shit happens on this page with multiple lines. Handle.
         # Check that the device protection header is found, meaning we're on the right page.
-        deviceProtectionHeaderXPath = "//app-equipment-protection-landing-mobile-evolution//h1[contains(text(),'Select device protection')]"
+        deviceProtectionHeaderXPath = "//app-equipment-protection-landing-mobile-evolution//h1[normalize-space(text())='Select device protection']"
         self.browser.searchForElement(by=By.XPATH,value=deviceProtectionHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True,raiseError=True)
 
-        declineDeviceProtectionXPath = "//button[contains(text(),'Decline and continue')]"
+        declineDeviceProtectionXPath = "//button[normalize-space(text())='Decline and continue']"
         self.browser.safeClick(by=By.XPATH,value=declineDeviceProtectionXPath,timeout=120)
 
         # We wait for the number assignment page header to load, meaning we've successfully navigated to the next page.
