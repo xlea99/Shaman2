@@ -384,7 +384,7 @@ class CimplDriver:
         filterDropdownArrow = self.browser.searchForElement(by=By.XPATH,value=filterDropdownArrowString,timeout=30)
         # This means we have to click to expand the filter submenu.
         if("headerArrowClose" in filterDropdownArrow.get_attribute("class")):
-            filterDropdownArrow.click()
+            self.browser.safeClick(element=filterDropdownArrow,timeout=20)
 
     #endregion === Workorder Filtering ===
 
@@ -848,7 +848,7 @@ class CimplDriver:
             selectionListPrefix = "//ul[contains(@class,'k-list')][@aria-hidden='false']"
 
             # Now we can actually find the element.
-            targetSelectionElement = self.browser.searchForElement(by=By.XPATH,value=f"{selectionListPrefix}/li[starts-with(@class,'k-item')][normalize-space(text())='{selectionString}']",timeout=3)
+            targetSelectionElement = self.browser.searchForElement(by=By.XPATH,value=f"{selectionListPrefix}/li[starts-with(@class,'k-item')][normalize-space(text())='{selectionString}']",timeout=20)
             # We also check to make sure this element isn't already selected, in case our earlier check didn't catch it.
             if("k-state-selected" not in targetSelectionElement.get_attribute("class")):
                 self.browser.execute_script("arguments[0].scrollIntoView(true);", targetSelectionElement)

@@ -2270,14 +2270,9 @@ class TMADriver():
             # we'd select 000. There are a couple other special cases which are handled as well.
             if (currentTab == "company"):
                 log.debug(f"{logMessage} Found company page on assignment wizard")
-                if (siteCode in ["000","262","331","264"]):
-                    selectorForSiteCodeXPath = f"//table/tbody/tr/td/div/div/table/tbody/tr[contains(@class,'sgvitems')]/td[text()='{siteCode}']"
-                    self.browser.safeClick(by=By.XPATH,value=selectorForSiteCodeXPath,retryClicks=True,timeout=60,clickDelay=3,
-                                           successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=sideTabXPathTemplate.format(tabName="company"),invertedSearch=True))
-                else:
-                    error = RuntimeError("Company tab is asking for information on a non-000 OpCo! Edits will be required. God help you!")
-                    log.error(error)
-                    raise error
+                selectorForSiteCodeXPath = f"//table/tbody/tr/td/div/div/table/tbody/tr[contains(@class,'sgvitems')]/td[text()='{siteCode}']"
+                self.browser.safeClick(by=By.XPATH,value=selectorForSiteCodeXPath,retryClicks=True,timeout=60,clickDelay=3,
+                                    successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=sideTabXPathTemplate.format(tabName="company"),invertedSearch=True))
 
             # If TMA pops up with "Division" selection. Again, this usually only occurs (to my knowledge) on 000
             # OpCo, in which case the only selectable option is "Corp Offices". If this shows up on a non-000

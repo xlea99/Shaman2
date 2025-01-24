@@ -73,6 +73,7 @@ class VerizonDriver:
 
                     # If we're on the username page, foundElement is our usernameField.
                     if(pageName == "Username"):
+                        foundElement.clear()
                         foundElement.send_keys(mainConfig["authentication"]["verizonUser"])
                         foundElement.send_keys(Keys.ENTER)
                         # Wait for username field to disappear before proceeding.
@@ -472,8 +473,8 @@ class VerizonDriver:
 
         # First, navigate to the cart url.
         filledShoppingCartHeaderXPath1 = "//h1[normalize-space(text())='Review shopping cart']"
-        filledShoppingCartHeaderXPath2 = "//h1[normalize-space(text())='Shopping cart']"
-        emptyShoppingCartHeaderXPath = "//h1[normalize-space(text())='Your cart is empty.']"
+        filledShoppingCartHeaderXPath2 = "//a[@id='dtm_clearcart']"
+        emptyShoppingCartHeaderXPath = "//*[normalize-space(text())='Your cart is empty.']"
         self.browser.get(verizonCartURL)
         if(not self.browser.searchForElement(by=By.XPATH,value=[filledShoppingCartHeaderXPath1,filledShoppingCartHeaderXPath2,emptyShoppingCartHeaderXPath],
                                       timeout=180,testClickable=True,testLiteralClick=True,raiseError=True)):
