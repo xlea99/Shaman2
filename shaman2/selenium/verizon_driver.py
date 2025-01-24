@@ -362,7 +362,7 @@ class VerizonDriver:
         upgradeDeviceIneligibleButtonXPath = "//a[@type='button'][contains(text(),'Upgrade Options')]"
         earlyUpgradeOptionsHeaderXPath = "//div/*[contains(text(),'Choose upgrade options for non-eligible lines')]"
         mtnPendingErrorBoxString = "//app-modal-header/div[contains(text(),'The following wireless number is ineligible for this service.')]"
-        shopDevicesHeaderXPath = "//div[@id='page-header']/div/h1[contains(text(),'Shop Devices')]"
+        shopDevicesHeaderXPath = "//div[@id='page-header']/div/h1[normalize-space(translate(text(),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'))='shop devices']"
 
         upgradePagesMap = {upgradeDeviceEligibleButtonXPath : "UpgradeEligible", upgradeDeviceIneligibleButtonXPath : "UpgradeIneligible",
                            mtnPendingErrorBoxString : "MTNPending",earlyUpgradeOptionsHeaderXPath : "EarlyUpgradeOptions",
