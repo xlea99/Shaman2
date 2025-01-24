@@ -485,7 +485,7 @@ class VerizonDriver:
         haveClearedCart = False
         for i in range(10):
             # First, get the current page we're on.
-            foundElement, elementName = self.browser.searchForElement(by=By.XPATH, value=clearCartPagesMap,
+            foundElement, elementName = self.browser.searchForElement(by=By.XPATH, value=clearCartPagesMap,minSearchTime=5,
                                                                    testClickable=True,timeout=60, raiseError=True, logError=False)
 
             # If the cart is empty, we're done.
