@@ -499,7 +499,7 @@ class VerizonDriver:
             # If the clear cart button is currently clickable, we click it to open up the "confirm clear" prompt.
             elif(elementName == "clearCartButton"):
                 # Click "clear cart".
-                self.browser.safeClick(element=foundElement,scrollIntoView=True,timeout=10)
+                self.browser.safeClick(element=foundElement,scrollIntoView=True,timeout=10,jsClick=True)
 
             # If the "confirm clear" prompt is up, we click clear here.
             elif(elementName == "confirmClearPopupButton"):
