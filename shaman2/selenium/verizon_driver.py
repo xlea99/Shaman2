@@ -521,7 +521,7 @@ class VerizonDriver:
         # Helper method to search for a device one time, and wait until (roughly) the loading screen is gone.
         def searchDevice(clearFilters=False):
             if(clearFilters):
-                clearFiltersButtonXPath = "//div[contains(@class,'filter-badges')]/span[contains(text(),'Clear all')]"
+                clearFiltersButtonXPath = "//div[contains(@class,'filter-badges')]/a[contains(text(),'Clear all')]"
                 clearFiltersButton = self.browser.searchForElement(by=By.XPATH,value=clearFiltersButtonXPath,timeout=60,testClickable=True)
                 self.browser.safeClick(element=clearFiltersButton,timeout=60)
 
