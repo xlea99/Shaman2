@@ -664,11 +664,11 @@ class VerizonDriver:
 
             # Click continue
             continueButtonXPath = "//app-nse-multistep-progress-bar/following-sibling::*//button[normalize-space(text())='Continue']"
-            continueButton = self.browser.searchForElement(by=By.XPATH,value=continueButtonXPath,timeout=30,testClickable=True)
-            self.browser.safeClick(element=continueButton,timeout=10,scrollIntoView=True)
+            shopAccessoriesHeaderXPath = "//section[contains(@class,'top-section')]//div[contains(text(),'Shop Accessories')]"
+            self.browser.safeClick(by=By.XPATH,value=continueButtonXPath,timeout=120,scrollIntoView=True,retryClicks=True,
+                                   clickDelay=10,successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=shopAccessoriesHeaderXPath))
 
             # Wait for accessories page to load
-            shopAccessoriesHeaderXPath = "//section[contains(@class,'top-section')]//div[contains(text(),'Shop Accessories')]"
             testResult = self.browser.searchForElement(by=By.XPATH,value=shopAccessoriesHeaderXPath,timeout=60,
                                           testClickable=True,testLiteralClick=True)
         else:
