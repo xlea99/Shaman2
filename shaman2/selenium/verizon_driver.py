@@ -649,7 +649,7 @@ class VerizonDriver:
     @action()
     def DeviceSelection_DeviceView_AddToCartAndContinue(self,orderPath="NewInstall"):
         if(orderPath == "NewInstall"):
-            addToCartButtonXPath = "//button[@id='dtm_addcart']"
+            addToCartButtonXPath = "//button[@id='device-add-to-cart']"
             addToCartButton = self.browser.searchForElement(by=By.XPATH,value=addToCartButtonXPath,timeout=10,testClickable=True)
             addToCartButton.click()
 
