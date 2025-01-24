@@ -505,6 +505,7 @@ class VerizonDriver:
             elif(elementName == "confirmClearPopupButton"):
                 # Click "confirm" in the popup.
                 self.browser.safeClick(element=elementName, scrollIntoView=True, timeout=10)
+                haveClearedCart = True
 
         # If we've gone through 10 steps of cart clear logic without confirmation that it actually cleared,
         # we assume it errored out and that we're now on an ambiguous page
@@ -773,21 +774,21 @@ class VerizonDriver:
         self.browser.safeClick(element=continueButton,timeout=60)
 
         # We wait until the device protection header is found, meaning we went to the next page.
-        deviceProtectionHeaderXPath = "//app-equipment-protection-landing-mobile-evolution//h1[contains(text(),'Select device protection')]"
-        testResult = self.browser.searchForElement(by=By.XPATH,value=deviceProtectionHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True,raiseError=True)
+        testResult = self.browser.searchForElement(by=By.XPATH,value=self.deviceProtectionHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True,raiseError=True)
         if (testResult):
             return ActionResult(status=StatusCode.SUCCESS)
         else:
             return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
 
+    deviceProtectionHeaderXPath = "//app-equipment-protection-landing-mobile-evolution//*[normalize-space(text())='Shop device protection']"
     # Assumes we're on the device protection page. Clicks on "decline". Note that this also serves
     # as the "continue" button for this page.
     @action()
     def DeviceProtection_DeclineAndContinue(self):
         #TODO sometimes weird shit happens on this page with multiple lines. Handle.
         # Check that the device protection header is found, meaning we're on the right page.
-        deviceProtectionHeaderXPath = "//app-equipment-protection-landing-mobile-evolution//h1[normalize-space(text())='Select device protection']"
-        self.browser.searchForElement(by=By.XPATH,value=deviceProtectionHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True,raiseError=True)
+
+        self.browser.searchForElement(by=By.XPATH,value=self.deviceProtectionHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True,raiseError=True)
 
         declineDeviceProtectionXPath = "//button[normalize-space(text())='Decline and continue']"
         self.browser.safeClick(by=By.XPATH,value=declineDeviceProtectionXPath,timeout=120)
