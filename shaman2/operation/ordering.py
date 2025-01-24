@@ -1159,10 +1159,8 @@ try:
     #maintenance.validateVerizon(verizonDriver=vzw)
 
     # Cimpl processing
-    preProcessWOs = []
-    postProcessWOs = [49957,49958,49960,49961,49964,49965,49966,49968,49970,49971,49972,49973,49974,
-                      49976,49983,49984,49985,49986,49987,49988,49990,49991,49992,49993,49994,49999,50000,50001,50002,
-                      50003,50005]
+    preProcessWOs = [50091,50092,50093]
+    postProcessWOs = []
     for wo in preProcessWOs:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
                               workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D",reviewMode=False)
