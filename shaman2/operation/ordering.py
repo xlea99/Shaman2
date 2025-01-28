@@ -1178,7 +1178,7 @@ except Exception as e:
 # ORDERING A NEW PHONE:
 # _firstName, _lastName, _userEmail = "", "", ""
 # _address1, _address2, _city, _state, _zipCode = "", "", "", "", ""
-# _deviceID, _accessoryIDs = "iPhone14_128GB", ["BelkinWallAdapter","iPhone14Defender"]
+# _deviceID, _accessoryIDs = "iPhone14_128GB", ["BelkinWallAdapter","iPhone14_Defender"]
 # _contactEmails = []
 # placeVerizonNewInstall(verizonDriver=vzw,deviceID=_deviceID,accessoryIDs=_accessoryIDs,
 #                        plan=getPlansAndFeatures(deviceID=_deviceID,carrier="Verizon Wireless")[0],features=getPlansAndFeatures(deviceID=_deviceID,carrier="Verizon Wireless")[1],
@@ -1188,7 +1188,7 @@ except Exception as e:
 # _serviceID = ""
 # _firstName, _lastName, _userEmail = "", "", ""
 # _address1, _address2, _city, _state, _zipCode = "", "", "", "", ""
-# _deviceID, _accessoryIDs = "iPhone14_128GB", ["BelkinWallAdapter","iPhone14Defender"]
+# _deviceID, _accessoryIDs = "iPhone14_128GB", ["BelkinWallAdapter","iPhone14_Defender"]
 # _contactEmails = []
 # placeVerizonUpgrade(verizonDriver=vzw,serviceID=_serviceID,deviceID=_deviceID,accessoryIDs=_accessoryIDs,
 #                        firstName=_firstName,lastName=_lastName,address1=_address1,address2=_address2,city=_city,state=_state,zipCode=_zipCode,companyName="Sysco",contactEmails=_contactEmails)
