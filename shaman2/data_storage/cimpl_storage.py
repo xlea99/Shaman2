@@ -212,7 +212,7 @@ class CimplWO:
         if("order" in noteDict["Subject"].lower()):
             verizonOrderPattern = r"MB\d+"
             bakaOrderPattern = r"N\d{8}"
-            rogersOrderPattern = r"Order Completed\s+-\s+(\d{7})"
+            rogersOrderPattern = r"\s*(\d{7})\s*"
 
             # Value to eventually store the matches we found.
             orderMatch = None
