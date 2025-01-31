@@ -504,8 +504,13 @@ class VerizonDriver:
 
             # If the clear cart button is currently clickable, we click it to open up the "confirm clear" prompt.
             elif(elementName == "clearCartButton"):
-                # Click "clear cart".
-                self.browser.safeClick(element=foundElement,scrollIntoView=True,timeout=10,jsClick=True)
+                # We first check to make sure another clear cart popup hasn't shown up.
+                existingClearCartPopup = self.browser.searchForElement(by=By.XPATH,value=confirmClearButtonXPath,timeout=10)
+                if(existingClearCartPopup):
+                    continue
+                else:
+                    # Click "clear cart".
+                    self.browser.safeClick(element=foundElement,scrollIntoView=True,timeout=10,jsClick=True)
 
             time.sleep(1)
 
@@ -1332,3 +1337,5 @@ class VerizonDriver:
             return ActionResult(status=StatusCode.VERIZON_FAILED_ORDER_PLACE)
 
     #endregion === Device Ordering ===
+
+

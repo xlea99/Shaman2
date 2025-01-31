@@ -1,5 +1,7 @@
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import Select
 from datetime import datetime
+import time
 from shaman2.selenium.browser import Browser
 from shaman2.common.config import mainConfig
 from shaman2.common.logger import log
@@ -40,6 +42,8 @@ class BakaDriver:
             submitButton = self.browser.find_element(by=By.XPATH,value="//button[@type='submit']")
             submitButton.click()
 
+            time.sleep(5)
+
     # Simple method to test whether Baka is signed in.
     def testIfLoggedIn(self):
         self.browser.switchToTab("Baka")
@@ -50,7 +54,7 @@ class BakaDriver:
         else:
             return False
 
-    #region === Orders and History ===
+    #region === Placed Orders and History ===
 
     # This method simply navigates to the Baka "Order History" page.
     def navToOrderHistory(self):
@@ -108,4 +112,126 @@ class BakaDriver:
 
         return returnDict
 
-    #endregion === Orders and History ===
+    #endregion === Placed Orders and History ===
+
+    #region === Ordering ===
+
+    # Navigates to the device selection page for ordering.
+    def navToDeviceSelection(self):
+        self.browser.switchToTab("Baka")
+
+        deviceSelectionPageURL = "https://www.baka.ca/devices"
+        self.browser.get(deviceSelectionPageURL)
+
+        # Wait for page to load.
+        mobileSortXPath = "//form[@id='mobile_sort']"
+        self.browser.searchForElement(by=By.XPATH,value=mobileSortXPath,timeout=30,testClickable=True)
+    # Assumes we're on the device selection page, and tries to select the given device card, then click "Buy Now".
+    def DeviceSelection_StartDeviceOrder(self,deviceCardName,deviceProductOverviewHeader):
+        self.browser.switchToTab("Baka")
+
+        targetCardXPath = f"//aside[@itemprop='model'][translate(normalize-space(text()), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')='{deviceCardName.lower()}']"
+        targetCard = self.browser.searchForElement(by=By.XPATH,value=targetCardXPath,timeout=10,testClickable=True)
+        targetCard.click()
+
+        # Wait for the product overview to load.
+        productOverviewHeaderXPath = f"//article[@class='product-overview']//*[@itemprop='name'][translate(normalize-space(text()), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')='{deviceProductOverviewHeader.lower()}']"
+        self.browser.searchForElement(by=By.XPATH,value=productOverviewHeaderXPath,timeout=30,raiseError=True)
+        time.sleep(3)
+
+        # Now, click "Buy Now".
+        buyNowButtonXPath = "//button[@id='product_btn'][normalize-space(text())='Buy Now']"
+        buyNowButton = self.browser.searchForElement(by=By.XPATH,value=buyNowButtonXPath,timeout=15,testClickable=True)
+        buyNowButton.click()
+
+        # Wait for the order device to load to ensure order process was successfully started
+        orderDeviceXPath = f"//article[@id='cart_active_item']//*[@id='order_device'][translate(normalize-space(text()), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')='{deviceProductOverviewHeader.lower()}']"
+        self.browser.searchForElement(by=By.XPATH,value=orderDeviceXPath,timeout=30,testClickable=True,raiseError=True)
+        time.sleep(3)
+    # Assumes we're on the order type selection page, and selects the chosen order type.
+    def DeviceSelection_ChooseInstallUpgrade(self,orderType : str):
+        self.browser.switchToTab("Baka")
+
+        if(orderType.lower() == "install"):
+            installRadioXPath = "//span[normalize-space(text())='\"I want to create a new mobile number\"']/parent::label"
+            targetRadio = self.browser.searchForElement(by=By.XPATH,value=installRadioXPath,timeout=10,testClickable=True)
+        elif(orderType.lower() == "upgrade"):
+            upgradeRadioXPath = "//span[normalize-space(text())='\"I want to keep my number\" or \"Upgrade My Device\"']/parent::label"
+            targetRadio = self.browser.searchForElement(by=By.XPATH, value=upgradeRadioXPath, timeout=10,testClickable=True)
+        else:
+            error = ValueError(f"Invalid order type: '{orderType}'")
+            log.error(error)
+            raise error
+
+        targetRadio.click()
+
+    # Assumes we're on the InstallUpgrade screen, and have selected either "Install" or "Upgrade". Configures each
+    # screen according to passed in arguments.
+    def InstallConfig_ConfigureInstall(self,name,serviceArea,accountName):
+        self.browser.switchToTab("Baka")
+
+        # Write the user's name
+        nameFieldXPath = "//input[@id='username']"
+        nameField = self.browser.searchForElement(by=By.XPATH,value=nameFieldXPath,timeout=20,testClickable=True)
+        nameField.clear()
+        nameField.send_keys(name)
+        time.sleep(0.5)
+
+        # Select the Service Area
+        serviceAreaDropdownXPath = "//select[@id='service_area']"
+        serviceAreaDropdown = Select(self.browser.searchForElement(by=By.XPATH,value=serviceAreaDropdownXPath,timeout=20,testClickable=True))
+        serviceAreaDropdown.select_by_visible_text(serviceArea)
+        time.sleep(0.5)
+
+        # Select "yes" for adding to an existing account.
+        yesExistingAccountRadioButtonXPath = "//div[@id='new_activation_existing_account_div']//span[@class='form-radio-name'][normalize-space(text())='Yes']/parent::label"
+        yesExistingAccountRadioButton = self.browser.searchForElement(by=By.XPATH,value=yesExistingAccountRadioButtonXPath,timeout=20,testClickable=True)
+        yesExistingAccountRadioButton.click()
+        time.sleep(0.5)
+
+        # Select the existing account.
+        existingAccountDropdownXPath = "//select[@id='bell_account_existing']"
+        existingAccountDropdown = Select(self.browser.searchForElement(by=By.XPATH,value=existingAccountDropdownXPath,timeout=20,testClickable=True))
+        existingAccountDropdown.select_by_visible_text(accountName)
+        time.sleep(0.5)
+
+        # Click continue.
+        continueButtonXPath = "//button[@id='activation_submit']"
+        continueButton = self.browser.searchForElement(by=By.XPATH,value=continueButtonXPath,timeout=20,testClickable=True)
+        continueButton.click()
+        time.sleep(0.5)
+    def UpgradeConfig_ConfigureUpgrade(self,):
+        self.browser.switchToTab("Baka")
+
+        # First, click "yes" to "Is your current plan with Bell Mobility?"
+        withBellRadioXPath = "//label[@id='with_bell_label']"
+        withBellRadio = self.browser.searchForElement(by=By.XPATH,value=withBellRadioXPath,timeout=20,testClickable=True)
+        withBellRadio.click()
+        time.sleep(0.5)
+
+        # Now, click "yes" to "Is your current plan with Sysco Foods Canada?"
+        withSyscoRadioXPath = "//label[@id='upgrade_account_label']"
+        withSyscoRadio = self.browser.searchForElement(by=By.XPATH,value=withSyscoRadioXPath,timeout=20,testClickable=True)
+        withSyscoRadio.click()
+        time.sleep(0.5)
+
+        # Click "Keep current plan" under "Which plan do you want?"
+        keepCurrentPlanRadioXPath = "//label[@id='want_new_plan_no_label']"
+        keepCurrentPlanRadio = self.browser.searchForElement(by=By.XPATH,value=keepCurrentPlanRadioXPath,timeout=20,testClickable=True)
+        keepCurrentPlanRadio.click()
+
+        # Now we select that the existing line "does" have data
+        lineHasDataCheckboxXPath = "//label[@class='checkbox'][@for='has_data_yes']"
+
+
+
+
+    #endregion === Ordering ===
+
+
+
+br = Browser()
+baka = BakaDriver(br)
+baka.logInToBaka()
+baka.navToDeviceSelection()
+baka.DeviceSelection_StartDeviceOrder("Apple iPhone 13","Apple iPhone 13 128GB (Midnight)")
