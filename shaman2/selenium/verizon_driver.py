@@ -1096,7 +1096,7 @@ class VerizonDriver:
         self.ShoppingCart_ValidateSingleLine()
 
         # Then, click on "Manage features"
-        addFeaturesXPath = "//div[contains(@class,'dsc-features-actions')]//span[contains(text(),'Manage Features')]"
+        addFeaturesXPath = "//a[normalize-space(translate(text(),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'))='manage features']"
         addFeatures = self.browser.searchForElement(by=By.XPATH,value=addFeaturesXPath,timeout=10,testClickable=True)
         self.browser.safeClick(element=addFeatures,timeout=30)
 
