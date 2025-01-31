@@ -1097,8 +1097,7 @@ class VerizonDriver:
 
         # Then, click on "Manage features"
         addFeaturesXPath = "//a[normalize-space(translate(text(),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'))='manage features']"
-        addFeatures = self.browser.searchForElement(by=By.XPATH,value=addFeaturesXPath,timeout=10,testClickable=True)
-        self.browser.safeClick(element=addFeatures,timeout=30,scrollIntoView=True)
+        self.browser.safeClick(by=By.XPATH,value=addFeaturesXPath,timeout=60,scrollIntoView=True)
 
         # Finally, wait for Accessories screen to load.
         selectFeaturesHeaderXPath = "//h3[contains(text(),'Select features')]"
