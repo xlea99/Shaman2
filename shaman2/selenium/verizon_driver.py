@@ -509,8 +509,8 @@ class VerizonDriver:
                 if(existingClearCartPopup):
                     continue
                 else:
-                    # Click "clear cart".
-                    self.browser.safeClick(element=foundElement,scrollIntoView=True,timeout=10,jsClick=True)
+                    # Click "clear cart". If this fails, the element might have been found right before it disappeared.
+                    self.browser.safeClick(element=foundElement,scrollIntoView=True,timeout=5,jsClick=True,raiseError=False)
 
             time.sleep(1)
 
