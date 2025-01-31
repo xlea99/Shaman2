@@ -230,8 +230,8 @@ class BakaDriver:
 
 
 
-br = Browser()
-baka = BakaDriver(br)
-baka.logInToBaka()
-baka.navToDeviceSelection()
-baka.DeviceSelection_StartDeviceOrder("Apple iPhone 13","Apple iPhone 13 128GB (Midnight)")
+#br = Browser()
+#baka = BakaDriver(br)
+#baka.logInToBaka()
+#baka.navToDeviceSelection()
+#baka.DeviceSelection_StartDeviceOrder("Apple iPhone 13","Apple iPhone 13 128GB (Midnight)")
