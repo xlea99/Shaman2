@@ -684,6 +684,9 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
 
     # Validate and get the true plans/features, deviceID, and accessoryIDs for this orders.
     deviceID = validateDeviceID(workorder["DeviceID"],carrier=workorder["Carrier"])
+    if(not deviceID):
+        print(f"Cimpl WO {workorderNumber}: Can't complete WO, as no device could validate from this entry: '{workorder['DeviceID']}'")
+        return False
     validatedAccessories = validateAccessoryIDs(deviceID=deviceID,carrier=workorder["Carrier"],accessoryIDs=workorder["AccessoryIDs"])
     accessoryIDs = validatedAccessories["AccessoryIDs"]
     eyesafeAccessoryIDs = validatedAccessories["EyesafeAccessoryIDs"]
@@ -1156,10 +1159,11 @@ try:
     #processPostOrdersSCTASK(snowDriver=snow,verizonDriver=vzw,taskNumber=postProcessSCTASKs,useDriveSCTasks=False)
 
     # Manually log in to Verizon first, just to make life easier atm
-    #maintenance.validateVerizon(verizonDriver=vzw)
+    maintenance.validateVerizon(verizonDriver=vzw)
 
     # Cimpl processing
-    preProcessWOs = [50091,50092,50093]
+    preProcessWOs = [50340,50341,50342,50343,50344,50345,50346,50347,50348,50351,50356,50357,50358,50359,
+                     50360,50361,50362,50364,50365,50366]
     postProcessWOs = []
     for wo in preProcessWOs:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
