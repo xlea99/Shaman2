@@ -1054,7 +1054,8 @@ class VerizonDriver:
         allCartLines = self.browser.find_elements(by=By.XPATH,value=allCartLinesXPath)
         if(len(allCartLines) == 0):
             log.error("Attempted to validate a single line in the shopping cart, but found zero lines instead!")
-            return ActionResult(status=StatusCode.SUCCESS)
+            raise ValueError("Attempted to validate a single line in the shopping cart, but found zero lines instead!")
+            #return ActionResult(status=StatusCode.SUCCESS)
         elif(len(allCartLines) == 1):
             expandLineButtonXPath = f"{allCartLinesXPath}//div[contains(@class,'dsc-line-accordion-icon')]/i"
 
@@ -1066,7 +1067,8 @@ class VerizonDriver:
             return ActionResult(status=StatusCode.SUCCESS)
         else:
             log.error(f"Attempted to validate a single line in the shopping cart, but found {len(allCartLines)} lines instead!")
-            return ActionResult(status=StatusCode.SUCCESS)
+            raise ValueError(f"Attempted to validate a single line in the shopping cart, but found {len(allCartLines)} lines instead!")
+            #return ActionResult(status=StatusCode.SUCCESS)
     # From shopping cart, clicks back to add accessories to the given order. For use with upgrades,
     # which ATM bypass the accessory selection screen by default.
     @action()
