@@ -609,7 +609,7 @@ class Browser(webdriver.Chrome):
     # browser.safeClick(by=By.XPATH,value="//button",condition=lambda b: b.searchForElement(element=existingElement,invertedSearch=True)
     #
     # by -      Search method for the given element to click (By.XPATH, By.CSS_SELECTOR). Requires a value to be specified
-    # value -   Search term to search for using the method specified by "by" (a literal xpath or CSS selector) to click
+    # value -   Search term to search for using the method specified by "by" (a literal xpath or CSS selector) to click. Can be a list of elements.
     # element - An existing WebElement to attempt to click on. Can't use with by/value
     # timeout - How long to attempt to click for, at minimum. Defaults to zero to run exactly one click attempt.
     # successfulClickCondition -    A condition that will be tested AFTER a made click to determine whether it was considered "successful" or not.
@@ -622,7 +622,7 @@ class Browser(webdriver.Chrome):
     # testInterval -                Time interval to wait between element searches.
     # clickDelay -                  Time to wait between successive click attempts.
     # scrollIntoView -              Attempts to scroll the element into view before each click.
-    def safeClick(self,element : WebElement = None,by = None,value : str = None,timeout : float = 0,
+    def safeClick(self,element : WebElement = None,by = None,value : (str,list) = None,timeout : float = 0,
                   successfulClickCondition : Callable = None,prioritizeCondition = True, jsClick=False,raiseError=True,logging=True,scrollIntoView=False,
                   retryClicks = False,minClicks : int = 0,maxClicks : int = 10**10,testInterval=0.5,clickDelay=0):
         # Throw error if both a value and an element are given

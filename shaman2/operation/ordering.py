@@ -1162,7 +1162,7 @@ try:
     maintenance.validateVerizon(verizonDriver=vzw)
 
     # Cimpl processing
-    preProcessWOs = [50340,50341,50342,50343,50344,50345,50346,50347,50348,50351,50356,50357,50358,50359,
+    preProcessWOs = [50345,50346,50347,50348,50351,50356,50357,50358,50359,
                      50360,50361,50362,50364,50365,50366]
     postProcessWOs = []
     for wo in preProcessWOs:

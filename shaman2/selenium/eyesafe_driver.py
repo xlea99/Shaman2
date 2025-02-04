@@ -8,6 +8,7 @@ from shaman2.common.config import mainConfig
 from shaman2.common.paths import paths
 from shaman2.utilities.async_sound import playsoundAsync
 from shaman2.utilities import misc
+from shaman2.utilities.shaman_utils import convertStateFormat
 
 class EyesafeDriver:
 
@@ -227,7 +228,7 @@ class EyesafeDriver:
                 # Write State (just in case)
                 stateDropdownXPath = "//select[@id='provinceCodeInput']"
                 stateDropdown = Select(self.browser.searchForElement(by=By.XPATH, value=stateDropdownXPath, timeout=60, minSearchTime=5))
-                stateDropdown.select_by_visible_text(state.strip())
+                stateDropdown.select_by_visible_text(convertStateFormat(state,targetFormat="Name"))
                 commitField(timeout=3)
 
                 # Test that it actually wrote.

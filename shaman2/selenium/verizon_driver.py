@@ -1114,8 +1114,7 @@ class VerizonDriver:
         checkOutButtonXPaths = ["//div[@class='progress']//button[normalize-space(text())='Checkout']",
                                 "//div[contains(@class,'device-shopping-cart-content-right')]//button[normalize-space(text())='Checkout']",
                                 "//button[normalize-space(text())='Checkout']"]
-        checkOutButton = self.browser.searchForElement(by=By.XPATH,value=checkOutButtonXPaths,timeout=30,testClickable=True)
-        self.browser.safeClick(element=checkOutButton,timeout=30,scrollIntoView=True)
+        self.browser.safeClick(by=By.XPATH,value=checkOutButtonXPaths,timeout=60,scrollIntoView=True)
 
         # Test to ensure we've arrived at the checkout screen.
         checkoutHeaderXPath = "//div[@class='checkoutBox']//h1[text()='Checkout']"
