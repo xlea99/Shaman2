@@ -9,7 +9,7 @@ import os
 import re
 from shaman2.selenium.browser import Browser
 from shaman2.common.logger import log
-from shaman2.common.config import mainConfig
+from shaman2.common.config import mainConfig, jumpcloudOTP
 from shaman2.common.paths import paths
 from shaman2.data_storage.cimpl_storage import CimplWO
 from shaman2.utilities.async_sound import playsoundAsync
@@ -108,9 +108,14 @@ class CimplDriver:
                 if(jumpcloudProtectMFA):
                     jumpcloudProtectMFA.click()
 
-                # Prompt the user to fill in SSO
-                playsoundAsync(paths["media"] / "shaman_attention.mp3")
-                print("Please complete the MFA for JumpCloud to finish Cimpl login. You have 3 minutes remaining before the program crashes.")
+                # Prompt the user to fill in SSO, or fill in automatically if OTP code is specified.
+                if(jumpcloudOTP):
+                    otpInputXPath = "//div[@class='TotpInput__totpInputContainer']/input[1]"
+                    otpInput = self.browser.searchForElement(by=By.XPATH,value=otpInputXPath,timeout=10)
+                    otpInput.send_keys(jumpcloudOTP.now())
+                else:
+                    playsoundAsync(paths["media"] / "shaman_attention.mp3")
+                    print("Please complete the MFA for JumpCloud to finish Cimpl login. You have 3 minutes remaining before the program crashes.")
 
                 # Search for the tenantSelectionDropdown for 3 minutes, then click "Sysco"
                 tenantSelectionDropdownArrowXPath = "//label[normalize-space(text())='Tenant']/following-sibling::div//input[@class='tenantInput']/following-sibling::span/span[contains(@class,'select-icon')]"

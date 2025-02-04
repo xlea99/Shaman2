@@ -1111,7 +1111,9 @@ class VerizonDriver:
     # to check out screen.
     @action()
     def ShoppingCart_ContinueToCheckOut(self):
-        checkOutButtonXPaths = ["//div[@class='progress']//button[normalize-space(text())='Checkout']","//div[contains(@class,'device-shopping-cart-content-right')]//button[normalize-space(text())='Checkout']"]
+        checkOutButtonXPaths = ["//div[@class='progress']//button[normalize-space(text())='Checkout']",
+                                "//div[contains(@class,'device-shopping-cart-content-right')]//button[normalize-space(text())='Checkout']",
+                                "//button[normalize-space(text())='Checkout']"]
         checkOutButton = self.browser.searchForElement(by=By.XPATH,value=checkOutButtonXPaths,timeout=30,testClickable=True)
         self.browser.safeClick(element=checkOutButton,timeout=30,scrollIntoView=True)
 
@@ -1320,10 +1322,15 @@ class VerizonDriver:
         billToAccountButton = self.browser.searchForElement(by=By.XPATH,value=billToAccountButtonXPath,timeout=30,testClickable=True,scrollIntoView=True)
         self.browser.safeClick(element=billToAccountButton,timeout=30)
 
+        # Scroll to the bottom of the page to prevent lazy loading
+        time.sleep(1)
+        self.browser.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        time.sleep(1)
         # Click submit
         submitOrderButtonXPath = "//app-order-total//button[contains(text(),'Submit Order')]"
         submitOrderButton = self.browser.searchForElement(by=By.XPATH,value=submitOrderButtonXPath,timeout=120,testClickable=True)
-        self.browser.safeClick(element=submitOrderButton,timeout=120)
+
+        self.browser.safeClick(element=submitOrderButton,timeout=120,scrollIntoView=True)
 
         orderSummaryHeaderString = "//h2[text()='Order summary']"
         self.browser.searchForElement(by=By.XPATH,value=orderSummaryHeaderString,timeout=60,testClickable=True,testLiteralClick=True)
