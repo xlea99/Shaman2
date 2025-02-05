@@ -1050,20 +1050,36 @@ class VerizonDriver:
     # is currently expanded.
     @action()
     def ShoppingCart_ValidateSingleLine(self):
-        allCartLinesXPath = "//*[contains(@class,'dsc-line-list')]/*[@class='ng-star-inserted']"
-        allCartLines = self.browser.find_elements(by=By.XPATH,value=allCartLinesXPath)
-        if(len(allCartLines) == 0):
+        showLinesButtonXPath = "//div[@class='show-hide-accordion']//div[starts-with(normalize-space(translate(text(),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')),'show lines')]"
+        isShowLinesButtonOpenXPath = f"{showLinesButtonXPath}/parent::div//i[contains(@class,'icon-up-caret')]"
+        allCartLinesXPath1 = "//*[contains(@class,'dsc-line-list')]/*[@class='ng-star-inserted']"
+        allCartLinesXPath2 = "//app-line-group//span[starts-with(normalize-space(@class),'line-name')]"
+
+        # First, if the "show lines button" exists, make sure its open.
+        showLinesButton = self.browser.searchForElements(by=By.XPATH,value=showLinesButtonXPath,timeout=10)
+        if(showLinesButton):
+            # Test to make sure there's not multiple show line buttons..
+            if(len(showLinesButton) > 1):
+                log.error("Attempted to validate a single line in the shopping cart, but found multiple instead!")
+                raise ValueError("Attempted to validate a single line in the shopping cart, but found multiple instead!")
+            # Test if it's already open.
+            isShowLinesButtonOpen = self.browser.searchForElement(by=By.XPATH,value=isShowLinesButtonOpenXPath,timeout=3)
+            if(not isShowLinesButtonOpen):
+                showLinesButton[0].click()
+        # Get a list of all line elements in the cart.
+        allCartLines = self.browser.searchForElements(by=By.XPATH,value=[allCartLinesXPath2,allCartLinesXPath1],timeout=15)
+        if(not allCartLines):
             log.error("Attempted to validate a single line in the shopping cart, but found zero lines instead!")
             raise ValueError("Attempted to validate a single line in the shopping cart, but found zero lines instead!")
             #return ActionResult(status=StatusCode.SUCCESS)
         elif(len(allCartLines) == 1):
-            expandLineButtonXPath = f"{allCartLinesXPath}//div[contains(@class,'dsc-line-accordion-icon')]/i"
+            expandLineButtonXPath = f"{allCartLinesXPath2}/parent::div/following-sibling::div[@class='right-wrap']/i"
 
             # Test to make sure the line is expanded
-            closedExpandLineButton = self.browser.searchForElement(by=By.XPATH,value=f"{expandLineButtonXPath}[contains(@class,'icon-plus')]",timeout=1.5)
+            closedExpandLineButton = self.browser.searchForElement(by=By.XPATH,value=f"{expandLineButtonXPath}[contains(@class,'icon-down-caret')]",timeout=1.5)
             if(closedExpandLineButton):
-                self.browser.safeClick(element=closedExpandLineButton,timeout=5,
-                                       successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=f"{expandLineButtonXPath}[contains(@class,'icon-minus')]"))
+                self.browser.safeClick(element=closedExpandLineButton,timeout=15,
+                                       successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=f"{expandLineButtonXPath}[contains(@class,'icon-up-caret')]"))
             return ActionResult(status=StatusCode.SUCCESS)
         else:
             log.error(f"Attempted to validate a single line in the shopping cart, but found {len(allCartLines)} lines instead!")

@@ -1162,8 +1162,10 @@ try:
     maintenance.validateVerizon(verizonDriver=vzw)
 
     # Cimpl processing
-    preProcessWOs = [50345,50346,50347,50348,50351,50356,50357,50358,50359,
-                     50360,50361,50362,50364,50365,50366]
+    preProcessWOs = [50366,50367,50368,50370,50381,50372,50372,50374,50375,50376,50377,50378,50379,50380,
+                     50381,50382,50383,50384,50385,50386,50387,50388,50389,50390,50391,50392,50393,50394,50396,50396,
+                     50397,50398,50399,50400,50401,50402,50404,50405,50406,50407,50408,50409,50410,50411,50413,50414,
+                     50415,50416,50417,50419,50421,50422,50425,50426,50427,50430]
     postProcessWOs = []
     for wo in preProcessWOs:
         processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
