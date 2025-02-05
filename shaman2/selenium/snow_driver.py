@@ -78,25 +78,34 @@ class SnowDriver:
     def navToFavoritesMenuOption(self,option : str):
         self.browser.switchToTab("Snow")
 
-        favoritesTabCSS = "[id$='b682fe1c3133010cbd77096e940dd18']"
-        favoritesTab = self.browser.searchForElement(by=By.CSS_SELECTOR,value=favoritesTabCSS,timeout=10,
-                                                                     shadowRootStack=[{"by": By.XPATH,"value": "//*[@global-navigation-config]"},
-                                                                                      {"by": By.CSS_SELECTOR,"value": "sn-polaris-layout"},
-                                                                                      {"by": By.CSS_SELECTOR,"value": "sn-polaris-header"}],
-                                                                     extraElementTests=[lambda el: el.get_attribute("aria-label") == "Favorites"])
-        favoritesTab.click()
-        naturalPause()
+        # This functionality is prone to weirdness - have it deliberately try to correct itself in case the favorites
+        # menu closes itself.
+        for i in range(5):
+            favoritesTabCSS = "[id$='b682fe1c3133010cbd77096e940dd18']"
+            favoritesTab = self.browser.searchForElement(by=By.CSS_SELECTOR,value=favoritesTabCSS,timeout=10,
+                                                                         shadowRootStack=[{"by": By.XPATH,"value": "//*[@global-navigation-config]"},
+                                                                                          {"by": By.CSS_SELECTOR,"value": "sn-polaris-layout"},
+                                                                                          {"by": By.CSS_SELECTOR,"value": "sn-polaris-header"}],
+                                                                         extraElementTests=[lambda el: el.get_attribute("aria-label") == "Favorites"])
+            favoritesTab.click()
+            naturalPause()
 
-        favoritesMenuItemCSS = ".label"
-        favoritesMenuItem = self.browser.searchForElement(by=By.CSS_SELECTOR,value=favoritesMenuItemCSS,timeout=10,
-                                                                     shadowRootStack=[{"by": By.XPATH,"value": "//*[@global-navigation-config]"},
-                                                                                      {"by": By.CSS_SELECTOR,"value": "sn-polaris-layout"},
-                                                                                      {"by": By.CSS_SELECTOR,"value": "sn-polaris-header"},
-                                                                                      {"by": By.CSS_SELECTOR,"value": "sn-polaris-menu.can-animate","extraElementTests": [lambda el: el.get_attribute("aria-label").strip() == "Unpinned Favorites menu"]},
-                                                                                      {"by": By.CSS_SELECTOR,"value": "sn-collapsible-list","withSubElement": {"by": By.CSS_SELECTOR,"value": ".label", "extraElementTests": [lambda el: el.text.strip() == option]}}],
-                                                                     extraElementTests=[lambda el: el.text.strip() == option],raiseError=True)
-        favoritesMenuItem.click()
-        naturalPause()
+            favoritesMenuItemCSS = ".label"
+            favoritesMenuItem = self.browser.searchForElement(by=By.CSS_SELECTOR,value=favoritesMenuItemCSS,timeout=10,
+                                                                         shadowRootStack=[{"by": By.XPATH,"value": "//*[@global-navigation-config]"},
+                                                                                          {"by": By.CSS_SELECTOR,"value": "sn-polaris-layout"},
+                                                                                          {"by": By.CSS_SELECTOR,"value": "sn-polaris-header"},
+                                                                                          {"by": By.CSS_SELECTOR,"value": "sn-polaris-menu.can-animate","extraElementTests": [lambda el: el.get_attribute("aria-label").strip() == "Unpinned Favorites menu"]},
+                                                                                          {"by": By.CSS_SELECTOR,"value": "sn-collapsible-list","withSubElement": {"by": By.CSS_SELECTOR,"value": ".label", "extraElementTests": [lambda el: el.text.strip() == option]}}],
+                                                                         extraElementTests=[lambda el: el.text.strip() == option])
+
+            # If the menu didn't open for some reason, try the whole thing again
+            if(not(favoritesMenuItem)):
+                time.sleep(1)
+            else:
+                favoritesMenuItem.click()
+                naturalPause()
+                break
 
     # Nav method to pull up a specific request number.
     def navToRequest(self,requestNumber : str):
