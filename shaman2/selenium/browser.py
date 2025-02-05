@@ -550,16 +550,26 @@ class Browser(webdriver.Chrome):
 
     # Similar, but much simpler searchForElements which searches for multiple elements at once and is only concerned
     # with the amount of elements returned.
-    def searchForElements(self, by, value, timeout : float = 0, minSearchTime : float = 0,
-                          invertedSearch = False, raiseError = False, pollInterval = 0.1):
+    def searchForElements(self, by, value : (str,list), timeout : float = 0, minSearchTime : float = 0,
+                          invertedSearch = False, raiseError = False, pollInterval = 0.1,debug=False):
+        # Convert value to a identifierList for standardized processing.
+        if (type(value) is str or value is None):
+            identifierList = [value]
+        else:
+            identifierList = value
+
         minTestTime = time.time() + minSearchTime
         endTestTime = time.time() + timeout
         searchAttempt = 0
         searchSuccessful = False
+        nextIdentifier = None
         while (searchAttempt < 1 or time.time() < endTestTime):
             searchAttempt += 1
-            # Try to find elements
-            targetElements = self.find_elements(by=by, value=value)
+            # Try to find the next targeted element.
+            nextIdentifier = identifierList[(searchAttempt-1) % len(identifierList)]
+            if(debug):
+                log.debug(f"Attempting selenium find_elements for next identifier: {nextIdentifier}")
+            targetElements = self.find_elements(by=by, value=nextIdentifier)
 
             # Do this if no elements are present in the return.
             if(len(targetElements) == 0):
