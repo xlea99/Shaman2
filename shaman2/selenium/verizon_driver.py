@@ -1360,10 +1360,3 @@ class VerizonDriver:
 
     #endregion === Device Ordering ===
 
-
-br = Browser()
-v = VerizonDriver(br)
-v.logInToVerizon()
-v.navToOrderViewer()
-v.pullUpLine("8586639395")
-v.LineViewer_UpgradeLine()
