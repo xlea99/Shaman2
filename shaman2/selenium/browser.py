@@ -1,4 +1,3 @@
-from selenium import webdriver
 import selenium.common.exceptions
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
@@ -13,43 +12,29 @@ from shaman2.common.paths import paths
 from shaman2.common.config import mainConfig
 import datetime
 import setuptools
-import undetected_chromedriver
+import undetected_chromedriver as uc
 
 
-class Browser(undetected_chromedriver.Chrome):
+class Browser(uc.Chrome):
 
-    # Init method initializes members of class, and opensBrowser if true.
+    # Init method for building the driver itself.
     def __init__(self):
-        # Setup browserOptions
-        self.__browserOptions = None
-        self.__setupBrowserOptions()
+        chromeOptions = uc.ChromeOptions()
+        chromeOptions.add_argument("--disable-popup-blocking")
 
-        # Build the actual Browser
-        super().__init__(headless=False,options=self.__browserOptions)
+        # Build the actual Browser (headless=False just as an example; you can switch if desired)
+        super().__init__(headless=False, options=self.__browserOptions)
 
-        # Initialize some member variables
+        # Initialize member variables
         self.tabs = {}
         self.popupTabs = {}
         self.currentTab = None
         self.currentTabIsPopup = False
+
         self.tabs["Base"] = self.window_handles[0]
         self.currentTab = "Base"
 
         log.debug("Finished init for Browser object.")
-
-    # Sets up, and returns, a hardened BrowserOptions object for use with the Browser.
-    def __setupBrowserOptions(self):
-        # Create a chrome options and set needed options
-        chromeOptions = webdriver.ChromeOptions()
-        chromeOptions.add_argument(f"--user-data-dir={mainConfig['authentication']['chromeProfilePath']}")
-        chromeOptions.add_argument("--profile-directory=Default")  # Use an actual user profile
-        chromeOptions.add_argument("--disable-popup-blocking")
-
-        # Prevent debugging port (this is a key CDP trigger)
-        chromeOptions.add_argument("--remote-debugging-port=0")
-
-        # Sets the Browser object's options to our result.
-        self.__browserOptions = chromeOptions
 
     #region === Tab Management ===
 
@@ -721,3 +706,7 @@ class wait_for_element_scrolled_in_viewport(object):
                 rect.right <= (window.innerWidth || document.documentElement.clientWidth)
             );
         """, self.element)
+
+
+b = Browser()
+b.get("https://fv.pro/check-privacy/general")
