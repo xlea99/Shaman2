@@ -1,170 +1,41 @@
-from selenium import webdriver
 import selenium.common.exceptions
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.remote.webelement import WebElement
 import time
 from typing import Callable
 from urllib.parse import urlparse
 from shaman2.common.logger import log
 from shaman2.common.paths import paths
+from shaman2.common.config import mainConfig
 import datetime
-import os
-import zipfile
-import requests
-from win32api import GetFileVersionInfo, LOWORD, HIWORD
+import setuptools
+import undetected_chromedriver as uc
 
 
-class Browser(webdriver.Chrome):
+class Browser(uc.Chrome):
 
-    # Init method initializes members of class, and opensBrowser if true.
+    # Init method for building the driver itself.
     def __init__(self):
-        # Get the user's current chrome version
-        self.userChromeVersion = None
-        self.__getUserChromeVersion()
+        # Setup simple options.
+        chromeOptions = uc.ChromeOptions()
+        chromeOptions.add_argument("--disable-popup-blocking")
 
-        # Sets up the chromedriver path, managing version downloading.
-        self.chromeDriverPath = None
-        self.__setupChromeDriver()
+        # Build the actual Browser (headless=False just as an example; you can switch if desired)
+        super().__init__(headless=False, options=chromeOptions)
 
-        # Setup browserOptions
-        self.__browserOptions = None
-        self.__setupBrowserOptions()
-
-        # Initialize the browser Service using the webdriver path
-        self.__service = Service(self.chromeDriverPath)
-
-        # Build the actual Browser
-        super().__init__(service=self.__service, options=self.__browserOptions)
-
-        # Initialize some member variables
+        # Initialize member variables
         self.tabs = {}
         self.popupTabs = {}
         self.currentTab = None
         self.currentTabIsPopup = False
+
         self.tabs["Base"] = self.window_handles[0]
         self.currentTab = "Base"
 
         log.debug("Finished init for Browser object.")
-
-    # Sets up, and returns, a hardened BrowserOptions object for use with the Browser.
-    def __setupBrowserOptions(self):
-        # Create a chrome options and set needed options
-        chromeOptions = webdriver.ChromeOptions()
-        chromeOptions.add_experimental_option("prefs", {
-            "download.default_directory": str(paths["downloads"]),
-            "download.prompt_for_download": False,
-            "download.directory_upgrade": True,
-            "safebrowsing.enabled": True
-        })
-
-        # Suppress WebDriver-related automation flags
-        chromeOptions.add_experimental_option("excludeSwitches", ["enable-automation"])
-        chromeOptions.add_experimental_option("useAutomationExtension", False)
-
-        # Set a realistic User-Agent to avoid default Selenium identifier
-        chromeOptions.add_argument(
-            "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
-        )
-
-        # Disable logging to reduce noise (optional but helpful)
-        chromeOptions.add_argument("--log-level=3")
-
-        # Enable a full windowed browser experience
-        chromeOptions.add_argument("--start-maximized")
-
-        # Disable headless mode detection (if used)
-        chromeOptions.add_argument("--disable-blink-features=AutomationControlled")
-
-        # Enable consistent browser fingerprinting
-        chromeOptions.add_argument("--disable-extensions")
-        chromeOptions.add_argument("--disable-popup-blocking")
-        chromeOptions.add_argument("--profile-directory=Default")
-
-        # TODO chromeOptions.add_argument("--user-data-dir=/path/to/your/custom/profile")  # Optional: mimics a logged-in user
-
-        # Disable the WebRTC leak to hide local IP
-        chromeOptions.add_argument("--disable-webrtc")
-
-        # Disable password manager prompts
-        chromeOptions.add_argument("--disable-save-password-bubble")
-
-        # Sets the Browser object's options to our result.
-        self.__browserOptions = chromeOptions
-
-    # This method simply gets the Chrome version that the user currently has installed
-    def __getUserChromeVersion(self):
-        chromePath1 = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
-        chromePath2 = r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"
-        if (os.path.exists(chromePath1)):
-            userChromePath = chromePath1
-        elif (os.path.exists(chromePath2)):
-            userChromePath = chromePath2
-        else:
-            error = FileNotFoundError("Chrome not found in standard installation paths.")
-            raise error
-
-        try:
-            # Get version info from the executable
-            info = GetFileVersionInfo(userChromePath, "\\")
-            ms = info['FileVersionMS']
-            ls = info['FileVersionLS']
-            version = f"{HIWORD(ms)}.{LOWORD(ms)}.{HIWORD(ls)}.{LOWORD(ls)}"
-            self.userChromeVersion = version
-        except Exception as e:
-            raise ValueError(f"Could not fetch Chrome version from '{userChromePath}', with this error:\n\n{e}")
-
-    # This method, given that local class variable self.userChromeVersion is found, downloads the latest
-    # chromedriver version for that given version if it doesn't already exist in bin.
-    def __setupChromeDriver(self):
-        if(self.userChromeVersion is None):
-            error = ValueError(f"Trying to download ChromeDriver without userChromeVersion found!")
-            log.error(error)
-            raise error
-        else:
-            # First, make sure the install folder exists
-            installFolder = paths["chromedriver"] / self.userChromeVersion
-            if(not os.path.exists(installFolder)):
-                os.mkdir(installFolder)
-            os.chmod(installFolder, 0o777)
-
-            # Check that we haven't already downloaded a chromedriver for this version of chrome.
-            targetChromedriverInstallPath = installFolder / "chromedriver.exe"
-            if(os.path.exists(targetChromedriverInstallPath)):
-                return True
-            else:
-                # Check that .zip exists for this version
-                chromeDriverURL = f"https://storage.googleapis.com/chrome-for-testing-public/{self.userChromeVersion}/win64/chromedriver-win64.zip"
-                headResponse = requests.head(chromeDriverURL)
-                if(headResponse.status_code == 200):
-                    # If it does, download it to our install folder.
-                    fileResponse = requests.get(chromeDriverURL)
-                    zipPath = installFolder / f"chromedriver_{self.userChromeVersion}.zip"
-                    with open(zipPath, "wb") as f:
-                        for chunk in fileResponse.iter_content(chunk_size=8192):
-                            f.write(chunk)
-                        log.info(f"Downloaded new chromedriver.zip version ({self.userChromeVersion})")
-                    time.sleep(1)
-                    os.chmod(zipPath,0o777)
-
-                    # Extract chromedriver.exe
-                    with zipfile.ZipFile(installFolder / f"chromedriver_{self.userChromeVersion}.zip","r") as zipRef:
-                        zipRef.extractall(installFolder)
-
-                    # Clean up the zip file
-                    os.remove(installFolder / f"chromedriver_{self.userChromeVersion}.zip")
-
-                    # Set the new chromedriver path.
-                    self.chromeDriverPath = installFolder / "chromedriver-win64/chromedriver.exe"
-
-                # Otherwise, raise error - will likely require manual intervention
-                else:
-                    error = FileNotFoundError(f"ChromeDriverAPI returned non 200 status code: '{headResponse.status_code}'")
-                    log.error(error)
-                    raise error
 
     #region === Tab Management ===
 
@@ -836,3 +707,7 @@ class wait_for_element_scrolled_in_viewport(object):
                 rect.right <= (window.innerWidth || document.documentElement.clientWidth)
             );
         """, self.element)
+
+
+b = Browser()
+b.get("https://fv.pro/check-privacy/general")

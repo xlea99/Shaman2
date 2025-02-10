@@ -1,5 +1,7 @@
 import re
 from datetime import datetime
+
+import selenium.common.exceptions
 from selenium.webdriver.common.by import By
 from shaman2.selenium.browser import Browser
 from shaman2.selenium.baka_driver import BakaDriver
@@ -1162,20 +1164,22 @@ try:
     maintenance.validateVerizon(verizonDriver=vzw)
 
     # Cimpl processing
-    preProcessWOs = [50392,50393,50394,50396,50396,
-                     50397,50398,50399,50400,50401,50402,50404,50405,50406,50407,50408,50409,50410,50411,50413,50414,
-                     50415,50416,50417,50419,50421,50422,50425,50426,50427,50430]
+    preProcessWOs = [50390,50394,50395,50408,50409,50410,50411,50421,50425,50426,50427,50430,50431,50433,50434,
+                     50435,50437,50438,50440,50441,50442,50443,50444,50445,50446]
     postProcessWOs = []
-    for wo in preProcessWOs:
-        processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
-                              workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D",reviewMode=False)
     for wo in postProcessWOs:
         processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,uplandOutlookDriver=uplandOutlook,sysOrdBoxOutlookDriver=sysOrdBoxOutlook,
                               workorderNumber=wo)
+    for wo in preProcessWOs:
+        processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
+                              workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D",reviewMode=False)
 
 except Exception as e:
     playsoundAsync(paths["media"] / "shaman_error.mp3")
     raise e
+
+
+
 
 
 # TEMPLATES
