@@ -1162,6 +1162,9 @@ try:
 
     # Manually log in to Verizon first, just to make life easier atm
     maintenance.validateVerizon(verizonDriver=vzw)
+    maintenance.validateCimpl(cimplDriver=cimpl)
+    playsoundAsync(paths['media'] / "shaman_attention.mp3")
+    input("Please turn off Zscaler before continuing, friend.")
 
     # Cimpl processing
     preProcessWOs = [50390,50394,50395,50408,50409,50410,50411,50421,50425,50426,50427,50430,50431,50433,50434,

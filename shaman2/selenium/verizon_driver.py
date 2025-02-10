@@ -55,6 +55,7 @@ class VerizonDriver:
                     log.warning("User cancelled manual login process.")
                     return ActionResult(status=StatusCode.USER_ABORT)
                 log.info("User finished manual login process.")
+                return ActionResult(status=StatusCode.SUCCESS)
             else:
                 # Build the map of possible login pages.
                 usernameFieldXPath = "//input[@id='pwdUserID']"
@@ -776,14 +777,25 @@ class VerizonDriver:
     # Method to continue to the next page after the plan selection.
     @action()
     def PlanSelection_Continue(self):
-        continueButtonString = "//div/div/button[@id='stickybutton'][contains(text(),'Continue')]"
-        continueButton = self.browser.searchForElement(by=By.XPATH,value=continueButtonString,timeout=60)
-        self.browser.scrollIntoView(continueButton)
-        self.browser.safeClick(element=continueButton,timeout=60)
+        successfullySelectedPlan = False
+        # The plan selection is sometimes prone to fuckery - resolve that here.
+        for i in range(5):
+            continueButtonString = "//div/div/button[@id='stickybutton'][contains(text(),'Continue')]"
+            continueButton = self.browser.searchForElement(by=By.XPATH,value=continueButtonString,timeout=60)
+            self.browser.scrollIntoView(continueButton)
+            self.browser.safeClick(element=continueButton,timeout=60)
 
-        # We wait until the device protection header is found, meaning we went to the next page.
-        testResult = self.browser.searchForElement(by=By.XPATH,value=self.deviceProtectionHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True,raiseError=True)
-        if (testResult):
+            # We wait until the device protection header is found, meaning we went to the next page.
+            testResult = self.browser.searchForElement(by=By.XPATH,value=self.deviceProtectionHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True,raiseError=True)
+            if (testResult):
+                successfullySelectedPlan = True
+                break
+            else:
+                self.browser.refresh()
+                time.sleep(5)
+                continue
+
+        if(successfullySelectedPlan):
             return ActionResult(status=StatusCode.SUCCESS)
         else:
             return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
