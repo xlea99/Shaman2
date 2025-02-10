@@ -558,6 +558,7 @@ class VerizonDriver:
             clickResult = self.browser.safeClick(by=By.XPATH,value=targetDeviceOpenButtonXPath, timeout=10,scrollIntoView=True,raiseError=False)
 
             if(clickResult):
+                print("FANTASTIC!")
                 # Test for device details to confirm device has been successfully pulled up.
                 return True if self.browser.searchForElement(by=By.XPATH, value=deviceDetailsXPath, timeout=30, minSearchTime=3,
                                               testClickable=True, testLiteralClick=True) else False
