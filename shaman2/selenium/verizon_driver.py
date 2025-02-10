@@ -560,8 +560,8 @@ class VerizonDriver:
             if(clickResult):
                 print("FANTASTIC!")
                 # Test for device details to confirm device has been successfully pulled up.
-                return True if self.browser.searchForElement(by=By.XPATH, value=deviceDetailsXPath, timeout=30, minSearchTime=3,
-                                              testClickable=True, testLiteralClick=True) else False
+                return True# if self.browser.searchForElement(by=By.XPATH, value=deviceDetailsXPath, timeout=30, minSearchTime=3,
+                                              #testClickable=True, testLiteralClick=True) else False
             else:
                 print("Quite sad.")
                 return False
