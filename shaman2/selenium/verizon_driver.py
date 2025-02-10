@@ -55,6 +55,7 @@ class VerizonDriver:
                     log.warning("User cancelled manual login process.")
                     return ActionResult(status=StatusCode.USER_ABORT)
                 log.info("User finished manual login process.")
+                return ActionResult(status=StatusCode.SUCCESS)
             else:
                 # Build the map of possible login pages.
                 usernameFieldXPath = "//input[@id='pwdUserID']"

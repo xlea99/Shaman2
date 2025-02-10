@@ -9,7 +9,6 @@ from typing import Callable
 from urllib.parse import urlparse
 from shaman2.common.logger import log
 from shaman2.common.paths import paths
-from shaman2.common.config import mainConfig
 import datetime
 import setuptools
 import undetected_chromedriver as uc
@@ -707,7 +706,3 @@ class wait_for_element_scrolled_in_viewport(object):
                 rect.right <= (window.innerWidth || document.documentElement.clientWidth)
             );
         """, self.element)
-
-
-b = Browser()
-b.get("https://fv.pro/check-privacy/general")
