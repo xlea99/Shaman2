@@ -19,11 +19,12 @@ class Browser(uc.Chrome):
 
     # Init method for building the driver itself.
     def __init__(self):
+        # Setup simple options.
         chromeOptions = uc.ChromeOptions()
         chromeOptions.add_argument("--disable-popup-blocking")
 
         # Build the actual Browser (headless=False just as an example; you can switch if desired)
-        super().__init__(headless=False, options=self.__browserOptions)
+        super().__init__(headless=False, options=chromeOptions)
 
         # Initialize member variables
         self.tabs = {}
