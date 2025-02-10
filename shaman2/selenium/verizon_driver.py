@@ -12,6 +12,7 @@ from shaman2.utilities.shaman_utils import convertServiceIDFormat,normalizeName,
 from shaman2.utilities.action_handler import action,ActionResult,StatusCode
 from shaman2.network.sheets_sync import syscoData
 
+
 class VerizonDriver:
 
     # An already created browserObject must be hooked into the VerizonDriver to work.
@@ -525,13 +526,11 @@ class VerizonDriver:
     # TODO this function is getting quite slow, which is pretty first world problem esque, but still
     @action()
     def DeviceSelection_SearchSelectDevice(self,deviceID,orderPath="NewInstall",searchAttempts = 3):
+        targetDeviceCardXPath = f"//div/div[contains(@class,'device-name')][normalize-space(text())='{syscoData["Devices"][deviceID]["Verizon Wireless New Install Card Name"]}']"
+        targetDeviceOpenButtonXPath = f"{targetDeviceCardXPath}/following-sibling::div//button[contains(@class,'quick-view-btn')]"
         if(orderPath == "NewInstall"):
-            targetDeviceCardXPath = f"//div/div[contains(@class,'device-name')][normalize-space(text())='{syscoData["Devices"][deviceID]["Verizon Wireless New Install Card Name"]}']"
-            targetDeviceOpenButtonXPath = f"{targetDeviceCardXPath}/following-sibling::div/div[@class='quick-view']/button"
-            deviceDetailsXPath = f"//div[contains(@class,'pdp-header-section')]/div[contains(@class,'left-top-details')]/div[contains(text(),'{syscoData["Devices"][deviceID]["Verizon Wireless New Install Card Name"]}')]"
+            deviceDetailsXPath = f"//div[contains(@class,'pdp-header-section')]//div[normalize-space(text())='{syscoData["Devices"][deviceID]["Verizon Wireless New Install Card Name"]}']"
         else:
-            targetDeviceCardXPath = f"//div/div[contains(@class,'device-title')][text()='{syscoData["Devices"][deviceID]["Verizon Wireless Upgrade Card Name"]}']"
-            targetDeviceOpenButtonXPath = targetDeviceCardXPath
             deviceDetailsXPath = f"//div[contains(@class,'pdp-header-section')]//div[normalize-space(text())='{syscoData["Devices"][deviceID]["Verizon Wireless Upgrade Card Name"]}']"
         shopDevicesHeaderXPath = "//h2[contains(text(),'Shop Devices')]"
 
@@ -541,7 +540,7 @@ class VerizonDriver:
         # Helper method to search for a device one time, and wait until (roughly) the loading screen is gone.
         def searchDevice(clearFilters=False):
             if(clearFilters):
-                clearFiltersButtonXPath = "//div[contains(@class,'filter-badges')]/a[contains(text(),'Clear all')]"
+                clearFiltersButtonXPath = "//*[normalize-space(text())='Clear all']"
                 clearFiltersButton = self.browser.searchForElement(by=By.XPATH,value=clearFiltersButtonXPath,timeout=60,testClickable=True)
                 self.browser.safeClick(element=clearFiltersButton,timeout=60,scrollIntoView=True)
 
@@ -1362,3 +1361,9 @@ class VerizonDriver:
     #endregion === Device Ordering ===
 
 
+br = Browser()
+v = VerizonDriver(br)
+v.logInToVerizon()
+v.navToOrderViewer()
+v.pullUpLine("8586639395")
+v.LineViewer_UpgradeLine()
