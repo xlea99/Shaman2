@@ -1177,8 +1177,7 @@ class VerizonDriver:
         addNewAddressButtonXPath = "//div[contains(@class,'new-address')]"
         editShippingAddressButtonXPath = "//div[contains(@class,'edit-btn')]"
 
-        addEditShippingButton = self.browser.searchForElement(by=By.XPATH,value=[addNewAddressButtonXPath,editShippingAddressButtonXPath],timeout=30)
-        self.browser.safeClick(element=addEditShippingButton,timeout=30,retryClicks=True,clickDelay=3,scrollIntoView=True,
+        self.browser.safeClick(by=By.XPATH,value=[addNewAddressButtonXPath,editShippingAddressButtonXPath],timeout=30,retryClicks=True,clickDelay=3,scrollIntoView=True,
                                successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=companyFieldXPath,testClickable=True))
 
         # Write company name

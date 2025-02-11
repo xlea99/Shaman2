@@ -1160,15 +1160,17 @@ try:
                               taskNumber=task,assignTo="Alex Somheil",reviewMode=False)
     #processPostOrdersSCTASK(snowDriver=snow,verizonDriver=vzw,taskNumber=postProcessSCTASKs,useDriveSCTasks=False)
 
-    # Manually log in to Verizon first, just to make life easier atm
-    maintenance.validateVerizon(verizonDriver=vzw)
+
     maintenance.validateCimpl(cimplDriver=cimpl)
     playsoundAsync(paths['media'] / "shaman_attention.mp3")
     input("Please turn off Zscaler before continuing, friend.")
 
+    # Manually log in to Verizon first, just to make life easier atm
+    maintenance.validateVerizon(verizonDriver=vzw)
+
     # Cimpl processing
-    preProcessWOs = [50390,50394,50395,50408,50409,50410,50411,50421,50425,50426,50427,50430,50431,50433,50434,
-                     50435,50437,50438,50440,50441,50442,50443,50444,50445,50446]
+    preProcessWOs = [50440,50441,50442,50443,50444,50445,50446,50447,50448,50449,50450,50451,50452,50453,50454,50455,
+                     50456,50457,50458,50460,50463,50464,50465,50466]
     postProcessWOs = []
     for wo in postProcessWOs:
         processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,uplandOutlookDriver=uplandOutlook,sysOrdBoxOutlookDriver=sysOrdBoxOutlook,
@@ -1180,7 +1182,6 @@ try:
 except Exception as e:
     playsoundAsync(paths["media"] / "shaman_error.mp3")
     raise e
-
 
 
 
