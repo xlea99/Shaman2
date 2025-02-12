@@ -602,16 +602,13 @@ class VerizonDriver:
     def DeviceSelection_DeviceView_Select2YearContract(self,orderPath="NewInstall"):
         if(orderPath == "NewInstall"):
             yearlyContractXPath = "//div[contains(@class,'payment-option-each')]/div[contains(text(),'Yearly contract')]/parent::div"
-            yearlyContractSelection = self.browser.searchForElement(by=By.XPATH,value=yearlyContractXPath,timeout=15,testClickable=True)
-            self.browser.safeClick(element=yearlyContractSelection,timeout=60,scrollIntoView=True)
+            self.browser.safeClick(by=By.XPATH,value=yearlyContractXPath,timeout=60,scrollIntoView=True)
 
             twoYearContractSelectionXPath = "//div/ul/li/div[contains(text(),'2 Year Contract Required')]/parent::li"
-            twoYearContractSelection = self.browser.searchForElement(by=By.XPATH,value=twoYearContractSelectionXPath,timeout=15,testClickable=True)
-            self.browser.safeClick(element=twoYearContractSelection,timeout=60,scrollIntoView=True)
+            self.browser.safeClick(by=By.XPATH,value=twoYearContractSelectionXPath,timeout=60,scrollIntoView=True)
         else:
             twoYearContractXPath = "//div[contains(@class,'payment-option-each')]//div[contains(text(),'2 year contract')]"
-            twoYearContractSelection = self.browser.searchForElement(by=By.XPATH,value=twoYearContractXPath,timeout=15,testClickable=True,raiseError=True)
-            self.browser.safeClick(element=twoYearContractSelection,timeout=60,scrollIntoView=True)
+            self.browser.safeClick(by=By.XPATH,value=twoYearContractXPath,timeout=60,scrollIntoView=True)
         return ActionResult(status=StatusCode.SUCCESS)
     @action()
     def DeviceSelection_DeviceView_DeclineDeviceProtection(self):

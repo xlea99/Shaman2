@@ -818,6 +818,7 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
         #TODO temporarily disabled
         with open(paths["root"] / "eyesafe_wos_to_place.txt", "a") as f:
             f.write(str(workorderNumber))
+            print(f"ALERT!! ALERT!! EYESAFE ORDER WO: {workorderNumber}")
         '''if(workorder["OperationType"] == "New Request"):
             eyesafePhoneNumberFieldEntry = workorder['UserNetID']
         elif(workorder["OperationType"] == "Upgrade"):
