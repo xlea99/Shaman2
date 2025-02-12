@@ -672,8 +672,7 @@ class VerizonDriver:
     def DeviceSelection_DeviceView_AddToCartAndContinue(self,orderPath="NewInstall"):
         if(orderPath == "NewInstall"):
             addToCartButtonXPath = "//button[@id='device-add-to-cart']"
-            addToCartButton = self.browser.searchForElement(by=By.XPATH,value=addToCartButtonXPath,timeout=10,testClickable=True)
-            addToCartButton.click()
+            self.browser.safeClick(by=By.XPATH,value=addToCartButtonXPath,timeout=30)
 
             # Wait for header confirming device added
             deviceAddedToCartXPath = "//div[contains(text(),'Your new device has been added to your cart.')]"
@@ -914,7 +913,7 @@ class VerizonDriver:
     def NumberSelection_NavToAddUserInformation(self):
         addUserInfoButtonXPath = "//button[text()='Add user information']"
         addUserInfoButton = self.browser.searchForElement(by=By.XPATH,value=addUserInfoButtonXPath,timeout=30,testClickable=True)
-        self.browser.safeClick(element=addUserInfoButton,timeout=30)
+        self.browser.safeClick(element=addUserInfoButton,timeout=120)
 
         # Wait for user info page to load.
         userInfoHeaderXPath = "//div[contains(text(),'Add user information to your selected device.')]"
@@ -1177,8 +1176,7 @@ class VerizonDriver:
         addNewAddressButtonXPath = "//div[contains(@class,'new-address')]"
         editShippingAddressButtonXPath = "//div[contains(@class,'edit-btn')]"
 
-        addEditShippingButton = self.browser.searchForElement(by=By.XPATH,value=[addNewAddressButtonXPath,editShippingAddressButtonXPath],timeout=30)
-        self.browser.safeClick(element=addEditShippingButton,timeout=30,retryClicks=True,clickDelay=3,scrollIntoView=True,
+        self.browser.safeClick(by=By.XPATH,value=[addNewAddressButtonXPath,editShippingAddressButtonXPath],timeout=30,retryClicks=True,clickDelay=3,scrollIntoView=True,
                                successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=companyFieldXPath,testClickable=True))
 
         # Write company name

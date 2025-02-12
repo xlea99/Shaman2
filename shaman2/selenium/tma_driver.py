@@ -2362,7 +2362,7 @@ class TMADriver():
         searchBarString = "//div/div/fieldset/input[@title='Press (ENTER) to submit. ']"
         inactiveCheckboxString = "//div/div/div/input[starts-with(@id,'ctl00_LeftPanel')][contains(@id,'chkClosed')][@type='checkbox']"
 
-        peopleOption = self.browser.find_element(by=By.XPATH,value=selectionMenuString + "[@value='people']")
+        peopleOption = self.browser.find_element(by=By.XPATH,value=selectionMenuString + f"[@value='people']")
         peopleOption.click()
         self.waitForTMALoader()
 

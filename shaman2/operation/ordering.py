@@ -239,7 +239,8 @@ def placeVerizonNewInstall(verizonDriver : VerizonDriver,deviceID : str,accessor
     verizonDriver.shopNewDevice()
     verizonDriver.DeviceSelection_SearchSelectDevice(deviceID=deviceID,orderPath="NewInstall")
     verizonDriver.DeviceSelection_DeviceView_SelectColor(deviceID=deviceID,colorName=deviceColor,orderPath="NewInstall")
-    verizonDriver.DeviceSelection_DeviceView_Select2YearContract(orderPath="NewInstall")
+    if(deviceID != "iPad11_128GB"): #TODO glue
+        verizonDriver.DeviceSelection_DeviceView_Select2YearContract(orderPath="NewInstall")
     verizonDriver.DeviceSelection_DeviceView_AddToCartAndContinue(orderPath="NewInstall")
     # This should send us to the Accessories shopping screen.
 
@@ -1160,15 +1161,25 @@ try:
                               taskNumber=task,assignTo="Alex Somheil",reviewMode=False)
     #processPostOrdersSCTASK(snowDriver=snow,verizonDriver=vzw,taskNumber=postProcessSCTASKs,useDriveSCTasks=False)
 
-    # Manually log in to Verizon first, just to make life easier atm
-    maintenance.validateVerizon(verizonDriver=vzw)
+
     maintenance.validateCimpl(cimplDriver=cimpl)
     playsoundAsync(paths['media'] / "shaman_attention.mp3")
     input("Please turn off Zscaler before continuing, friend.")
 
+    # Manually log in to Verizon first, just to make life easier atm
+    maintenance.validateVerizon(verizonDriver=vzw)
+
     # Cimpl processing
-    preProcessWOs = [50390,50394,50395,50408,50409,50410,50411,50421,50425,50426,50427,50430,50431,50433,50434,
-                     50435,50437,50438,50440,50441,50442,50443,50444,50445,50446]
+    preProcessWOs = [50467,50468,50469,50471,50474,50475,50476,50478,50479,50480,
+                     50481,50483,50485,50486,50487,50488,50489,50490,50491,50492,50493,50494,50495,50497,50498,50499,
+                     50500,50501,50502,50503,50504,50505,50506,50507,50508,50509,50510,50511,50513,50514,50515,50516,
+                     50517,50518,50519,50520,50521,50522,50523,50524,50525,50526,50527,50528,50529,50530,50531,50532,
+                     50533,50534,50535,50536,50537,50538,50539,50540,50541,50542,50543,50544,50545,50546,50547,50548,
+                     50549,50550,50551,50552,50553,50554,50555,50556,50557,50558,50559,50560,50561,50562,50563,50564,
+                     50565,50566,50567,50568,50569,50570,50571,50572,50573,50574,50575,50576,50577,50578,50579,50580,
+                     50581,50582,50583,50584,50585,50586,50587,50588,50589,50590,50591,50592,50593,50594,50595,50596,
+                     50597,50598,50599,50600,50601,50602,50603,50604,50605,50606,50607,50608,50609,50611,50612,50613,
+                     50614,50615]
     postProcessWOs = []
     for wo in postProcessWOs:
         processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,uplandOutlookDriver=uplandOutlook,sysOrdBoxOutlookDriver=sysOrdBoxOutlook,
@@ -1180,7 +1191,6 @@ try:
 except Exception as e:
     playsoundAsync(paths["media"] / "shaman_error.mp3")
     raise e
-
 
 
 
