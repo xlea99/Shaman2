@@ -1,6 +1,6 @@
 import re
 from datetime import datetime
-
+import time
 import selenium.common.exceptions
 from selenium.webdriver.common.by import By
 from shaman2.selenium.browser import Browser
@@ -23,9 +23,9 @@ from shaman2.utilities.address_validation import validateAddress
 from shaman2.utilities.misc import isNumber
 
 DEFAULT_SNOW_IPHONE = "iPhone14_128GB"
-DEFAULT_SNOW_ANDROID = "GalaxyS23_128GB"
-DEFAULT_SNOW_IPHONE_CASE = "iPhone14_Symmetry"
-DEFAULT_SNOW_ANDROID_CASE = "SamsungS23_Sustainable"
+DEFAULT_SNOW_ANDROID = "GalaxyS24_128GB"
+DEFAULT_SNOW_IPHONE_CASE = "iPhone14_Commuter"
+DEFAULT_SNOW_ANDROID_CASE = "SamsungS24_Commuter"
 DEFAULT_SNOW_CHARGER = "BelkinWallAdapter"
 
 def standardizeToDateObject(dateString,carrier):
@@ -815,7 +815,10 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
 
     # Handle ordering Eyesafe, if specified
     if(eyesafeAccessoryID):
-        if(workorder["OperationType"] == "New Request"):
+        #TODO temporarily disabled
+        with open(paths["root"] / "eyesafe_wos_to_place.txt", "a") as f:
+            f.write(str(workorderNumber))
+        '''if(workorder["OperationType"] == "New Request"):
             eyesafePhoneNumberFieldEntry = workorder['UserNetID']
         elif(workorder["OperationType"] == "Upgrade"):
             eyesafePhoneNumberFieldEntry = workorder['ServiceID']
@@ -831,7 +834,7 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
         maintenance.validateCimpl(cimplDriver)
         cimplDriver.Workorders_NavToSummaryTab()
         cimplDriver.Workorders_WriteNote(subject="Eyesafe Order Placed", noteType="Information Only", status="Completed",content=eyesafeOrderNumber)
-        log.info(f"Ordered Eyesafe device '{eyesafeAccessoryID}' per '{eyesafeOrderNumber}'")
+        log.info(f"Ordered Eyesafe device '{eyesafeAccessoryID}' per '{eyesafeOrderNumber}'")'''
 
     return True
 
@@ -1163,6 +1166,7 @@ try:
 
 
     maintenance.validateCimpl(cimplDriver=cimpl)
+    time.sleep(3)
     playsoundAsync(paths['media'] / "shaman_attention.mp3")
     input("Please turn off Zscaler before continuing, friend.")
 
@@ -1170,8 +1174,7 @@ try:
     maintenance.validateVerizon(verizonDriver=vzw)
 
     # Cimpl processing
-    preProcessWOs = [50467,50468,50469,50471,50474,50475,50476,50478,50479,50480,
-                     50481,50483,50485,50486,50487,50488,50489,50490,50491,50492,50493,50494,50495,50497,50498,50499,
+    preProcessWOs = [50487,50488,50489,50490,50491,50492,50493,50494,50495,50497,50498,50499,
                      50500,50501,50502,50503,50504,50505,50506,50507,50508,50509,50510,50511,50513,50514,50515,50516,
                      50517,50518,50519,50520,50521,50522,50523,50524,50525,50526,50527,50528,50529,50530,50531,50532,
                      50533,50534,50535,50536,50537,50538,50539,50540,50541,50542,50543,50544,50545,50546,50547,50548,
