@@ -168,7 +168,7 @@ class EyesafeDriver:
         zipCode = zipCode[:5]
 
         # This helper method simply waits until the loader is first found, THEN until it disappears.
-        def waitForLoader(timeout=10):
+        def waitForLoader(timeout=5):
             loaderXPath = "//div[@id='load']"
 
             # First, find the loader
@@ -184,7 +184,7 @@ class EyesafeDriver:
 
         # This helper method simply "commits" the change of a single shipping field by clicking off the field onto the
         # page, and waiting for the loader to disappear.
-        def commitField(timeout=10):
+        def commitField(timeout=5):
             customerHeaderToClickXPath = "//h2[contains(text(),'Customer')]"
             self.browser.safeClick(by=By.XPATH,value=customerHeaderToClickXPath,timeout=timeout,scrollIntoView=True)
             waitForLoader(timeout=timeout)
@@ -453,7 +453,7 @@ class EyesafeDriver:
 
         # Begin loop to manage checkout logic.
         shippingEnteredSuccessfully = False
-        for i in range(12):
+        for i in range(3):
             print(f"ATTEMPT {i}")
             # First, get the current page we're on.
             foundElement, pageName = self.browser.searchForElement(by=By.XPATH, value=checkoutPagesMap,
@@ -529,7 +529,7 @@ class EyesafeDriver:
                 orderConfirmationNumberText = foundElement.text
                 return orderConfirmationNumberText
 
-        error = RuntimeError(f"Went through more than 12 iterations of checkout logic without exiting - review process.")
+        error = RuntimeError(f"Went through more than 3 iterations of checkout logic without exiting - review process.")
         log.error(error)
         raise error
 

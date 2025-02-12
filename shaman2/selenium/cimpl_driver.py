@@ -123,7 +123,7 @@ class CimplDriver:
                 print("MFA completed! Continuing.")
                 tenantSelectionDropdownArrow.click()
                 syscoTenantOptionXPath = "//div[@class='tenantOptions']//li[normalize-space(text())='Sysco']"
-                syscoTenantOption = self.browser.searchForElement(by=By.XPATH,value=syscoTenantOptionXPath,timeout=5)
+                syscoTenantOption = self.browser.searchForElement(by=By.XPATH,value=syscoTenantOptionXPath,timeout=5,testClickable=True)
                 syscoTenantOption.click()
 
                 # Click continue
