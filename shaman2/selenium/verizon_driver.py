@@ -1105,8 +1105,9 @@ class VerizonDriver:
             return ActionResult(status=validateSingleLineResult.status)
 
         # Then, click on "Add accessories"
-        addAccessoriesXPath = "//div[contains(@class,'dsc-add-accessories-btn')]/a[contains(text(),'Add accessories')]"
-        addAccessories = self.browser.searchForElement(by=By.XPATH,value=addAccessoriesXPath,timeout=10,testClickable=True)
+        addAccessoriesXPath1 = "//div[contains(@class,'dsc-add-accessories-btn')]/a[contains(text(),'Add accessories')]"
+        addAccessoriesXPath2 = "//div[contains(@class,'dsc-add-accessories-btn')]/button[contains(text(),'Shop accessories')]"
+        addAccessories = self.browser.searchForElement(by=By.XPATH,value=[addAccessoriesXPath1,addAccessoriesXPath2],timeout=30,testClickable=True,minSearchTime=3)
         self.browser.safeClick(element=addAccessories,scrollIntoView=True,timeout=10)
 
         # Finally, wait for Accessories screen to load.
