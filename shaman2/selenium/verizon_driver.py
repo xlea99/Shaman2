@@ -603,7 +603,7 @@ class VerizonDriver:
         if(orderPath == "NewInstall"):
             yearlyContractXPath = "//div[contains(@class,'payment-option-each')]/div[contains(text(),'Yearly contract')]/parent::div"
             yearlyContractSelection = self.browser.searchForElement(by=By.XPATH,value=yearlyContractXPath,timeout=15,testClickable=True)
-            yearlyContractSelection.click()
+            self.browser.safeClick(element=yearlyContractSelection,timeout=60,scrollIntoView=True)
 
             twoYearContractSelectionXPath = "//div/ul/li/div[contains(text(),'2 Year Contract Required')]/parent::li"
             twoYearContractSelection = self.browser.searchForElement(by=By.XPATH,value=twoYearContractSelectionXPath,timeout=15,testClickable=True)
