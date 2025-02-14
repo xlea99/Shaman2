@@ -159,7 +159,6 @@ class __SyscoDataClass:
                       "Accessories": self.__syscoSheet.getFullSheet("Accessories", keyColumn="AccessoryID"),
                       "CimplMappings": self.__syscoSheet.getFullSheet("CimplMappings", keyColumn="Cimpl Entry"),
                       "Carriers": self.__syscoSheet.getFullSheet("Carriers", keyColumn="Carrier"),
-                      "Disco Project": self.__syscoSheet.getFullSheet("Disco Project", keyColumn="Workorder Number"),
                       "Plans/Features": self.__syscoSheet.getFullSheet("Plans/Features", keyColumn="PlanID")}
         self.data = _syscoData
 
