@@ -804,7 +804,7 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
             with open(templatePath, "r") as file:
                 emailContent = file.read()
 
-            cimplDriver.Workorders_SetStatus(status="Confirm",emailRecipients=thisPerson.info_Email,emailCCs="BTNetworkServicesMobility@corp.sysco.com",emailContent=emailContent)
+            cimplDriver.Workorders_SetStatus(status="Confirm",emailRecipients=thisPerson.info_Email,emailCCs="BTNetworkServicesMobility@sysco.com",emailContent=emailContent)
             print(f"Cimpl WO {workorderNumber}: Added order number to workorder notes and confirmed request.")
 
     if(subjectLine is not None):
@@ -817,7 +817,7 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
     if(eyesafeAccessoryID):
         #TODO temporarily disabled
         with open(paths["root"] / "eyesafe_wos_to_place.txt", "a") as f:
-            f.write(str(workorderNumber))
+            f.write(f"\n{workorderNumber}")
             print(f"ALERT!! ALERT!! EYESAFE ORDER WO: {workorderNumber}")
         '''if(workorder["OperationType"] == "New Request"):
             eyesafePhoneNumberFieldEntry = workorder['UserNetID']
@@ -1172,11 +1172,10 @@ try:
     input("Please turn off Zscaler before continuing, friend.")
 
     # Manually log in to Verizon first, just to make life easier atm
-    maintenance.validateVerizon(verizonDriver=vzw)
+    #maintenance.validateVerizon(verizonDriver=vzw)
 
     # Cimpl processing
-    preProcessWOs = [50500,50501,50502,50503,50504,50505,50506,50507,50508,50509,50510,50511,50513,50514,50515,50516,
-                     50517,50518,50519,50520,50521,50522,50523,50524,50525,50526,50527,50528,50529,50530,50531,50532,
+    preProcessWOs = [50519,50520,50521,50522,50523,50524,50525,50526,50527,50528,50529,50530,50531,50532,
                      50533,50534,50535,50536,50537,50538,50539,50540,50541,50542,50543,50544,50545,50546,50547,50548,
                      50549,50550,50551,50552,50553,50554,50555,50556,50557,50558,50559,50560,50561,50562,50563,50564,
                      50565,50566,50567,50568,50569,50570,50571,50572,50573,50574,50575,50576,50577,50578,50579,50580,
@@ -1187,9 +1186,47 @@ try:
     for wo in postProcessWOs:
         processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,uplandOutlookDriver=uplandOutlook,sysOrdBoxOutlookDriver=sysOrdBoxOutlook,
                               workorderNumber=wo)
-    for wo in preProcessWOs:
-        processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
-                              workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D",reviewMode=False)
+    #for wo in preProcessWOs:
+    #    processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
+    #                          workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D",reviewMode=False)
+
+
+    # helper function to do sysco disco project:
+    def discoProjectDocumentation():
+        allDiscoProjectRows = syscoData["Disco Project"]
+
+        for workorder,discoData in allDiscoProjectRows.items():
+            print(f"Documenting Cimpl WO {workorder}")
+            maintenance.validateCimpl(cimplDriver=cimpl)
+            thisWorkorder = readCimplWorkorder(cimplDriver=cimpl,workorderNumber=workorder)
+            if(thisWorkorder["Status"] == "Completed"):
+                print("Skipping cimpl work. Bra that shit DONE")
+            else:
+                if(thisWorkorder["OperationType"].strip().lower() != "Disconnect/Return to Warehouse".lower()):
+                    input("WHAT THE FUCK?!?!?!")
+                if(convertServiceIDFormat(thisWorkorder["ServiceID"],targetFormat="raw") != convertServiceIDFormat(discoData["Service ID"],targetFormat="raw")):
+                    input("ermmmm.... guys???")
+
+                cimpl.Workorders_NavToSummaryTab()
+                cimpl.Workorders_WriteReferenceNo("Alex")
+                cimpl.Workorders_ApplyChanges()
+                cimpl.Workorders_WriteNote(subject="Line Disconnected",noteType="Information Only",status="Completed",
+                                           content=f"Disconnected Per Bulk Order: {discoData['Order Number']}")
+                cimpl.Workorders_SetStatus(status="complete")
+
+            maintenance.validateTMA(tmaDriver=tma,client="Sysco")
+            tma.navToLocation(locationData=TMALocation(client="Sysco",entryType="Service",
+                                                       entryID=convertServiceIDFormat(discoData['Service ID'],targetFormat="raw")))
+            tma.Service_NavToServiceTab(serviceTab="Line Info")
+            tma.Service_WriteIsInactiveService(rawValue=True)
+            tma.Service_WriteDisconnectedDate(rawValue="2/13/2025")
+            tma.Service_WriteComments(rawValue=f"Disconnected per Cimpl WO {workorder}")
+            tma.Service_InsertUpdate()
+    discoProjectDocumentation()
+
+
+
+
 
 except Exception as e:
     playsoundAsync(paths["media"] / "shaman_error.mp3")

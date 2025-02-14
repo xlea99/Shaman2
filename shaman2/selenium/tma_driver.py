@@ -166,6 +166,7 @@ class TMAService:
         self.info_UpgradeEligibilityDate = None
         self.info_ServiceType = None
         self.info_Carrier = None
+        self.info_Comments = None
 
         self.info_InstalledDate = None
         self.info_DisconnectedDate = None
@@ -1174,6 +1175,23 @@ class TMADriver():
         targetValueElement = self.browser.searchForElement(by=By.XPATH,value=targetValueXPath,timeout=1,raiseError=True)
         targetValueElement.click()
         log.debug(f"Successfully wrote: {valueToWrite}")
+    def Service_WriteComments(self,serviceObject : TMAService = None, rawValue = None):
+        self.browser.switchToTab(self.currentTMATab[0], self.currentTMATab[1])
+
+        if (serviceObject is None):
+            valueToWrite = str(rawValue)
+        else:
+            valueToWrite = str(serviceObject.info_Comments)
+
+        if (valueToWrite is None):
+            log.warning(f"Didn't write, as valueToWrite is {valueToWrite}")
+            return False
+
+        commentsFieldXPath = "//textarea[contains(@id,'tbtComments')]"
+        commentsField = self.browser.searchForElement(by=By.XPATH,value=commentsFieldXPath,timeout=3)
+        commentsField.clear()
+        commentsField.send_keys(valueToWrite)
+        log.debug(f"Successfully wrote: {valueToWrite}")
     def Service_WriteMainInformation(self, serviceObject : TMAService, client : str = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
@@ -1195,6 +1213,8 @@ class TMADriver():
         self.Service_WriteUpgradeEligibilityDate(serviceObject)
         self.Service_WriteServiceType(serviceObject)
         self.Service_WriteCarrier(serviceObject)
+        if(serviceObject.info_Comments):
+            self.Service_WriteComments()
         log.debug(f"Successfully wrote all main information.")
     # Write methods for each of the "Line Info" values. If a serviceObject is
     # given, it'll write from the given serviceObject. Otherwise, they take a raw value
