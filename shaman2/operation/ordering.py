@@ -90,7 +90,6 @@ def validateAccessoryIDs(deviceID,carrier,accessoryIDs,removeDuplicateTypes=True
         extraAccessories = syscoData["Devices"][deviceID][f"{carrier} AlwaysOrder Accessories"].split(",") if syscoData["Devices"][deviceID][f"{carrier} AlwaysOrder Accessories"] else []
         extraAccessories = [extraAccessory.strip() for extraAccessory in extraAccessories]
         fullAccessoryIDs.extend(extraAccessories)
-    print(f"fullAccessoryIDs: {fullAccessoryIDs}")
 
     # Helper methods to check availability and compatibility of a single accessoryID.
     def checkAccessoryAvailability(_accessoryID):
@@ -105,7 +104,6 @@ def validateAccessoryIDs(deviceID,carrier,accessoryIDs,removeDuplicateTypes=True
         return deviceID in compatibleDevices
     # Helper method to handle accessory substitution.
     def substituteSingleAccessory(_accessoryID):
-        print(f"Tryna substitute this fucker: {_accessoryID}")
         targetAccessory = _accessoryID
         foundValidAccessory = False
         triedDefault = False
@@ -117,13 +115,11 @@ def validateAccessoryIDs(deviceID,carrier,accessoryIDs,removeDuplicateTypes=True
                 if checkAccessoryAvailability(configuredAccessoryID):
                     if checkAccessoryCompatibility(configuredAccessoryID):
                         validPotentialAccessoryIDs.append(configuredAccessoryID)
-        print(f"validPotentialAccessoryIDs: {validPotentialAccessoryIDs}")
 
         # Loop to manage final device substitution.
         while not foundValidAccessory:
             # Test if the accessory is available and compatible.
             if checkAccessoryAvailability(targetAccessory) and checkAccessoryCompatibility(targetAccessory):
-                print("WOWZA")
                 foundValidAccessory = True
                 break
             # If not, try to substitute.
@@ -150,7 +146,6 @@ def validateAccessoryIDs(deviceID,carrier,accessoryIDs,removeDuplicateTypes=True
         substitutedAccessoryID = substituteSingleAccessory(thisAccessoryID)
         if substitutedAccessoryID:
             validatedAccessoryIDs.append(substitutedAccessoryID)
-    print(f"validatedAccessoryIDs: {validatedAccessoryIDs}")
 
     # If set to removeDuplicateTypes, we do that here, simply prioritizing the first valid accessory of each type.
     if(removeDuplicateTypes):
@@ -164,7 +159,6 @@ def validateAccessoryIDs(deviceID,carrier,accessoryIDs,removeDuplicateTypes=True
                 log.info(f"Skipping accessory '{accessoryID}', as it has a duplicate type to other accessories in the list.")
     else:
         cleanedAccessoryIDs = validatedAccessoryIDs
-    print(f"cleanedAccessoryIDs: {cleanedAccessoryIDs}")
 
     # Finally, we filter out any special accessories, putting them in their own return structures.
     finalAccessoryIDs = []
