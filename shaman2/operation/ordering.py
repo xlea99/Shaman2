@@ -1036,7 +1036,7 @@ def processPreOrderSCTASK(tmaDriver : TMADriver,snowDriver : SnowDriver,verizonD
 
     # Validate and get the true plans/features, deviceID, and accessoryIDs for this order.
     deviceID = validateDeviceID(deviceID=deviceID,carrier="Verizon Wireless")
-    #accessoryIDs,eyesafeAccessoryIDs = validateAccessoryIDs(deviceID=deviceID,carrier="Verizon Wireless",accessoryIDs=accessoryIDs)
+    accessoryIDs,eyesafeAccessoryIDs = validateAccessoryIDs(deviceID=deviceID,carrier="Verizon Wireless",accessoryIDs=accessoryIDs)
     basePlan, features = getPlansAndFeatures(deviceID=deviceID,carrier="Verizon Wireless")
     featuresToBuildOnCarrier = []
     for feature in features:
