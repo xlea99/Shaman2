@@ -1355,9 +1355,7 @@ class VerizonDriver:
         time.sleep(1)
         # Click submit
         submitOrderButtonXPath = "//app-order-total//button[contains(text(),'Submit Order')]"
-        submitOrderButton = self.browser.searchForElement(by=By.XPATH,value=submitOrderButtonXPath,timeout=120,testClickable=True)
-
-        self.browser.safeClick(element=submitOrderButton,timeout=120,scrollIntoView=True)
+        self.browser.safeClick(by=By.XPATH,value=submitOrderButtonXPath,timeout=120,scrollIntoView=True)
 
         orderSummaryHeaderString = "//h2[text()='Order summary']"
         self.browser.searchForElement(by=By.XPATH,value=orderSummaryHeaderString,timeout=60,testClickable=True,testLiteralClick=True)

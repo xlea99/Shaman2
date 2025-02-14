@@ -26,7 +26,7 @@ DEFAULT_SNOW_IPHONE = "iPhone14_128GB"
 DEFAULT_SNOW_ANDROID = "GalaxyS24_128GB"
 DEFAULT_SNOW_IPHONE_CASE = "iPhone14_Commuter"
 DEFAULT_SNOW_ANDROID_CASE = "SamsungS24_Commuter"
-DEFAULT_SNOW_CHARGER = "BelkinWallAdapter"
+DEFAULT_SNOW_CHARGER = "AppleWallAdapter"
 
 def standardizeToDateObject(dateString,carrier):
     VERIZON_DATE_FORMAT = "%m/%d/%Y"
@@ -91,59 +91,74 @@ def validateAccessoryIDs(deviceID,carrier,accessoryIDs,removeDuplicateTypes=True
         extraAccessories = [extraAccessory.strip() for extraAccessory in extraAccessories]
         fullAccessoryIDs.extend(extraAccessories)
 
-    def validateAvailableAccessories(_carrier,_accessoryIDs):
-        _availableAccessoryIDs = []
-        for _accessoryID in _accessoryIDs:
-            if(_accessoryID not in syscoData["Accessories"].keys()):
-                error = ValueError(f"Invalid accessoryID in list: '{_accessoryID}'")
-                log.error(error)
-                raise error
-
-            accessoryAvailable = syscoData["Accessories"][_accessoryID][f"Available ({_carrier})"] == "TRUE"
-            if(accessoryAvailable):
-                _availableAccessoryIDs.append(_accessoryID)
-            else:
-                log.info(f"Skipping accessory '{_accessoryID}', as it is listed as unavailable in the Sysco Sheet.")
-        return _availableAccessoryIDs
-    # Now, we ensure that all accessories are compatible with the given device and, if not, we either move to the
-    # default device (if present) or remove it.
-    compatibleAccessoryIDs = []
-    for accessoryID in fullAccessoryIDs:
-        compatibleDevices = syscoData["Accessories"][accessoryID]["Compatible Devices"].split(",") if syscoData["Accessories"][accessoryID]["Compatible Devices"] else []
+    # Helper methods to check availability and compatibility of a single accessoryID.
+    def checkAccessoryAvailability(_accessoryID):
+        if(_accessoryID not in syscoData["Accessories"].keys()):
+            error = ValueError(f"Invalid accessoryID in list: '{_accessoryID}'")
+            log.error(error)
+            raise error
+        return syscoData["Accessories"][_accessoryID][f"Available ({carrier})"] == "TRUE"
+    def checkAccessoryCompatibility(_accessoryID):
+        compatibleDevices = syscoData["Accessories"][_accessoryID]["Compatible Devices"].split(",") if syscoData["Accessories"][_accessoryID]["Compatible Devices"] else []
         compatibleDevices = [thisDevice.strip() for thisDevice in compatibleDevices]
-        if(deviceID in compatibleDevices):
-            compatibleAccessoryIDs.append(accessoryID)
-            continue
-        # At the moment, only cases are supported for substitution. If a non-compatible case is found, we try to
-        # add a default case to the list instead.
-        elif(syscoData["Accessories"][accessoryID]["Accessory Type"] == "Case"):
-            if(f"{carrier} Default Case" in syscoData["Devices"][deviceID].values()):
-                defaultCase = syscoData["Device"][deviceID][f"{carrier} Default Case"].strip()
-                # If a default case is indeed listed, we also check to make sure its available and, if so, we
-                # add it to our accessoryIDs list.
-                if(defaultCase != ""):
-                    availableDefaultCases = validateAvailableAccessories(_carrier=carrier,_accessoryIDs=[defaultCase])
-                    if(availableDefaultCases):
-                        compatibleAccessoryIDs.append(availableDefaultCases[0])
-                        continue
-        # If we got here, the accessory is NOT compatible, so we don't add it.
-        log.info(f"Skipping accessory '{accessoryID}', as it is listed as incompatible with device '{deviceID}' in the Sysco Sheet.")
+        return deviceID in compatibleDevices
+    # Helper method to handle accessory substitution.
+    def substituteSingleAccessory(_accessoryID):
+        targetAccessory = _accessoryID
+        foundValidAccessory = False
+        triedDefault = False
 
-    # Now, we iterate through all accessories to see if they're listed as "available" on the sheet.
-    availableAccessoryIDs = validateAvailableAccessories(_carrier=carrier,_accessoryIDs=compatibleAccessoryIDs)
+        # First, get a set of all accessories of the given _accessoryID's type that are both compatible AND available.
+        validPotentialAccessoryIDs = []
+        for configuredAccessoryID,configuredAccessory in syscoData["Accessories"].items():
+            if configuredAccessory["Accessory Type"] == syscoData["Accessories"][_accessoryID]["Accessory Type"]:
+                if checkAccessoryAvailability(configuredAccessoryID):
+                    if checkAccessoryCompatibility(configuredAccessoryID):
+                        validPotentialAccessoryIDs.append(configuredAccessoryID)
+
+        # Loop to manage final device substitution.
+        while not foundValidAccessory:
+            # Test if the accessory is available and compatible.
+            if checkAccessoryAvailability(targetAccessory) and checkAccessoryCompatibility(targetAccessory):
+                foundValidAccessory = True
+                break
+            # If not, try to substitute.
+            else:
+                # Cases have preconfigured "Default Cases" that we fall back to first.
+                if (syscoData["Accessories"][_accessoryID]["Accessory Type"] == "Case" and
+                        f"{carrier} Default Case" in syscoData["Devices"][deviceID].values() and
+                        not triedDefault):
+                    triedDefault = True
+                    defaultCase = syscoData["Device"][deviceID][f"{carrier} Default Case"].strip()
+                    targetAccessory = defaultCase
+                    continue
+                # Otherwise, try to substitute from the list of valid accessories.
+                else:
+                    if len(validPotentialAccessoryIDs) == 0:
+                        break
+                    else:
+                        targetAccessory = validPotentialAccessoryIDs.pop(0)
+
+        return targetAccessory if foundValidAccessory else None
+
+    validatedAccessoryIDs = []
+    for thisAccessoryID in fullAccessoryIDs:
+        substitutedAccessoryID = substituteSingleAccessory(thisAccessoryID)
+        if substitutedAccessoryID:
+            validatedAccessoryIDs.append(substitutedAccessoryID)
 
     # If set to removeDuplicateTypes, we do that here, simply prioritizing the first valid accessory of each type.
     if(removeDuplicateTypes):
         cleanedAccessoryIDs = []
         usedAccessoryTypes = set()
-        for accessoryID in availableAccessoryIDs:
+        for accessoryID in validatedAccessoryIDs:
             if(syscoData["Accessories"][accessoryID]["Accessory Type"] not in usedAccessoryTypes):
                 usedAccessoryTypes.add(syscoData["Accessories"][accessoryID]["Accessory Type"])
                 cleanedAccessoryIDs.append(accessoryID)
             else:
                 log.info(f"Skipping accessory '{accessoryID}', as it has a duplicate type to other accessories in the list.")
     else:
-        cleanedAccessoryIDs = availableAccessoryIDs
+        cleanedAccessoryIDs = validatedAccessoryIDs
 
     # Finally, we filter out any special accessories, putting them in their own return structures.
     finalAccessoryIDs = []
@@ -159,6 +174,13 @@ def validateAccessoryIDs(deviceID,carrier,accessoryIDs,removeDuplicateTypes=True
     returnDict = {"AccessoryIDs" : finalAccessoryIDs, "EyesafeAccessoryIDs" : eyesafeAccessories}
     print(f"FINAL ACCESSORIES DICT: {returnDict}")
     return returnDict
+
+_deviceID = "iPhone14_128GB"
+_listedAccessories = ["iPhone14_Defender","BelkinWallAdapter"]
+
+validatedDeviceID = validateDeviceID(deviceID=_deviceID,carrier="Verizon Wireless")
+validatedAccessories = validateAccessoryIDs(deviceID=_deviceID,carrier="Verizon Wireless",accessoryIDs=_listedAccessories)
+
 
 #endregion === Device, Accessory, and Plan Validation ===
 #region === Carrier Order Reading ===
@@ -804,7 +826,7 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
             with open(templatePath, "r") as file:
                 emailContent = file.read()
 
-            cimplDriver.Workorders_SetStatus(status="Confirm",emailRecipients=thisPerson.info_Email,emailCCs="BTNetworkServicesMobility@corp.sysco.com",emailContent=emailContent)
+            cimplDriver.Workorders_SetStatus(status="Confirm",emailRecipients=thisPerson.info_Email,emailCCs="BTNetworkServicesMobility@sysco.com",emailContent=emailContent)
             print(f"Cimpl WO {workorderNumber}: Added order number to workorder notes and confirmed request.")
 
     if(subjectLine is not None):
@@ -817,7 +839,7 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
     if(eyesafeAccessoryID):
         #TODO temporarily disabled
         with open(paths["root"] / "eyesafe_wos_to_place.txt", "a") as f:
-            f.write(str(workorderNumber))
+            f.write(f"\n{workorderNumber}")
             print(f"ALERT!! ALERT!! EYESAFE ORDER WO: {workorderNumber}")
         '''if(workorder["OperationType"] == "New Request"):
             eyesafePhoneNumberFieldEntry = workorder['UserNetID']
@@ -1014,7 +1036,7 @@ def processPreOrderSCTASK(tmaDriver : TMADriver,snowDriver : SnowDriver,verizonD
 
     # Validate and get the true plans/features, deviceID, and accessoryIDs for this order.
     deviceID = validateDeviceID(deviceID=deviceID,carrier="Verizon Wireless")
-    #accessoryIDs,eyesafeAccessoryIDs = validateAccessoryIDs(deviceID=deviceID,carrier="Verizon Wireless",accessoryIDs=accessoryIDs)
+    accessoryIDs,eyesafeAccessoryIDs = validateAccessoryIDs(deviceID=deviceID,carrier="Verizon Wireless",accessoryIDs=accessoryIDs)
     basePlan, features = getPlansAndFeatures(deviceID=deviceID,carrier="Verizon Wireless")
     featuresToBuildOnCarrier = []
     for feature in features:
@@ -1145,55 +1167,55 @@ def processPostOrdersSCTASK(snowDriver : SnowDriver,verizonDriver : VerizonDrive
 
 #endregion === Full SNow Workflows
 
-try:
-    # Drivers init
-    br = Browser()
-    tma = TMADriver(br)
-    cimpl = CimplDriver(br)
-    snow = SnowDriver(br)
-    vzw = VerizonDriver(br)
-    baka = BakaDriver(br)
-    eyesafe = EyesafeDriver(br)
-    uplandOutlook = OutlookDriver(br)
-    sysOrdBoxOutlook = OutlookDriver(br)
+if(False):
+    try:
+        # Drivers init
+        br = Browser()
+        tma = TMADriver(br)
+        cimpl = CimplDriver(br)
+        snow = SnowDriver(br)
+        vzw = VerizonDriver(br)
+        baka = BakaDriver(br)
+        eyesafe = EyesafeDriver(br)
+        uplandOutlook = OutlookDriver(br)
+        sysOrdBoxOutlook = OutlookDriver(br)
 
-    # SCTASK processing
-    preProcessSCTASKs = []
-    postProcessSCTASKs = [] # Note that, if no postProcessSCTASKs are specified, all valid SCTASKs in the sheet will be closed. Input just "None" to NOT do this.
-    for task in preProcessSCTASKs:
-        processPreOrderSCTASK(tmaDriver=tma,snowDriver=snow,verizonDriver=vzw,
-                              taskNumber=task,assignTo="Alex Somheil",reviewMode=False)
-    #processPostOrdersSCTASK(snowDriver=snow,verizonDriver=vzw,taskNumber=postProcessSCTASKs,useDriveSCTasks=False)
+        # SCTASK processing
+        preProcessSCTASKs = []
+        postProcessSCTASKs = [] # Note that, if no postProcessSCTASKs are specified, all valid SCTASKs in the sheet will be closed. Input just "None" to NOT do this.
+        for task in preProcessSCTASKs:
+            processPreOrderSCTASK(tmaDriver=tma,snowDriver=snow,verizonDriver=vzw,
+                                  taskNumber=task,assignTo="Alex Somheil",reviewMode=False)
+        #processPostOrdersSCTASK(snowDriver=snow,verizonDriver=vzw,taskNumber=postProcessSCTASKs,useDriveSCTasks=False)
 
 
-    maintenance.validateCimpl(cimplDriver=cimpl)
-    time.sleep(3)
-    playsoundAsync(paths['media'] / "shaman_attention.mp3")
-    input("Please turn off Zscaler before continuing, friend.")
+        maintenance.validateCimpl(cimplDriver=cimpl)
+        time.sleep(3)
+        playsoundAsync(paths['media'] / "shaman_attention.mp3")
+        input("Please turn off Zscaler before continuing, friend.")
 
-    # Manually log in to Verizon first, just to make life easier atm
-    maintenance.validateVerizon(verizonDriver=vzw)
+        # Manually log in to Verizon first, just to make life easier atm
+        #maintenance.validateVerizon(verizonDriver=vzw)
 
-    # Cimpl processing
-    preProcessWOs = [50500,50501,50502,50503,50504,50505,50506,50507,50508,50509,50510,50511,50513,50514,50515,50516,
-                     50517,50518,50519,50520,50521,50522,50523,50524,50525,50526,50527,50528,50529,50530,50531,50532,
-                     50533,50534,50535,50536,50537,50538,50539,50540,50541,50542,50543,50544,50545,50546,50547,50548,
-                     50549,50550,50551,50552,50553,50554,50555,50556,50557,50558,50559,50560,50561,50562,50563,50564,
-                     50565,50566,50567,50568,50569,50570,50571,50572,50573,50574,50575,50576,50577,50578,50579,50580,
-                     50581,50582,50583,50584,50585,50586,50587,50588,50589,50590,50591,50592,50593,50594,50595,50596,
-                     50597,50598,50599,50600,50601,50602,50603,50604,50605,50606,50607,50608,50609,50611,50612,50613,
-                     50614,50615]
-    postProcessWOs = []
-    for wo in postProcessWOs:
-        processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,uplandOutlookDriver=uplandOutlook,sysOrdBoxOutlookDriver=sysOrdBoxOutlook,
-                              workorderNumber=wo)
-    for wo in preProcessWOs:
-        processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
-                              workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D",reviewMode=False)
+        # Cimpl processing
+        preProcessWOs = [50519,50520,50521,50522,50523,50524,50525,50526,50527,50528,50529,50530,50531,50532,
+                         50533,50534,50535,50536,50537,50538,50539,50540,50541,50542,50543,50544,50545,50546,50547,50548,
+                         50549,50550,50551,50552,50553,50554,50555,50556,50557,50558,50559,50560,50561,50562,50563,50564,
+                         50565,50566,50567,50568,50569,50570,50571,50572,50573,50574,50575,50576,50577,50578,50579,50580,
+                         50581,50582,50583,50584,50585,50586,50587,50588,50589,50590,50591,50592,50593,50594,50595,50596,
+                         50597,50598,50599,50600,50601,50602,50603,50604,50605,50606,50607,50608,50609,50611,50612,50613,
+                         50614,50615]
+        postProcessWOs = []
+        for wo in postProcessWOs:
+            processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,uplandOutlookDriver=uplandOutlook,sysOrdBoxOutlookDriver=sysOrdBoxOutlook,
+                                  workorderNumber=wo)
+        #for wo in preProcessWOs:
+        #    processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
+        #                          workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D",reviewMode=False)
 
-except Exception as e:
-    playsoundAsync(paths["media"] / "shaman_error.mp3")
-    raise e
+    except Exception as e:
+        playsoundAsync(paths["media"] / "shaman_error.mp3")
+        raise e
 
 
 
