@@ -1186,7 +1186,7 @@ if(True):
         input("Please turn off Zscaler before continuing, friend.")
 
         # SCTASK processing
-        preProcessSCTASKs = ["SCTASK1152056"]
+        preProcessSCTASKs = []
         postProcessSCTASKs = [] # Note that, if no postProcessSCTASKs are specified, all valid SCTASKs in the sheet will be closed. Input just "None" to NOT do this.
         for task in preProcessSCTASKs:
             processPreOrderSCTASK(tmaDriver=tma,snowDriver=snow,verizonDriver=vzw,
@@ -1200,10 +1200,7 @@ if(True):
         maintenance.validateVerizon(verizonDriver=vzw)
 
         # Cimpl processing
-        preProcessWOs = [50622,50632,50633,50634,50637,50638,50639,50640,50641,50643,50644,
-                          50645,50646,50647,50648,50649,50650,50651,50652,50653,50654,50658,50659,50660,50661,50662,
-                          50663,50664,50665,50666,50667,50668,50669,50672,50673,50674,50675,50676,50677,50678,50679,
-                          50681,50682,50683,50684,50685,50687,50688,50689,50690,50691,50692,50693,50694,50695,50696]
+        preProcessWOs = [50452]
         postProcessWOs = []
         for wo in postProcessWOs:
             processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,uplandOutlookDriver=uplandOutlook,sysOrdBoxOutlookDriver=sysOrdBoxOutlook,
