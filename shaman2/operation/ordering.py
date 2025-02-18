@@ -175,8 +175,8 @@ def validateAccessoryIDs(deviceID,carrier,accessoryIDs,removeDuplicateTypes=True
     print(f"FINAL ACCESSORIES DICT: {returnDict}")
     return returnDict
 
-_deviceID = "iPhone14_128GB"
-_listedAccessories = ["iPhone14_Defender","BelkinWallAdapter"]
+_deviceID = "GalaxyS24_128GB"
+_listedAccessories = ["SamsungS23_Sustainable","BelkinWallAdapter"]
 
 validatedDeviceID = validateDeviceID(deviceID=_deviceID,carrier="Verizon Wireless")
 validatedAccessories = validateAccessoryIDs(deviceID=_deviceID,carrier="Verizon Wireless",accessoryIDs=_listedAccessories)
@@ -1036,7 +1036,7 @@ def processPreOrderSCTASK(tmaDriver : TMADriver,snowDriver : SnowDriver,verizonD
 
     # Validate and get the true plans/features, deviceID, and accessoryIDs for this order.
     deviceID = validateDeviceID(deviceID=deviceID,carrier="Verizon Wireless")
-    accessoryIDs,eyesafeAccessoryIDs = validateAccessoryIDs(deviceID=deviceID,carrier="Verizon Wireless",accessoryIDs=accessoryIDs)
+    accessoryIDs = validateAccessoryIDs(deviceID=deviceID,carrier="Verizon Wireless",accessoryIDs=accessoryIDs)["AccessoryIDs"]
     basePlan, features = getPlansAndFeatures(deviceID=deviceID,carrier="Verizon Wireless")
     featuresToBuildOnCarrier = []
     for feature in features:
@@ -1167,7 +1167,7 @@ def processPostOrdersSCTASK(snowDriver : SnowDriver,verizonDriver : VerizonDrive
 
 #endregion === Full SNow Workflows
 
-if(False):
+if(True):
     try:
         # Drivers init
         br = Browser()
@@ -1180,6 +1180,11 @@ if(False):
         uplandOutlook = OutlookDriver(br)
         sysOrdBoxOutlook = OutlookDriver(br)
 
+        maintenance.validateCimpl(cimplDriver=cimpl)
+        time.sleep(3)
+        playsoundAsync(paths['media'] / "shaman_attention.mp3")
+        input("Please turn off Zscaler before continuing, friend.")
+
         # SCTASK processing
         preProcessSCTASKs = []
         postProcessSCTASKs = [] # Note that, if no postProcessSCTASKs are specified, all valid SCTASKs in the sheet will be closed. Input just "None" to NOT do this.
@@ -1189,29 +1194,20 @@ if(False):
         #processPostOrdersSCTASK(snowDriver=snow,verizonDriver=vzw,taskNumber=postProcessSCTASKs,useDriveSCTasks=False)
 
 
-        maintenance.validateCimpl(cimplDriver=cimpl)
-        time.sleep(3)
-        playsoundAsync(paths['media'] / "shaman_attention.mp3")
-        input("Please turn off Zscaler before continuing, friend.")
+
 
         # Manually log in to Verizon first, just to make life easier atm
-        #maintenance.validateVerizon(verizonDriver=vzw)
+        maintenance.validateVerizon(verizonDriver=vzw)
 
         # Cimpl processing
-        preProcessWOs = [50519,50520,50521,50522,50523,50524,50525,50526,50527,50528,50529,50530,50531,50532,
-                         50533,50534,50535,50536,50537,50538,50539,50540,50541,50542,50543,50544,50545,50546,50547,50548,
-                         50549,50550,50551,50552,50553,50554,50555,50556,50557,50558,50559,50560,50561,50562,50563,50564,
-                         50565,50566,50567,50568,50569,50570,50571,50572,50573,50574,50575,50576,50577,50578,50579,50580,
-                         50581,50582,50583,50584,50585,50586,50587,50588,50589,50590,50591,50592,50593,50594,50595,50596,
-                         50597,50598,50599,50600,50601,50602,50603,50604,50605,50606,50607,50608,50609,50611,50612,50613,
-                         50614,50615]
+        preProcessWOs = [50452]
         postProcessWOs = []
         for wo in postProcessWOs:
             processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,uplandOutlookDriver=uplandOutlook,sysOrdBoxOutlookDriver=sysOrdBoxOutlook,
                                   workorderNumber=wo)
-        #for wo in preProcessWOs:
-        #    processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
-        #                          workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D",reviewMode=False)
+        for wo in preProcessWOs:
+            processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
+                                  workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D",reviewMode=False)
 
     except Exception as e:
         playsoundAsync(paths["media"] / "shaman_error.mp3")

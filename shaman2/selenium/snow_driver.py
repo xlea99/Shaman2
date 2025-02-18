@@ -62,7 +62,7 @@ class SnowDriver:
             staySignedInHeadingXPath = "//div[normalize-space(text())='Stay signed in?']"
             self.browser.searchForElement(by=By.XPATH,value=staySignedInHeadingXPath,timeout=30,testClickable=True,testLiteralClick=True)
             yesButtonXPath = "//input[@type='submit'][@value='Yes']"
-            yesButton = self.browser.searchForElement(by=By.XPATH,value=yesButtonXPath,timeout=3)
+            yesButton = self.browser.searchForElement(by=By.XPATH,value=yesButtonXPath,timeout=30)
             yesButton.click()
             naturalPause()
 

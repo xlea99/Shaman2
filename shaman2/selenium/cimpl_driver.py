@@ -715,7 +715,7 @@ class CimplDriver:
         summaryTabString = "//cimpl-tabs-panel/div/div/div/div/span[contains(@class,'cimpl-tabs-panel__tabLink')][text()='Summary']"
         summaryTabElement = self.browser.find_element(by=By.XPATH,value=summaryTabString)
         self.waitForLoadingScreen()
-        summaryTabElement.click()
+        self.browser.safeClick(element=summaryTabElement,scrollIntoView=True,timeout=5)
     def Workorders_ApplyChanges(self):
         summaryApplyButtonString = "//cimpl-tab/div/ng-transclude/wd-summary-tab/div/div/div/cimpl-button[@text='Apply'][@on-click='vm.update()']/button/div/span[contains(@class,'button-label')][text()='Apply']"
         detailsApplyButtonString = "//cimpl-tab/div/ng-transclude/wd-details-tab/div/div/cimpl-collapsible-box/div/div/ng-transclude/div/cimpl-form/div/div/div/span/cimpl-button/button/div/span[contains(@class,'button-label')][text()='Apply']"
