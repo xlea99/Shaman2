@@ -13,7 +13,7 @@ from shaman2.selenium.snow_driver import SnowDriver
 from shaman2.selenium.outlook_driver import OutlookDriver
 from shaman2.operation import maintenance
 from shaman2.operation import documentation
-from shaman2.common.config import mainConfig,emailTemplatesConfig
+from shaman2.common.config import mainConfig
 from shaman2.common.logger import log
 from shaman2.common.paths import paths
 from shaman2.network.sheets_sync import syscoData
@@ -174,12 +174,6 @@ def validateAccessoryIDs(deviceID,carrier,accessoryIDs,removeDuplicateTypes=True
     returnDict = {"AccessoryIDs" : finalAccessoryIDs, "EyesafeAccessoryIDs" : eyesafeAccessories}
     print(f"FINAL ACCESSORIES DICT: {returnDict}")
     return returnDict
-
-_deviceID = "GalaxyS24_128GB"
-_listedAccessories = ["SamsungS23_Sustainable","BelkinWallAdapter"]
-
-validatedDeviceID = validateDeviceID(deviceID=_deviceID,carrier="Verizon Wireless")
-validatedAccessories = validateAccessoryIDs(deviceID=_deviceID,carrier="Verizon Wireless",accessoryIDs=_listedAccessories)
 
 
 #endregion === Device, Accessory, and Plan Validation ===
@@ -804,15 +798,9 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
     # Confirm workorder, if not already confirmed.
     if(workorder["Status"] == "Pending"):
         if(workorder["OperationType"].lower() == "new request"):
-            if carrier == "BellMobility":
-                templateFileName = emailTemplatesConfig["BellMobility"]["NewInstall"].get(workorder['DeviceID'],None)
-            else:
-                templateFileName = emailTemplatesConfig["NormalCarrier"]["NewInstall"].get(workorder['DeviceID'],None)
+            templateFileName = syscoData["Devices"][deviceID][f"{carrier} New Install Email Template"]
         elif(workorder["OperationType"].lower() == "upgrade"):
-            if carrier == "BellMobility":
-                templateFileName = emailTemplatesConfig["BellMobility"]["Upgrade"].get(workorder['DeviceID'],None)
-            else:
-                templateFileName = emailTemplatesConfig["NormalCarrier"]["Upgrade"].get(workorder['DeviceID'],None)
+            templateFileName = syscoData["Devices"][deviceID][f"{carrier} Upgrade Email Template"]
         else:
             error = ValueError(f"Found incompatible order type after performing an order: '{workorder['OperationType']}'")
             log.error(error)
@@ -1197,10 +1185,10 @@ if(True):
 
 
         # Manually log in to Verizon first, just to make life easier atm
-        maintenance.validateVerizon(verizonDriver=vzw)
+        #maintenance.validateVerizon(verizonDriver=vzw)
 
         # Cimpl processing
-        preProcessWOs = [50452]
+        preProcessWOs = []
         postProcessWOs = []
         for wo in postProcessWOs:
             processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,uplandOutlookDriver=uplandOutlook,sysOrdBoxOutlookDriver=sysOrdBoxOutlook,
