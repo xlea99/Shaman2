@@ -797,24 +797,22 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
 
     # Confirm workorder, if not already confirmed.
     if(workorder["Status"] == "Pending"):
+        templateFileName = None
         if(workorder["OperationType"].lower() == "new request"):
-            templateFileName = syscoData["Devices"][deviceID][f"{carrier} New Install Email Template"]
+            templateFileName = syscoData["Devices"][deviceID][f"{carrier} New Install Email Template"].strip()
         elif(workorder["OperationType"].lower() == "upgrade"):
-            templateFileName = syscoData["Devices"][deviceID][f"{carrier} Upgrade Email Template"]
-        else:
-            error = ValueError(f"Found incompatible order type after performing an order: '{workorder['OperationType']}'")
-            log.error(error)
-            raise error
+            templateFileName = syscoData["Devices"][deviceID][f"{carrier} Upgrade Email Template"].strip()
 
-        if(templateFileName is None):
-            cimplDriver.Workorders_SetStatus(status="Confirm")
-            print(f"Cimpl WO {workorderNumber}: Added order number to workorder notes and confirmed request.")
-        else:
+
+        if(templateFileName):
             templatePath = paths["emailTemplates"] / templateFileName
             with open(templatePath, "r") as file:
                 emailContent = file.read()
 
             cimplDriver.Workorders_SetStatus(status="Confirm",emailRecipients=thisPerson.info_Email,emailCCs="BTNetworkServicesMobility@sysco.com",emailContent=emailContent)
+            print(f"Cimpl WO {workorderNumber}: Added order number to workorder notes and confirmed request.")
+        else:
+            cimplDriver.Workorders_SetStatus(status="Confirm")
             print(f"Cimpl WO {workorderNumber}: Added order number to workorder notes and confirmed request.")
 
     if(subjectLine is not None):
@@ -1155,7 +1153,7 @@ def processPostOrdersSCTASK(snowDriver : SnowDriver,verizonDriver : VerizonDrive
 
 #endregion === Full SNow Workflows
 
-if(True):
+if(False):
     try:
         # Drivers init
         br = Browser()
@@ -1173,19 +1171,21 @@ if(True):
         playsoundAsync(paths['media'] / "shaman_attention.mp3")
         input("Please turn off Zscaler before continuing, friend.")
 
+        # Manually log in to Verizon first, just to make life easier atm
+        maintenance.validateVerizon(verizonDriver=vzw)
+
         # SCTASK processing
         preProcessSCTASKs = []
         postProcessSCTASKs = [] # Note that, if no postProcessSCTASKs are specified, all valid SCTASKs in the sheet will be closed. Input just "None" to NOT do this.
         for task in preProcessSCTASKs:
             processPreOrderSCTASK(tmaDriver=tma,snowDriver=snow,verizonDriver=vzw,
                                   taskNumber=task,assignTo="Alex Somheil",reviewMode=False)
-        #processPostOrdersSCTASK(snowDriver=snow,verizonDriver=vzw,taskNumber=postProcessSCTASKs,useDriveSCTasks=False)
+        processPostOrdersSCTASK(snowDriver=snow,verizonDriver=vzw,taskNumber=postProcessSCTASKs,useDriveSCTasks=False)
 
 
 
 
-        # Manually log in to Verizon first, just to make life easier atm
-        #maintenance.validateVerizon(verizonDriver=vzw)
+
 
         # Cimpl processing
         preProcessWOs = []
