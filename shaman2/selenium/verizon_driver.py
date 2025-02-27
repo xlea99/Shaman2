@@ -527,16 +527,13 @@ class VerizonDriver:
     # TODO this function is getting quite slow, which is pretty first world problem esque, but still
     @action()
     def DeviceSelection_SearchSelectDevice(self,deviceID,orderPath="NewInstall",searchAttempts = 3):
-        targetDeviceCardXPath = f"//div/div[contains(@class,'device-name')][normalize-space(text())='{syscoData["Devices"][deviceID]["Verizon Wireless New Install Card Name"]}']"
+        targetDeviceCardXPath = f"//div/div[contains(@class,'device-name')][normalize-space(translate(text(),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'))='{syscoData["Devices"][deviceID]["Verizon Wireless New Install Card Name"].strip().lower()}']"
         targetDeviceOpenButtonXPath = f"{targetDeviceCardXPath}/following-sibling::div//button[contains(@class,'quick-view-btn')]"
         if(orderPath == "NewInstall"):
             deviceDetailsXPath = f"//div[contains(@class,'pdp-header-section')]//div[normalize-space(text())='{syscoData["Devices"][deviceID]["Verizon Wireless New Install Card Name"]}']"
         else:
             deviceDetailsXPath = f"//div[contains(@class,'pdp-header-section')]//div[normalize-space(text())='{syscoData["Devices"][deviceID]["Verizon Wireless Upgrade Card Name"]}']"
         shopDevicesHeaderXPath = "//h2[contains(text(),'Shop Devices')]"
-
-
-        f"//div/div[contains(@class,'device-title')][text()='iPhone 14']"
 
         # Helper method to search for a device one time, and wait until (roughly) the loading screen is gone.
         def searchDevice(clearFilters=False):
