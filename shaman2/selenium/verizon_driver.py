@@ -616,6 +616,7 @@ class VerizonDriver:
         return ActionResult(status=StatusCode.SUCCESS)
     @action()
     def DeviceSelection_DeviceView_SelectColor(self,deviceID=None,colorName=None,orderPath="NewInstall"):
+        #TODO should colorName validation be done all externally, or is here fine?
         if(colorName is None):
             if(deviceID):
                 #TODO handle errors with sheet lookup or nah?
@@ -624,6 +625,10 @@ class VerizonDriver:
                 error = ValueError("Specified to select a Default color, but no deviceID was specified!")
                 log.error(error)
                 raise error
+
+        if(colorName is None):
+            log.info(f"No color configured for device '{deviceID}'. Skipping color selection.")
+            return ActionResult(status=StatusCode.SUCCESS)
 
         # For newInstalls, Verizon, in its infinite wisdom, has absolutely no labels on which color is which
         # other than literal RGB values. Therefore, we have to "guess and check" if we aren't currently selected
