@@ -254,8 +254,7 @@ def placeVerizonNewInstall(verizonDriver : VerizonDriver,deviceID : str,accessor
     # Search for the device, click on it, select contract, and add to cart.
     verizonDriver.shopNewDevice()
     verizonDriver.DeviceSelection_SearchSelectDevice(deviceID=deviceID,orderPath="NewInstall")
-    if(deviceColor):
-        verizonDriver.DeviceSelection_DeviceView_SelectColor(deviceID=deviceID,colorName=deviceColor,orderPath="NewInstall")
+    verizonDriver.DeviceSelection_DeviceView_SelectColor(deviceID=deviceID,colorName=deviceColor,orderPath="NewInstall")
     if(deviceID != "iPad11_128GB"): #TODO glue
         verizonDriver.DeviceSelection_DeviceView_Select2YearContract(orderPath="NewInstall")
     verizonDriver.DeviceSelection_DeviceView_AddToCartAndContinue(orderPath="NewInstall")
@@ -354,8 +353,7 @@ def placeVerizonUpgrade(verizonDriver : VerizonDriver,serviceID,deviceID : str,a
 
     # Search for the device, click on it, select contract, and add to cart.
     verizonDriver.DeviceSelection_SearchSelectDevice(deviceID=deviceID,orderPath="Upgrade")
-    if (deviceColor):
-        verizonDriver.DeviceSelection_DeviceView_SelectColor(deviceID=deviceID, colorName=deviceColor,orderPath="Upgrade")
+    verizonDriver.DeviceSelection_DeviceView_SelectColor(deviceID=deviceID, colorName=deviceColor,orderPath="Upgrade")
     verizonDriver.DeviceSelection_DeviceView_Select2YearContract(orderPath="Upgrade")
     verizonDriver.DeviceSelection_DeviceView_DeclineDeviceProtection()
     verizonDriver.DeviceSelection_DeviceView_AddToCartAndContinue(orderPath="Upgrade")
