@@ -658,8 +658,11 @@ class VerizonDriver:
         else:
             colorboxXPath = "//div[@class='colorbox']"
 
-            colorSelectionXPath = f"{colorboxXPath}/div[normalize-space(@title)='{colorName.strip()}']"
-            colorSelection = self.browser.searchForElement(by=By.XPATH,value=colorSelectionXPath,timeout=5)
+
+            "//div[@class='colorbox']/div[normalize-space(translate(@title,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'))='Soft Touch Black']"
+
+            colorSelectionXPath = f"{colorboxXPath}/div[normalize-space(translate(@title,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'))='{colorName.strip().lower()}']"
+            colorSelection = self.browser.searchForElement(by=By.XPATH,value=colorSelectionXPath,timeout=15)
             if(colorSelection):
                 self.browser.safeClick(element=colorSelection,timeout=15)
                 return ActionResult(status=StatusCode.SUCCESS)

@@ -254,7 +254,8 @@ def placeVerizonNewInstall(verizonDriver : VerizonDriver,deviceID : str,accessor
     # Search for the device, click on it, select contract, and add to cart.
     verizonDriver.shopNewDevice()
     verizonDriver.DeviceSelection_SearchSelectDevice(deviceID=deviceID,orderPath="NewInstall")
-    verizonDriver.DeviceSelection_DeviceView_SelectColor(deviceID=deviceID,colorName=deviceColor,orderPath="NewInstall")
+    if(deviceColor):
+        verizonDriver.DeviceSelection_DeviceView_SelectColor(deviceID=deviceID,colorName=deviceColor,orderPath="NewInstall")
     if(deviceID != "iPad11_128GB"): #TODO glue
         verizonDriver.DeviceSelection_DeviceView_Select2YearContract(orderPath="NewInstall")
     verizonDriver.DeviceSelection_DeviceView_AddToCartAndContinue(orderPath="NewInstall")
@@ -353,7 +354,8 @@ def placeVerizonUpgrade(verizonDriver : VerizonDriver,serviceID,deviceID : str,a
 
     # Search for the device, click on it, select contract, and add to cart.
     verizonDriver.DeviceSelection_SearchSelectDevice(deviceID=deviceID,orderPath="Upgrade")
-    verizonDriver.DeviceSelection_DeviceView_SelectColor(deviceID=deviceID, colorName=deviceColor,orderPath="Upgrade")
+    if (deviceColor):
+        verizonDriver.DeviceSelection_DeviceView_SelectColor(deviceID=deviceID, colorName=deviceColor,orderPath="Upgrade")
     verizonDriver.DeviceSelection_DeviceView_Select2YearContract(orderPath="Upgrade")
     verizonDriver.DeviceSelection_DeviceView_DeclineDeviceProtection()
     verizonDriver.DeviceSelection_DeviceView_AddToCartAndContinue(orderPath="Upgrade")
@@ -1172,11 +1174,11 @@ if(True):
         input("Please turn off Zscaler before continuing, friend.")
 
         # Manually log in to Verizon first, just to make life easier atm
-        maintenance.validateVerizon(verizonDriver=vzw)
+        #maintenance.validateVerizon(verizonDriver=vzw)
 
         # SCTASK processing
-        preProcessSCTASKs = ["SCTASK1138222"]
-        postProcessSCTASKs = ["SCTASK1159366","SCTASK1164331"] # Note that, if no postProcessSCTASKs are specified, all valid SCTASKs in the sheet will be closed. Input just "None" to NOT do this.
+        preProcessSCTASKs = []
+        postProcessSCTASKs = [] # Note that, if no postProcessSCTASKs are specified, all valid SCTASKs in the sheet will be closed. Input just "None" to NOT do this.
         for task in preProcessSCTASKs:
             processPreOrderSCTASK(tmaDriver=tma,snowDriver=snow,verizonDriver=vzw,
                                   taskNumber=task,assignTo="Alex Somheil",reviewMode=True)
@@ -1188,8 +1190,8 @@ if(True):
 
 
         # Cimpl processing
-        preProcessWOs = [50030,50325,50332,50617,50675]
-        postProcessWOs = [49585]
+        preProcessWOs = []#[50325,50332,50617,50675]
+        postProcessWOs = []
         for wo in postProcessWOs:
             processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,uplandOutlookDriver=uplandOutlook,sysOrdBoxOutlookDriver=sysOrdBoxOutlook,
                                   workorderNumber=wo)

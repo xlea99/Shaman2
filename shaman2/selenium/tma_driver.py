@@ -2228,7 +2228,7 @@ class TMADriver():
 
         # First, we click on the "accounts" button until we detect that we're on the accounts sideTab.
         existingAccountsButtonXPath = "//td/div/div/a[contains(@id,'wizFindExistingAssigment_lnkFindAccount')]"
-        self.browser.safeClick(by=By.XPATH,value=existingAccountsButtonXPath,retryClicks=True,timeout=60,clickDelay=2,
+        self.browser.safeClick(by=By.XPATH,value=existingAccountsButtonXPath,retryClicks=True,timeout=120,clickDelay=2,
                                successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=sideTabXPathTemplate.format(tabName="accounts")))
 
         #region === Accounts Sidetab ===
