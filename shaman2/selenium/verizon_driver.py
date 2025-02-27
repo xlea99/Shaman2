@@ -657,7 +657,7 @@ class VerizonDriver:
         else:
             colorboxXPath = "//div[@class='colorbox']"
 
-            colorSelectionXPath = f"{colorboxXPath}/div[@title='{colorName}']"
+            colorSelectionXPath = f"{colorboxXPath}/div[normalize-space(@title)='{colorName.strip()}']"
             colorSelection = self.browser.searchForElement(by=By.XPATH,value=colorSelectionXPath,timeout=5)
             if(colorSelection):
                 self.browser.safeClick(element=colorSelection,timeout=15)
