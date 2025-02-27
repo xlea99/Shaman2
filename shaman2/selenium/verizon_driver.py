@@ -652,18 +652,21 @@ class VerizonDriver:
                 return ActionResult(status=StatusCode.SUCCESS)
             else:
                 log.warning(f"Supplied color '{colorName}' does not seem to exist in Verizon Wireless for the searched device!")
+                raise
                 return ActionResult(status=StatusCode.VERIZON_MISSING_COLOR)
         # Color selection for upgrades is much easier, as the radio buttons are labeled with the actual color name.
         else:
             colorboxXPath = "//div[@class='colorbox']"
 
-            colorSelectionXPath = f"{colorboxXPath}/div[@title='{colorName}']"
+            colorSelectionXPath = f"{colorboxXPath}/div[normalize-space(@title)='{colorName.strip()}']"
             colorSelection = self.browser.searchForElement(by=By.XPATH,value=colorSelectionXPath,timeout=5)
             if(colorSelection):
                 self.browser.safeClick(element=colorSelection,timeout=15)
                 return ActionResult(status=StatusCode.SUCCESS)
             else:
                 log.warning(f"Supplied color '{colorName}' does not seem to exist in Verizon Wireless for the searched device!")
+                #TODO GLUUUUEEEE
+                raise
                 return ActionResult(status=StatusCode.VERIZON_MISSING_COLOR)
     @action()
     def DeviceSelection_DeviceView_AddToCartAndContinue(self,orderPath="NewInstall"):
