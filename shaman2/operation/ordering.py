@@ -1190,7 +1190,7 @@ if(True):
 
 
         # Cimpl processing
-        preProcessWOs = [50332,50617,50675]
+        preProcessWOs = [50675]
         postProcessWOs = []
         for wo in postProcessWOs:
             processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,uplandOutlookDriver=uplandOutlook,sysOrdBoxOutlookDriver=sysOrdBoxOutlook,

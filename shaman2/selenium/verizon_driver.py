@@ -1226,7 +1226,7 @@ class VerizonDriver:
         existingOldEmailsXPath = "//input[@type='email']/parent::div/following-sibling::div[@class='remove-btn']"
         existingOldEmails = self.browser.find_elements(by=By.XPATH,value=existingOldEmailsXPath)
         for existingOldEmail in existingOldEmails:
-            self.browser.safeClick(element=existingOldEmail,timeout=10)
+            self.browser.safeClick(element=existingOldEmail,timeout=10,scrollIntoView=True)
         # Now, we add all emails specified as arguments.
         for newEmail in notificationEmails:
             addNewNotifyButtonXPath = "//div[contains(@class,'add-notify')]/div[contains(text(),'Add new notification')]/parent::div"
@@ -1235,7 +1235,7 @@ class VerizonDriver:
             # Try this until a new email field actually appears.
             successfullyWroteEmail = False
             for i in range(10):
-                self.browser.safeClick(element=addNewNotifyButton,timeout=30)
+                self.browser.safeClick(element=addNewNotifyButton,timeout=30,scrollIntoView=True)
                 try:
                     allNewEmailFields = self.browser.find_elements(by=By.XPATH, value="//input[@type='email']")
                     allNewEmailFields[-1].clear()
@@ -1261,7 +1261,7 @@ class VerizonDriver:
         # Finally, we continue back to payment.
         continueToPaymentButtonXPath = "//button[contains(text(),'Continue to Payment')]"
         continueToPaymentButton = self.browser.searchForElement(by=By.XPATH, value=continueToPaymentButtonXPath,testClickable=True,scrollIntoView=True)
-        self.browser.safeClick(element=continueToPaymentButton, timeout=120)
+        self.browser.safeClick(element=continueToPaymentButton, timeout=120,scrollIntoView=True)
 
         addressCouldNotBeValidatedXPath = "//div[contains(text(),'Address could not be validated.')]"
         shippingAddressFullXPath = "//div[@class='shipdisplay-left']/p[contains(@class,'collapse-shipping')]"
@@ -1275,7 +1275,7 @@ class VerizonDriver:
                 # If address could not be validated, but override is on, simply click continue again.
                 if (overrideVerizonInvalidAddress):
                     continueToPaymentButton = self.browser.searchForElement(by=By.XPATH, value=continueToPaymentButtonXPath,testClickable=True)
-                    self.browser.safeClick(element=continueToPaymentButton, timeout=120)
+                    self.browser.safeClick(element=continueToPaymentButton, timeout=120,scrollIntoView=True)
                 else:
                     #TODO GLUEUEUEUEUEUEUEUE
                     userResponse = input(f"Verizon's claiming that the address is invalid. Please review - press enter to continue, press any other keys to cancel.")
@@ -1287,7 +1287,7 @@ class VerizonDriver:
                         #return ActionResult(status=StatusCode.VERIZON_INVALID_ADDRESS)
                     else:
                         continueToPaymentButton = self.browser.searchForElement(by=By.XPATH,value=continueToPaymentButtonXPath,testClickable=True)
-                        self.browser.safeClick(element=continueToPaymentButton, timeout=120)
+                        self.browser.safeClick(element=continueToPaymentButton, timeout=120,scrollIntoView=True)
             elif(pageName == "ShippingReady"):
                 shippingWritten = True
                 break
