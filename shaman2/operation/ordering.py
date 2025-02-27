@@ -1153,7 +1153,7 @@ def processPostOrdersSCTASK(snowDriver : SnowDriver,verizonDriver : VerizonDrive
 
 #endregion === Full SNow Workflows
 
-if(False):
+if(True):
     try:
         # Drivers init
         br = Browser()
@@ -1175,11 +1175,11 @@ if(False):
         maintenance.validateVerizon(verizonDriver=vzw)
 
         # SCTASK processing
-        preProcessSCTASKs = []
-        postProcessSCTASKs = [] # Note that, if no postProcessSCTASKs are specified, all valid SCTASKs in the sheet will be closed. Input just "None" to NOT do this.
+        preProcessSCTASKs = ["SCTASK1138222"]
+        postProcessSCTASKs = ["SCTASK1159366","SCTASK1164331"] # Note that, if no postProcessSCTASKs are specified, all valid SCTASKs in the sheet will be closed. Input just "None" to NOT do this.
         for task in preProcessSCTASKs:
             processPreOrderSCTASK(tmaDriver=tma,snowDriver=snow,verizonDriver=vzw,
-                                  taskNumber=task,assignTo="Alex Somheil",reviewMode=False)
+                                  taskNumber=task,assignTo="Alex Somheil",reviewMode=True)
         processPostOrdersSCTASK(snowDriver=snow,verizonDriver=vzw,taskNumber=postProcessSCTASKs,useDriveSCTasks=False)
 
 
@@ -1188,14 +1188,14 @@ if(False):
 
 
         # Cimpl processing
-        preProcessWOs = []
-        postProcessWOs = []
+        preProcessWOs = [50030,50325,50332,50617,50675]
+        postProcessWOs = [49585]
         for wo in postProcessWOs:
             processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,uplandOutlookDriver=uplandOutlook,sysOrdBoxOutlookDriver=sysOrdBoxOutlook,
                                   workorderNumber=wo)
         for wo in preProcessWOs:
             processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
-                                  workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D",reviewMode=False)
+                                  workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D",reviewMode=True)
 
     except Exception as e:
         playsoundAsync(paths["media"] / "shaman_error.mp3")
