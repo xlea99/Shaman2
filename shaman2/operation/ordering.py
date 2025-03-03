@@ -30,6 +30,7 @@ DEFAULT_SNOW_CHARGER = "AppleWallAdapter"
 
 def standardizeToDateObject(dateString,carrier):
     VERIZON_DATE_FORMAT = "%m/%d/%Y"
+    ATT_DATE_FORMAT = "%m/%d/%Y"
     BELL_DATE_FORMAT = "%m/%d/%Y"
     ROGERS_DATE_FORMAT = "%B %d %Y %I:%M %p"
 
@@ -39,6 +40,8 @@ def standardizeToDateObject(dateString,carrier):
         return datetime.strptime(dateString,BELL_DATE_FORMAT)
     elif(carrier == "Rogers"):
         return datetime.strptime(dateString,ROGERS_DATE_FORMAT)
+    elif(carrier == "AT&T Mobility"):
+        return datetime.strptime(dateString, ATT_DATE_FORMAT)
     else:
         error = ValueError(f"Invalid carrier to convert date format for: {carrier}")
         log.error(error)
