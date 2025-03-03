@@ -2201,6 +2201,8 @@ class TMADriver():
     # All these methods assume that TMA is currently on the assignment wizard.
     # TODO add supported reading of assignment info into assignment objects.
 
+
+    bellManualOverrides
     # The "Sysco Method" of creating assignments - looks up the Account/Vendor first, then specifies
     # the site from a list of available sites. If an AssignmentObject is provided, this method will
     # try to build an exact copy of it (and will ignore client,vendor, and siteCode variables)
