@@ -1225,6 +1225,9 @@ if(True):
 #                        firstName=_firstName,lastName=_lastName,address1=_address1,address2=_address2,city=_city,state=_state,zipCode=_zipCode,companyName="Sysco",contactEmails=_contactEmails)
 #
 # DOCUMENTING A PHONE IN TMA:
-# documentTMANewInstall(tmaDriver=tma,client="Sysco",netID="",serviceNum="",installDate="",device="iPhone14_128GB",imei="",carrier="Verizon Wireless")
+# documentTMANewInstall(tmaDriver=tma,client="Sysco",netID="",serviceNum="",installDate="",device="iPhone14_128GB",imei="",carrier="Verizon Wireless",
+#                       planFeatures=[getPlansAndFeatures(deviceID="iPhone14_128GB",carrier="Verizon Wireless")[0]])
 # documentTMAUpgrade(tmaDriver=tma,client="Sysco",serviceNum="",installDate="",device="iPhone14_128GB",imei="")
+
+
 
