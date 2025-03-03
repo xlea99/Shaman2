@@ -4,7 +4,7 @@ import selenium.common.exceptions
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
 from shaman2.selenium.browser import Browser
-from shaman2.utilities.shaman_utils import convertServiceIDFormat
+from shaman2.utilities.shaman_utils import convertServiceIDFormat, validateCarrier
 from shaman2.common.logger import log
 from shaman2.common.config import mainConfig
 from shaman2.network.sheets_sync import syscoData
@@ -2202,7 +2202,7 @@ class TMADriver():
     # TODO add supported reading of assignment info into assignment objects.
 
 
-    bellManualOverrides
+    bellManualOverrides = {"179" : "180"}
     # The "Sysco Method" of creating assignments - looks up the Account/Vendor first, then specifies
     # the site from a list of available sites. If an AssignmentObject is provided, this method will
     # try to build an exact copy of it (and will ignore client,vendor, and siteCode variables)
@@ -2210,6 +2210,9 @@ class TMADriver():
     def Assignment_BuildAssignmentFromAccount(self,client,vendor,siteCode):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
+        if(validateCarrier(carrierString=vendor) == "AT&T Mobility"):
+            if(str(siteCode) in self.bellManualOverrides.keys()):
+                siteCode = self.bellManualOverrides[str(siteCode)]
         # This helper function will help us quickly get the current and total pages number of whatever tab we're on
         # in the assignment wizard.
         pageCountTextXPath = "//span[contains(@id,'wizFindExistingAssigment')][contains(@id,'lblPages')]"
