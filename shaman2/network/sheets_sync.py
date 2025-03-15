@@ -6,7 +6,7 @@ class SheetSync:
 
     # Simple init method sets up google service and sets spreadsheetID.
     def __init__(self,googleService = None,spreadsheetID = None):
-        if(not googleService):
+        if not googleService:
             self.googleService = buildSheetsAPIService()
         else:
             self.googleService = googleService
@@ -33,7 +33,7 @@ class SheetSync:
 
         self.fullSheet = returnList
 
-        if(keyColumn is None):
+        if keyColumn is None:
             return returnList
         else:
             returnDict = {}
@@ -93,7 +93,7 @@ class SheetSync:
         # Generating a raw list of row numbers needed to be deleted
         for index, existingRow in enumerate(self.fullSheet):
             # print(f"{index} | {existingRow} | {existingRow[columnName]}")
-            if (existingRow[columnName] in values):
+            if existingRow[columnName] in values:
                 rowsToRemove.append(index + 2)
 
         # Condense row numbers into runs wherever possible
@@ -102,7 +102,7 @@ class SheetSync:
         currentStart = rowsToRemove[0]
         currentEnd = rowsToRemove[0]
         for index in rowsToRemove[1:]:
-            if (index == currentEnd + 1):
+            if index == currentEnd + 1:
                 currentEnd = index
             else:
                 rowRangesToRemove.append((currentStart, currentEnd))

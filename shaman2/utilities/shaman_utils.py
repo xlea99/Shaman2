@@ -9,7 +9,7 @@ from selenium.common.exceptions import NoSuchElementException,StaleElementRefere
 
 BAD_ELEMENT_EXCEPTIONS = (NoSuchElementException,StaleElementReferenceException,ElementNotInteractableException,ElementClickInterceptedException)
 
-# This function accepts a phone number in ANY format (assuming it contains an actual phone number an
+# This function accepts a phone number in ANY format (assuming it contains an actual phone number and
 # no extra numbers), and converts it to one of three forms:
 # -dashed (512-819-2010)
 # -dotted (512.819.2010)
@@ -19,11 +19,11 @@ def convertServiceIDFormat(serviceID, targetFormat):
     rawNumber = re.sub(r'\D', '', serviceID)  # \D matches any non-digit
 
     # Based on the desired target format, format the raw number accordingly
-    if(targetFormat == 'dashed'):
+    if targetFormat == 'dashed':
         return f"{rawNumber[:3]}-{rawNumber[3:6]}-{rawNumber[6:]}"
-    elif(targetFormat == 'dotted'):
+    elif targetFormat == 'dotted':
         return f"{rawNumber[:3]}.{rawNumber[3:6]}.{rawNumber[6:]}"
-    elif(targetFormat == 'raw'):
+    elif targetFormat == 'raw':
         return rawNumber
     else:
         raise ValueError("Invalid target format. Use 'dashed', 'dotted', or 'raw'.")
@@ -76,15 +76,15 @@ def consoleUserWarning(warningMessage,
                        errorMessage = "User cancelled program runtime due to warning.",
                        addUserInstructionsToWarning = True):
     playsoundAsync(paths["media"] / "shaman_attention.mp3")
-    if(addUserInstructionsToWarning):
+    if addUserInstructionsToWarning:
         warningMessage = warningMessage + " Type Enter or C to (C)ontinue. Type S to (S)kip. Type anything else to cancel program run."
     userResponse = input(warningMessage).strip().lower()
-    if(userResponse == "c" or userResponse == ""):
-        if(continueMessage):
+    if userResponse == "c" or userResponse == "":
+        if continueMessage:
             print(continueMessage)
         return True
-    elif(userResponse == "s"):
-        if(skipMessage):
+    elif userResponse == "s":
+        if skipMessage:
             print(skipMessage)
         return False
     else:
@@ -97,7 +97,7 @@ def naturalPause():
     pauseTime = random.uniform(0.3,2.5)
 
     # Sometimes, add way more time just for realism.
-    if(random.random() > 0.85):
+    if random.random() > 0.85:
         pauseTime += random.randrange(1,11)
 
     # Wait the time.
@@ -106,15 +106,15 @@ def naturalPause():
 # This helper method attempts to convert between the many different carrier formats into our one standardized format.
 def validateCarrier(carrierString):
     testCarrierString = ("".join(char for char in carrierString if char.isalpha())).lower()
-    if("verizon" in testCarrierString or "vzw" in testCarrierString):
+    if "verizon" in testCarrierString or "vzw" in testCarrierString:
         return "Verizon Wireless"
-    elif("tmobile" in testCarrierString):
+    elif "tmobile" in testCarrierString:
         return "T Mobile"
-    elif("bell" in testCarrierString):
+    elif "bell" in testCarrierString:
         return "Bell Mobility"
-    elif("rogers" in testCarrierString):
+    elif "rogers" in testCarrierString:
         return "Rogers"
-    elif("att" in testCarrierString):
+    elif "att" in testCarrierString:
         return "AT&T Mobility"
     else:
         return None

@@ -1,13 +1,11 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import Select
 import time
 from shaman2.selenium.browser import Browser
 from shaman2.common.logger import log
 from shaman2.common.config import mainConfig
 from shaman2.common.paths import paths
 from shaman2.utilities.async_sound import playsoundAsync
-from shaman2.utilities import misc
 
 class OutlookDriver:
 
@@ -25,9 +23,9 @@ class OutlookDriver:
 
     # This method logs in to Upland email, and sets this OutlookDriver to Upland type.
     def logInToOutlook_Upland(self):
-        if("Outlook_Upland" in self.browser.tabs.keys()):
+        if "Outlook_Upland" in self.browser.tabs.keys():
             self.browser.switchToTab("Outlook_Upland")
-            if(self.browser.current_url.startswith("https://outlook.office.com/mail")):
+            if self.browser.current_url.startswith("https://outlook.office.com/mail"):
                 return True
         else:
             # First, open a new tab for this Outlook_Upland driver.
@@ -50,7 +48,7 @@ class OutlookDriver:
         jumpcloudSignInHeaderXPath = "//*[normalize-space(text())='Log in to your application using JumpCloud']"
         jumpcloudSignInHeader = self.browser.searchForElement(by=By.XPATH,value=jumpcloudSignInHeaderXPath,timeout=10)
         # If we're at the Jumpcloud sign in page, handle it.
-        if(jumpcloudSignInHeader == "JumpcloudSignIn"):
+        if jumpcloudSignInHeader == "JumpcloudSignIn":
             jumpcloudEmailInputXPath = "//input[@type='email']"
             jumpcloudEmailInput = self.browser.searchForElement(by=By.XPATH, value=jumpcloudEmailInputXPath, timeout=60)
             jumpcloudEmailInput.clear()
@@ -77,7 +75,7 @@ class OutlookDriver:
             # If the JumpCloud Protect option is listed, click on it.
             jumpcloudProtectMFAXPath = "//button[contains(@data-test-id,'MfaButtons__push')]"
             jumpcloudProtectMFA = self.browser.searchForElement(by=By.XPATH, value=jumpcloudProtectMFAXPath, timeout=1)
-            if (jumpcloudProtectMFA):
+            if jumpcloudProtectMFA:
                 jumpcloudProtectMFA.click()
 
             # Prompt the user to fill in SSO
@@ -87,7 +85,7 @@ class OutlookDriver:
         # Wait for the "Stay signed in?" page to load, and handle it.
         staySignedInHeaderXPath = "//div[normalize-space(text())='Stay signed in?']"
         staySignedInHeader = self.browser.searchForElement(by=By.XPATH,value=staySignedInHeaderXPath,timeout=30)
-        if (staySignedInHeader):
+        if staySignedInHeader:
             yesStaySignedInButtonXPath = "//input[@value='Yes']"
             yesStaySignedInButton = self.browser.searchForElement(by=By.XPATH,value=yesStaySignedInButtonXPath,timeout=10)
             yesStaySignedInButton.click()
@@ -95,7 +93,7 @@ class OutlookDriver:
         # Wait for the side folder pane to load, to confirm we've signed in correctly.
         sideFolderPaneInboxXPath = "//div[@id='folderPaneDroppableContainer']//span[normalize-space(text())='Inbox']"
         sideFolderPaneInbox = self.browser.searchForElement(by=By.XPATH,value=sideFolderPaneInboxXPath,timeout=60)
-        if(sideFolderPaneInbox):
+        if sideFolderPaneInbox:
             return True
         else:
             return False
@@ -103,15 +101,15 @@ class OutlookDriver:
     # This method logs in to the Sysco Ord Box, and sets this OutlookDriver to SyscoOrdBox type. This RELIES
     # on the Upland outlook instance already being open, and will fail without it.
     def logInToOutlook_SyscoOrdBox(self):
-        if("Outlook_SyscoOrdBox" in self.browser.tabs.keys()):
+        if "Outlook_SyscoOrdBox" in self.browser.tabs.keys():
             self.browser.switchToTab("Outlook_SyscoOrdBox")
-            if(self.browser.current_url.startswith("https://outlook.office.com/mail")):
+            if self.browser.current_url.startswith("https://outlook.office.com/mail"):
                 return True
             else:
                 self.browser.closeTab(tabName="Outlook_SyscoOrdBox")
 
         # Ensure the uplandOutlookDriver is valid.
-        if("Outlook_Upland" not in self.browser.tabs.keys()):
+        if "Outlook_Upland" not in self.browser.tabs.keys():
             error = ValueError(f"You MUST have an Outlook_Upland driver already logged in in order to open the SyscoOrdBox!")
             log.error(error)
             raise error
@@ -169,19 +167,19 @@ class OutlookDriver:
             returnDict = {}
 
             convIDElement = emailElement.find_elements(by=By.XPATH,value=convIDXPath)
-            if(convIDElement):
+            if convIDElement:
                 returnDict["ConvID"] = convIDElement[0].get_attribute("data-convid")
             senderEmailElement = emailElement.find_elements(by=By.XPATH, value=senderEmailXPath)
-            if (senderEmailElement):
+            if senderEmailElement:
                 returnDict["SenderEmail"] = senderEmailElement[0].get_attribute("title")
             subjectElement = emailElement.find_elements(by=By.XPATH, value=subjectXPath)
-            if (subjectElement):
+            if subjectElement:
                 returnDict["Subject"] = subjectElement[0].text.strip()
             timestampElement = emailElement.find_elements(by=By.XPATH, value=timestampXPath)
-            if (timestampElement):
+            if timestampElement:
                 returnDict["Timestamp"] = timestampElement[0].text.strip()
             contentElement = emailElement.find_elements(by=By.XPATH, value=contentXPath)
-            if (contentElement):
+            if contentElement:
                 returnDict["ContentPreview"] = contentElement[0].text.strip()
 
             return returnDict
@@ -192,12 +190,12 @@ class OutlookDriver:
         for visibleMessage in allVisibleMessages:
             # Skip "invisible" messages.
             thisStyleString = visibleMessage.get_attribute("style")
-            if("height: 0px;" in thisStyleString):
+            if "height: 0px;" in thisStyleString:
                 continue
 
             emailDict = readSingleEmailSummary(visibleMessage)
             # Skip "ghost" messages.
-            if(emailDict and str(emailDict.get("Timestamp","")).strip() != ""):
+            if emailDict and str(emailDict.get("Timestamp", "")).strip() != "":
                 returnList.append(emailDict)
 
         return returnList
@@ -206,7 +204,7 @@ class OutlookDriver:
     def openVisibleEmail(self,convID : (str,dict)):
         self.browser.switchToTab(tabName=f"Outlook_{self.outlookType}")
 
-        if(type(convID) is dict):
+        if type(convID) is dict:
             convID = convID["ConvID"]
 
         targetEmailCardXPath = f"{self.allVisibleMessagesXPath}//div[normalize-space(@data-convid)='{convID.strip()}']"
@@ -220,7 +218,7 @@ class OutlookDriver:
 
         openEmailFullContentXPath = "//div[@aria-label='Email message']"
         openEmailFullContent = self.browser.searchForElement(by=By.XPATH,value=openEmailFullContentXPath,timeout=5)
-        if(openEmailFullContent):
+        if openEmailFullContent:
             return openEmailFullContent.text.strip()
         else:
             return None

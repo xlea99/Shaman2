@@ -7,7 +7,7 @@ from shaman2.common.paths import validatePath
 # to the directory backupPath, keeping at maximum backupLimit backups at any time.
 def backup(filePath, backupPath, backupLimit=10):
     # Validate and create backup directory if missing
-    if(not os.path.exists(backupPath)):
+    if not os.path.exists(backupPath):
         os.mkdir(backupPath)
     validatePath(pathToValidate = backupPath)
 

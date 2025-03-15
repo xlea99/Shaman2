@@ -21,7 +21,7 @@ class VerizonDriver:
         logMessage = "Initialized new VerizonDriver object"
         self.browser = browserObject
 
-        if ("Verizon" in self.browser.tabs.keys()):
+        if "Verizon" in self.browser.tabs.keys():
             self.browser.closeTab("Verizon")
             logMessage += ", and closed existing Verizon tab."
         else:
@@ -42,16 +42,16 @@ class VerizonDriver:
         self.browser.switchToTab("Verizon")
 
         # Test if already signed in.
-        if("https://mb.verizonwireless.com" in self.browser.current_url):
+        if "https://mb.verizonwireless.com" in self.browser.current_url:
             log.info("Already logged in to Verizon.")
             return ActionResult(status=StatusCode.SUCCESS)
         else:
             self.browser.get("https://mblogin.verizonwireless.com/account/business/login/unifiedlogin")
-            if(manual):
+            if manual:
                 log.info("Prompted user to log in to Verizon manually...")
                 playsoundAsync(paths["media"] / "shaman_attention.mp3")
                 userResponse = input("Press enter once logged in to Verizon. Press any other key to cancel.")
-                if(userResponse != ""):
+                if userResponse != "":
                     log.warning("User cancelled manual login process.")
                     return ActionResult(status=StatusCode.USER_ABORT)
                 log.info("User finished manual login process.")
@@ -74,7 +74,7 @@ class VerizonDriver:
                                                                           timeout=30,raiseError=True,logError=False)
 
                     # If we're on the username page, foundElement is our usernameField.
-                    if(pageName == "Username"):
+                    if pageName == "Username":
                         foundElement.clear()
                         foundElement.send_keys(mainConfig["authentication"]["verizonUser"])
                         foundElement.send_keys(Keys.ENTER)
@@ -82,7 +82,7 @@ class VerizonDriver:
                         self.browser.searchForElement(element=foundElement,timeout=60,testNotStale=False,
                                                       invertedSearch=True,raiseError=True)
                     # If we're on the password page, foundElement is our passwordField.
-                    elif(pageName == "Password"):
+                    elif pageName == "Password":
                         foundElement.clear()
                         foundElement.send_keys(mainConfig["authentication"]["verizonPass"])
                         foundElement.send_keys(Keys.ENTER)
@@ -90,7 +90,7 @@ class VerizonDriver:
                         self.browser.searchForElement(element=foundElement, timeout=60, testNotStale=False,
                                                       invertedSearch=True)
                     # If we're on the "How Do You Want To Log In" page, we just need to find and click "log in with password" option.
-                    elif(pageName == "HDYWTLI"):
+                    elif pageName == "HDYWTLI":
                         logInWithPasswordOptionXPath = "//div[@class='pwdless_option_text']/a[normalize-space(text())='Password']"
                         logInWithPasswordOption = self.browser.searchForElement(by=By.XPATH,value=logInWithPasswordOptionXPath,testClickable=True,timeout=30)
                         logInWithPasswordOption.click()
@@ -98,13 +98,13 @@ class VerizonDriver:
                         self.browser.searchForElement(element=foundElement, timeout=60,testNotStale=False,
                                                       invertedSearch=True)
                     # If we're on the OTP page, we need to get the OTP from the user.
-                    elif(pageName == "OTP"):
+                    elif pageName == "OTP":
                         playsoundAsync(paths['media'] / "shaman_attention.mp3")
                         print("VERIZON WIRELESS: Requesting one time code. Please enter 2FA code - you have 3 minutes before self-destruction.")
                         # Wait for HomePage to load deliberately here.
                         self.browser.searchForElement(by=By.XPATH,value=homepageXPath, timeout=180,testClickable=True,testLiteralClick=True)
                     # If we're at the HomePage screen, we're done.
-                    elif(pageName == "Homepage"):
+                    elif pageName == "Homepage":
                         self.testForUnregisteredPopup()
                         return ActionResult(status=StatusCode.SUCCESS)
 
@@ -121,7 +121,7 @@ class VerizonDriver:
         unregisteredUsersCloseButtonXPath = f"{unregisteredUsersPopupXPath}//i[contains(@class,'icon-close')]"
 
         unregisteredUsersCloseButton = self.browser.searchForElement(by=By.XPATH,value=unregisteredUsersCloseButtonXPath,timeout=2)
-        if(unregisteredUsersCloseButton):
+        if unregisteredUsersCloseButton:
             unregisteredUsersCloseButton.click()
             log.info("Closed unregistered users popup.")
             self.browser.searchForElement(by=By.XPATH,value=unregisteredUsersCloseButtonXPath,timeout=30,invertedSearch=True,
@@ -142,7 +142,7 @@ class VerizonDriver:
         # Wait for shop new device button to confirm page load.
         testResult = self.browser.searchForElement(by=By.XPATH,value="//label[contains(@class,'custom-search-input-label')][contains(normalize-space(text()),'Welcome,')]",
                                       timeout=30, testClickable=True)
-        if(testResult):
+        if testResult:
             # TODO ????? deal with status code here too for unregistered popup DO WE EVEN NEED IT????
             #self.testForUnregisteredPopup()
             return ActionResult(status=StatusCode.SUCCESS)
@@ -157,14 +157,14 @@ class VerizonDriver:
         # Yes, the typo is intentional lmfao
         viewOrdersHeaderXPath = "//div[contains(@class,'view-orders-conatiner')]//h2[contains(text(),'Orders')]"
 
-        if(not self.browser.searchForElement(by=By.XPATH,value=viewOrdersHeaderXPath,timeout=2)):
+        if not self.browser.searchForElement(by=By.XPATH, value=viewOrdersHeaderXPath, timeout=2):
             # Navigate to the link directly.
             self.browser.get("https://mb.verizonwireless.com/mbt/secure/index?transType=ORDERSTATUS#/vieworders")
 
             # Test to ensure we got to the expected page.
             testResult = self.browser.searchForElement(by=By.XPATH,value=viewOrdersHeaderXPath,timeout=60,
                                           testClickable=True,testLiteralClick=True)
-            if(testResult):
+            if testResult:
                 return ActionResult(status=StatusCode.SUCCESS)
             else:
                 log.error(RuntimeError(f"Verizon order viewer never loaded!"), exc_info=True)
@@ -184,7 +184,7 @@ class VerizonDriver:
         order = {}
 
         # Test to prevent "No results found"
-        if(self.browser.searchForElement(by=By.XPATH, value="//div[contains(text(),'No Results Found')]",timeout=1)):
+        if self.browser.searchForElement(by=By.XPATH, value="//div[contains(text(),'No Results Found')]", timeout=1):
             log.warning("Tried to read a displayed Verizon order, but got 'No Results Found' on the order viewer.")
             return ActionResult(status=StatusCode.NO_RESULTS)
 
@@ -204,7 +204,7 @@ class VerizonDriver:
 
         # Ace Order Number/Loc Code
         aceLocNumberField = self.browser.searchForElement(by=By.XPATH,value="//div[text()='Ace/Loc Order number']/following-sibling::div",timeout=bodyValueTimeout)
-        if(aceLocNumberField):
+        if aceLocNumberField:
             aceLocMatch = re.search(r"Order #: (\d+) Loc: (\w+)", aceLocNumberField.text)
             order["AceOrderNumber"] = aceLocMatch.group(1)
             order["AceLocationNumber"] = aceLocMatch.group(2)
@@ -235,7 +235,7 @@ class VerizonDriver:
 
         # Line Information
         lineInformationButton = self.browser.searchForElement(by=By.XPATH, value="//a[contains(text(),'Line Information')]",timeout=bodyValueTimeout)
-        if(lineInformationButton):
+        if lineInformationButton:
             self.browser.safeClick(element=lineInformationButton,timeout=bodyValueTimeout)
             lineInformation = self.browser.searchForElement(by=By.XPATH,value="//div[@aria-labelledby='tab2']/ul/div/li/div[contains(@class,'column-2')]",timeout=bodyValueTimeout)
             imeiMatch = re.compile(r'Device ID: (\d+)').search(lineInformation.text)
@@ -273,11 +273,11 @@ class VerizonDriver:
                                       testClickable=True, testLiteralClick=True)
 
         foundOrderLocator = self.browser.searchForElement(by=By.XPATH,value=f"//div[text()='{orderNumber}']",timeout=1)
-        if(foundOrderLocator):
+        if foundOrderLocator:
             # Helper section to ensure that Verizon doesn't decide to randomly collapse the order on lookup for unknown reasons.
             foundOrderExpandIconXPath = f"//div[text()='{orderNumber}']/following-sibling::td/div/span[@class='onedicon icon-plus-small']"
             expandIcon = self.browser.searchForElement(by=By.XPATH,value=foundOrderExpandIconXPath,timeout=2)
-            if(expandIcon):
+            if expandIcon:
                 expandIcon.click()
             return ActionResult(status=StatusCode.SUCCESS)
         else:
@@ -288,14 +288,14 @@ class VerizonDriver:
     def OrderViewer_UpdateOrderViewDropdown(self,viewPeriod : str):
         viewPeriod = viewPeriod.title()
         validChoices = ["30 Days","60 Days","90 Days","120 Days","150 Days","180 Days","13 Months"]
-        if(viewPeriod not in validChoices):
+        if viewPeriod not in validChoices:
             error = ValueError(f"Invalid choice to select for viewPeriod: '{viewPeriod}'")
             log.error(error)
             raise error
 
         viewDropdownMenuXPath = "//div[contains(@class,'selectdropDown')]//label[normalize-space(text())='View']/parent::div/div/button[contains(@class,'dropDownSelect')]"
         # Check to see if this option is already selected.
-        if(self.browser.searchForElement(by=By.XPATH,value=f"{viewDropdownMenuXPath}[normalize-space(text())='{viewPeriod}']",timeout=3)):
+        if self.browser.searchForElement(by=By.XPATH, value=f"{viewDropdownMenuXPath}[normalize-space(text())='{viewPeriod}']", timeout=3):
             return ActionResult(status=StatusCode.SUCCESS)
         else:
             # First, click on the dropdown menu itself
@@ -311,7 +311,7 @@ class VerizonDriver:
             # Yes, the typo is intentional lmfao
             viewOrdersHeaderXPath = "//div[contains(@class,'view-orders-conatiner')]//h2[contains(text(),'Orders')]"
             testResult = self.browser.searchForElement(by=By.XPATH, value=viewOrdersHeaderXPath, timeout=120,testClickable=True, testLiteralClick=True)
-            if(testResult):
+            if testResult:
                 return ActionResult(status=StatusCode.SUCCESS)
             else:
                 return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
@@ -338,7 +338,7 @@ class VerizonDriver:
         self.testForUnregisteredPopup()
 
         # Test if Verizon can't find the line.
-        if(self.browser.searchForElement(by=By.XPATH,value="//p[contains(text(),'No results found.')]",timeout=2)):
+        if self.browser.searchForElement(by=By.XPATH, value="//p[contains(text(),'No results found.')]", timeout=2):
             self.testForUnregisteredPopup()
             exitButton = self.browser.searchForElement(by=By.XPATH, value="//i[@id='icnClose']",timeout=3,testClickable=True)
             exitButton.click()
@@ -350,7 +350,7 @@ class VerizonDriver:
             upgradeDateHeaderXPath = "//sub[text()='Upgrade date']"
             testResult = self.browser.searchForElement(by=By.XPATH, value=upgradeDateHeaderXPath, timeout=120,
                                           testClickable=True, testLiteralClick=True)
-            if(testResult):
+            if testResult:
                 return ActionResult(status=StatusCode.SUCCESS)
             else:
                 return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
@@ -379,8 +379,8 @@ class VerizonDriver:
             # TODO Handle cases when the line isn't active (suspended)
 
             # Handle clicking on the upgrade button.
-            if((alias == "UpgradeEligible" or alias == "UpgradeIneligible") and not clickedUpgrade):
-                if(alias == "Upgrade Eligible"):
+            if (alias == "UpgradeEligible" or alias == "UpgradeIneligible") and not clickedUpgrade:
+                if alias == "Upgrade Eligible":
                     upgradeEligible = True
                 else:
                     upgradeEligible = False
@@ -391,7 +391,7 @@ class VerizonDriver:
                 upgradePagesMap.pop(upgradeDeviceEligibleButtonXPath,None)
                 upgradePagesMap.pop(upgradeDeviceIneligibleButtonXPath,None)
             # Handle MTN Pending errors that may pop up.
-            elif(alias == "MTNPending"):
+            elif alias == "MTNPending":
                 mtnPendingErrorCancelButtonString = "//app-modal-invalid-items-list//i[@aria-label='Close-Icon']"
                 mtnPendingErrorCancelButton = self.browser.searchForElement(by=By.XPATH,value=mtnPendingErrorCancelButtonString,testClickable=True,timeout=30)
                 mtnPendingErrorCancelButton.click()
@@ -402,18 +402,17 @@ class VerizonDriver:
                 log.warning("Line has the MTN Pending error - can't upgrade at the moment.")
                 return ActionResult(status=StatusCode.VERIZON_MTN_PENDING)
             # Handle navigating the early upgrade options and ETF waiver application
-            elif(alias == "EarlyUpgradeOptions"):
-                if(useETFWaiver):
+            elif alias == "EarlyUpgradeOptions":
+                if useETFWaiver:
                     earlyUpgradeOptionsDropdownXPath = "//button[@class='drop-down-vz']"
-                    earlyUpgradeOptionsDropdown = self.browser.searchForElement(by=By.XPATH,value=earlyUpgradeOptionsDropdownXPath,timeout=15,testClickable=True)
-                    earlyUpgradeOptionsDropdown.click()
+                    self.browser.safeClick(by=By.XPATH,value=earlyUpgradeOptionsDropdownXPath,timeout=60,scrollIntoView=True)
 
                     waiverOptionXPath = f"{earlyUpgradeOptionsDropdownXPath}/following-sibling::ul/li[contains(text(),'Waiver')]"
                     waiverOption = self.browser.searchForElement(by=By.XPATH,value=waiverOptionXPath,timeout=15,testClickable=True)
                     waiverOption.click()
 
                     elementNotEligibleXPath = "//*[contains(text(),'The wireless number you are attempting to upgrade is not eligible to use a Waiver.')]"
-                    if(self.browser.searchForElement(by=By.XPATH,value=elementNotEligibleXPath,timeout=5)):
+                    if self.browser.searchForElement(by=By.XPATH, value=elementNotEligibleXPath, timeout=5):
                         log.warning("Line is not yet eligible to be upgraded with an ETF waiver.")
                         return ActionResult(status=StatusCode.VERIZON_EARLY_UPGRADE_NO_ETF)
 
@@ -423,14 +422,14 @@ class VerizonDriver:
                     # Literally no idea what, or how. I've looked everywhere, I've tried to reproduce it manually.
                     # Genuinely believe that this section of the code is haunted so, uh, hi Selenium spirit. Don't mind
                     # me.
-                    if(continueButton):
+                    if continueButton:
                         continueButton.click()
                     log.info("Applied ETF waiver to line during upgrade.")
                 else:
                     log.warning("Line requires ETF waiver to be upgraded, and action was run with useETFWaiver set to False.")
                     return ActionResult(status=StatusCode.VERIZON_EARLY_UPGRADE_NO_ETF)
             # If we get to the "Shop Devices" screen, we've completed getting from the line viewer to upgrade wizard
-            elif(alias == "ShopDevices"):
+            elif alias == "ShopDevices":
                 # We make sure it's literally clickable before proceeding.
                 self.browser.searchForElement(element=foundElement, testClickable=True,
                                               testLiteralClick=True, timeout=30, minSearchTime=3,raiseError=True)
@@ -459,7 +458,7 @@ class VerizonDriver:
         shopDevicesHeaderXPath = "//h2[contains(text(),'Shop Devices')]"
         testResult = self.browser.searchForElement(by=By.XPATH,value=shopDevicesHeaderXPath,timeout=120,minSearchTime=5,
                                       testClickable=True,testLiteralClick=True)
-        if(testResult):
+        if testResult:
             return ActionResult(status=StatusCode.SUCCESS)
         else:
             return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
@@ -491,24 +490,24 @@ class VerizonDriver:
                                                                    testClickable=True,timeout=60, raiseError=True, logError=False)
 
             # If the cart is empty, we're done.
-            if(elementName == "cartIsEmpty"):
-                if(haveClearedCart):
+            if elementName == "cartIsEmpty":
+                if haveClearedCart:
                     log.debug("Cleared cart successfully.")
                 else:
                     log.debug("Cart is already empty.")
                 return ActionResult(status=StatusCode.SUCCESS)
 
             # If the "confirm clear" prompt is up, we click clear here.
-            elif(elementName == "confirmClearPopupButton"):
+            elif elementName == "confirmClearPopupButton":
                 # Click "confirm" in the popup.
                 self.browser.safeClick(element=foundElement, scrollIntoView=True, timeout=10)
                 haveClearedCart = True
 
             # If the clear cart button is currently clickable, we click it to open up the "confirm clear" prompt.
-            elif(elementName == "clearCartButton"):
+            elif elementName == "clearCartButton":
                 # We first check to make sure another clear cart popup hasn't shown up.
                 existingClearCartPopup = self.browser.searchForElement(by=By.XPATH,value=confirmClearButtonXPath,timeout=10)
-                if(existingClearCartPopup):
+                if existingClearCartPopup:
                     continue
                 else:
                     # Click "clear cart". If this fails, the element might have been found right before it disappeared.
@@ -529,7 +528,7 @@ class VerizonDriver:
     def DeviceSelection_SearchSelectDevice(self,deviceID,orderPath="NewInstall",searchAttempts = 3):
         targetDeviceCardXPath = f"//div/div[contains(@class,'device-name')][normalize-space(translate(text(),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'))='{syscoData["Devices"][deviceID]["Verizon Wireless New Install Card Name"].strip().lower()}']"
         targetDeviceOpenButtonXPath = f"{targetDeviceCardXPath}/following-sibling::div//button[contains(@class,'quick-view-btn')]"
-        if(orderPath == "NewInstall"):
+        if orderPath == "NewInstall":
             deviceDetailsXPath = f"//div[contains(@class,'pdp-header-section')]//div[normalize-space(text())='{syscoData["Devices"][deviceID]["Verizon Wireless New Install Card Name"]}']"
         else:
             deviceDetailsXPath = f"//div[contains(@class,'pdp-header-section')]//div[normalize-space(text())='{syscoData["Devices"][deviceID]["Verizon Wireless Upgrade Card Name"]}']"
@@ -537,7 +536,7 @@ class VerizonDriver:
 
         # Helper method to search for a device one time, and wait until (roughly) the loading screen is gone.
         def searchDevice(clearFilters=False):
-            if(clearFilters):
+            if clearFilters:
                 clearFiltersButtonXPath = "//*[normalize-space(text())='Clear all']"
                 clearFiltersButton = self.browser.searchForElement(by=By.XPATH,value=clearFiltersButtonXPath,timeout=60,testClickable=True)
                 self.browser.safeClick(element=clearFiltersButton,timeout=60,scrollIntoView=True)
@@ -554,7 +553,7 @@ class VerizonDriver:
         def selectDevice():
             clickResult = self.browser.safeClick(by=By.XPATH,value=targetDeviceOpenButtonXPath, timeout=10,scrollIntoView=True,raiseError=False)
 
-            if(clickResult):
+            if clickResult:
                 print("FANTASTIC!")
                 # Test for device details to confirm device has been successfully pulled up.
                 return True# if self.browser.searchForElement(by=By.XPATH, value=deviceDetailsXPath, timeout=30, minSearchTime=3,
@@ -574,7 +573,7 @@ class VerizonDriver:
             selectResult = selectDevice()
 
             # If selected successfully, break loop
-            if(selectResult):
+            if selectResult:
                 selectionSuccessful = True
                 break
             # Otherwise, try again after a wait.
@@ -583,12 +582,12 @@ class VerizonDriver:
                 time.sleep(5)
                 continue
 
-        if(selectionSuccessful):
+        if selectionSuccessful:
             return ActionResult(status=StatusCode.SUCCESS)
         # Otherwise, raise an error.
         else:
             noResultsFoundXPath = "//span[contains(text(),'Sorry, no results found. Please try again with other key words.')]"
-            if(self.browser.searchForElement(by=By.XPATH,value=noResultsFoundXPath,timeout=3)):
+            if self.browser.searchForElement(by=By.XPATH, value=noResultsFoundXPath, timeout=3):
                 log.warning(f"Verizon is report that no device with id '{deviceID}' can be found.")
                 return ActionResult(status=StatusCode.NO_RESULTS)
             else:
@@ -597,7 +596,7 @@ class VerizonDriver:
     # Assumes we're in the quick view menu for a device. Various options for this menu.
     @action()
     def DeviceSelection_DeviceView_Select2YearContract(self,orderPath="NewInstall"):
-        if(orderPath == "NewInstall"):
+        if orderPath == "NewInstall":
             yearlyContractXPath = "//div[contains(@class,'payment-option-each')]/div[contains(text(),'Yearly contract')]/parent::div"
             self.browser.safeClick(by=By.XPATH,value=yearlyContractXPath,timeout=60,scrollIntoView=True)
 
@@ -615,25 +614,36 @@ class VerizonDriver:
                                successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=f"{declineDeviceProtectionOptionBaseXPath}[contains(@class,'bold')]"))
         return ActionResult(status=StatusCode.SUCCESS)
     @action()
-    def DeviceSelection_DeviceView_SelectColor(self,deviceID=None,colorName=None,orderPath="NewInstall"):
+    def DeviceSelection_DeviceView_SelectSizeColor(self,deviceID=None,colorName=None,sizeString=None,orderPath="NewInstall"):
         #TODO should colorName validation be done all externally, or is here fine?
-        if(colorName is None):
-            if(deviceID):
+        if colorName is None:
+            if deviceID:
                 #TODO handle errors with sheet lookup or nah?
                 colorName = syscoData["Devices"][deviceID]["Verizon Wireless Default Color"]
             else:
                 error = ValueError("Specified to select a Default color, but no deviceID was specified!")
                 log.error(error)
                 raise error
-
-        if(colorName is None):
+        if colorName is None:
             log.info(f"No color configured for device '{deviceID}'. Skipping color selection.")
+            return ActionResult(status=StatusCode.SUCCESS)
+
+        if sizeString is None:
+            if deviceID:
+                #TODO handle errors with sheet lookup or nah?
+                sizeString = syscoData["Devices"][deviceID]["Verizon Wireless Storage Size"]
+            else:
+                error = ValueError("Specified to select a Default size, but no deviceID was specified!")
+                log.error(error)
+                raise error
+        if sizeString is None:
+            log.info(f"No size configured for device '{deviceID}'. Skipping size selection.")
             return ActionResult(status=StatusCode.SUCCESS)
 
         # For newInstalls, Verizon, in its infinite wisdom, has absolutely no labels on which color is which
         # other than literal RGB values. Therefore, we have to "guess and check" if we aren't currently selected
         # on the color we want.
-        if(orderPath == "NewInstall"):
+        if orderPath == "NewInstall":
             currentColorHeaderXPath = "//div[contains(text(),'What color do you want?')]/following-sibling::div"
             allColorboxOptionsXPath = "//div[contains(@class,'colorbox')]//div[@class='colorbox-button']"
             allColorboxOptions = self.browser.find_elements(by=By.XPATH,value=allColorboxOptionsXPath)
@@ -642,7 +652,7 @@ class VerizonDriver:
             for colorboxOption in allColorboxOptions:
                 # First, test if the previous selected color was correct:
                 currentlySelectedColor = self.browser.searchForElement(by=By.XPATH,value=currentColorHeaderXPath,timeout=30,testClickable=True).text.strip().lower()
-                if(currentlySelectedColor == colorName.lower()):
+                if currentlySelectedColor == colorName.lower():
                     foundColor = True
                     break
                 # If not, click on this new color and test it out.
@@ -650,7 +660,7 @@ class VerizonDriver:
                     self.browser.safeClick(element=colorboxOption,timeout=20)
                     continue
 
-            if(foundColor):
+            if foundColor:
                 return ActionResult(status=StatusCode.SUCCESS)
             else:
                 log.warning(f"Supplied color '{colorName}' does not seem to exist in Verizon Wireless for the searched device!")
@@ -660,12 +670,9 @@ class VerizonDriver:
         else:
             colorboxXPath = "//div[@class='colorbox']"
 
-
-            "//div[@class='colorbox']/div[normalize-space(translate(@title,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'))='Soft Touch Black']"
-
             colorSelectionXPath = f"{colorboxXPath}/div[normalize-space(translate(@title,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'))='{colorName.strip().lower()}']"
             colorSelection = self.browser.searchForElement(by=By.XPATH,value=colorSelectionXPath,timeout=15)
-            if(colorSelection):
+            if colorSelection:
                 self.browser.safeClick(element=colorSelection,timeout=15)
                 return ActionResult(status=StatusCode.SUCCESS)
             else:
@@ -675,7 +682,7 @@ class VerizonDriver:
                 return ActionResult(status=StatusCode.VERIZON_MISSING_COLOR)
     @action()
     def DeviceSelection_DeviceView_AddToCartAndContinue(self,orderPath="NewInstall"):
-        if(orderPath == "NewInstall"):
+        if orderPath == "NewInstall":
             addToCartButtonXPath = "//button[@id='device-add-to-cart']"
             self.browser.safeClick(by=By.XPATH,value=addToCartButtonXPath,timeout=30)
 
@@ -700,7 +707,7 @@ class VerizonDriver:
             # Wait for Shopping Cart page to load to confirm successful device add
             shoppingCartHeaderXPath = "//div[contains(@class,'device-shopping-cart-content-left')]//h1[contains(text(),'Shopping cart')]"
             testResult = self.browser.searchForElement(by=By.XPATH,value=shoppingCartHeaderXPath,timeout=60,minSearchTime=5)
-        if (testResult):
+        if testResult:
             return ActionResult(status=StatusCode.SUCCESS)
         else:
             return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
@@ -719,7 +726,7 @@ class VerizonDriver:
         # Now we test to ensure that the proper device card has fully loaded.
         targetAccessoryCardXPath = f"//app-accessory-tile/div/div/div[contains(@class,'product-name')][contains(text(),'{syscoData["Accessories"][accessoryID]["Verizon Wireless Card Name"]}')]"
         testResult = self.browser.searchForElement(by=By.XPATH,value=targetAccessoryCardXPath,timeout=60)
-        if (testResult):
+        if testResult:
             return ActionResult(status=StatusCode.SUCCESS)
         else:
             return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
@@ -735,7 +742,7 @@ class VerizonDriver:
         # it to DISAPPEAR. maybe implement?
         addedToCartConfirmationXPath = "//div[contains(text(),'Your new accessory has been added to your cart.')]"
         testResult = self.browser.searchForElement(by=By.XPATH,value=addedToCartConfirmationXPath,timeout=120)
-        if (testResult):
+        if testResult:
             return ActionResult(status=StatusCode.SUCCESS)
         else:
             return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
@@ -746,7 +753,7 @@ class VerizonDriver:
         continueButton = self.browser.searchForElement(by=By.XPATH,value=continueButtonString,timeout=60)
         self.browser.safeClick(element=continueButton,timeout=60,scrollIntoView=True)
 
-        if(orderPath == "NewInstall"):
+        if orderPath == "NewInstall":
             # If this is a NewInstall, the next page should be the Plan Selection page.
             selectPlanHeaderXPath = "//div[contains(@class,'select-plan-container')]//h1[contains(text(),'Select plan')]"
             testResult = self.browser.searchForElement(by=By.XPATH,value=selectPlanHeaderXPath,timeout=120,testClickable=True,testLiteralClick=True)
@@ -755,7 +762,7 @@ class VerizonDriver:
             shoppingCartHeaderXPath = "//div[contains(@class,'device-shopping-cart-content-left')]//h1[contains(text(),'Shopping cart')]"
             testResult = self.browser.searchForElement(by=By.XPATH,value=shoppingCartHeaderXPath,timeout=60,minSearchTime=5)
 
-        if (testResult):
+        if testResult:
             return ActionResult(status=StatusCode.SUCCESS)
         else:
             return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
@@ -776,7 +783,7 @@ class VerizonDriver:
 
         # Wait for confirmation that the plan has been selected.
         testResult = self.browser.searchForElement(by=By.XPATH,value="//div[contains(text(),'Continue to the next step.')]",timeout=60)
-        if (testResult):
+        if testResult:
             return ActionResult(status=StatusCode.SUCCESS)
         else:
             return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
@@ -793,7 +800,7 @@ class VerizonDriver:
 
             # We wait until the device protection header is found, meaning we went to the next page.
             testResult = self.browser.searchForElement(by=By.XPATH,value=self.deviceProtectionHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True,raiseError=True)
-            if (testResult):
+            if testResult:
                 successfullySelectedPlan = True
                 break
             else:
@@ -801,7 +808,7 @@ class VerizonDriver:
                 time.sleep(5)
                 continue
 
-        if(successfullySelectedPlan):
+        if successfullySelectedPlan:
             return ActionResult(status=StatusCode.SUCCESS)
         else:
             return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
@@ -822,7 +829,7 @@ class VerizonDriver:
         # We wait for the number assignment page header to load, meaning we've successfully navigated to the next page.
         numberAssignPageHeaderXPath = "//div[contains(text(),'Assign numbers and users to your new devices.')]"
         testResult = self.browser.searchForElement(by=By.XPATH,value=numberAssignPageHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True,raiseError=True)
-        if (testResult):
+        if testResult:
             return ActionResult(status=StatusCode.SUCCESS)
         else:
             return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
@@ -860,17 +867,17 @@ class VerizonDriver:
             initialClickResult = self.browser.safeClick(by=By.XPATH,value=areaCodeDropdownXPath,timeout=20,raiseError=False,
                                    successfulClickCondition=lambda b:
                                    (b.searchForElement(by=By.XPATH,value=areaCodeScrollAreaXPath) or b.searchForElement(by=By.XPATH,value=noNumbersAvailableXPath)))
-            if(not initialClickResult):
+            if not initialClickResult:
                 return False
 
             # Wait for the spinner.
             self.browser.searchForElement(by=By.XPATH, value=zipCodeSpinnerXPath, timeout=30, invertedSearch=True,minSearchTime=3)
 
             # Handle the case where Verizon says no numbers are available
-            if(self.browser.searchForElement(by=By.XPATH, value=noNumbersAvailableXPath, timeout=3, testClickable=True)):
+            if self.browser.searchForElement(by=By.XPATH, value=noNumbersAvailableXPath, timeout=3, testClickable=True):
                 playsoundAsync(paths["media"] / "shaman_attention.mp3")
                 userResponse = input(f"Verizon is saying there are no area codes available for the given zip '{zipCode}'. Please manually select an area code, and press enter to continue. Press any key to cancel.")
-                if (userResponse):
+                if userResponse:
                     error = ValueError("No zip codes found, and user cancelled manual input.")
                     log.error(error)
                     raise error
@@ -883,7 +890,7 @@ class VerizonDriver:
                 areaCodeResults = self.browser.searchForElements(by=By.XPATH, value=areaCodeResultsXPath, timeout=10)
 
                 # Check if any area code results are found, if not, try another zip code.
-                if(areaCodeResults):
+                if areaCodeResults:
                     self.browser.safeClick(element=areaCodeResults[0],timeout=10)
                     # Wait for the spinner one final time
                     self.browser.searchForElement(by=By.XPATH, value=zipCodeSpinnerXPath, timeout=30, invertedSearch=True,minSearchTime=1)
@@ -895,9 +902,9 @@ class VerizonDriver:
         selectionStatus = False
         for i in range(3):
             selectionStatus = selectAreaCode()
-            if(selectionStatus):
+            if selectionStatus:
                 break
-        if(not selectionStatus):
+        if not selectionStatus:
             log.error(f"Couldn't successfully select an area code after 3 attempts!")
             return ActionResult(status=StatusCode.VERIZON_ZIP_SELECTION_FAILURE)
 
@@ -908,7 +915,7 @@ class VerizonDriver:
         # Test to see the Verizon recognizes the number as assigned.
         numberHasBeenAssignedHeaderXPath = "//div[contains(text(),'You assigned numbers to all your devices.')]"
         testResult = self.browser.searchForElement(by=By.XPATH, value=numberHasBeenAssignedHeaderXPath, timeout=30,testClickable=True)
-        if (testResult):
+        if testResult:
             return ActionResult(status=StatusCode.SUCCESS)
         else:
             return ActionResult(status=StatusCode.VERIZON_ZIP_SELECTION_FAILURE)
@@ -923,7 +930,7 @@ class VerizonDriver:
         # Wait for user info page to load.
         userInfoHeaderXPath = "//div[contains(text(),'Add user information to your selected device.')]"
         testResult = self.browser.searchForElement(by=By.XPATH,value=userInfoHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True,raiseError=True)
-        if (testResult):
+        if testResult:
             return ActionResult(status=StatusCode.SUCCESS)
         else:
             return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
@@ -949,7 +956,7 @@ class VerizonDriver:
         emailField.clear()
         emailField.send_keys(email)
 
-        if(self.browser.searchForElement(by=By.XPATH,value="//span[contains(text(),'Please enter a valid email address.')]",timeout=3)):
+        if self.browser.searchForElement(by=By.XPATH, value="//span[contains(text(),'Please enter a valid email address.')]", timeout=3):
             log.error(f"Verizon believes that email '{email}' is invalid.")
             return ActionResult(status=StatusCode.VERIZON_INVALID_EMAIL)
         else:
@@ -969,7 +976,7 @@ class VerizonDriver:
         address1Field.send_keys(address1)
 
         # Write Address 2 (if applicable)
-        if(address2 is not None and address2 != ""):
+        if address2 is not None and address2 != "":
             address2FieldXPath = "//input[@formcontrolname='addressLine2']"
             address2Field = self.browser.searchForElement(by=By.XPATH,value=address2FieldXPath,timeout=30,testClickable=True)
             address2Field.clear()
@@ -1003,7 +1010,7 @@ class VerizonDriver:
         # Now we wait to see that the user info has been successfully updated.
         yourDevicesHeaderXPath = "//div[contains(text(),'Your devices')]"
         testResult = self.browser.searchForElement(by=By.XPATH,value=yourDevicesHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True,raiseError=True,scrollIntoView=True)
-        if (testResult):
+        if testResult:
             return ActionResult(status=StatusCode.SUCCESS)
         else:
             return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
@@ -1021,9 +1028,9 @@ class VerizonDriver:
         aliasDict = {shoppingCartHeaderXPath : "ShoppingCart",addressDoesntExistXPath : "AddressDoesntExist"}
 
         foundElement,alias = self.browser.searchForElement(by=By.XPATH, value=aliasDict, timeout=60, minSearchTime=5,testClickable=True)
-        if(alias == "ShoppingCart"):
+        if alias == "ShoppingCart":
             return ActionResult(status=StatusCode.SUCCESS)
-        elif(alias == "AddressDoesntExist"):
+        elif alias == "AddressDoesntExist":
             log.warning("Verizon Wireless reports that the given address cannot be validated.")
             return ActionResult(status=StatusCode.VERIZON_INVALID_ADDRESS)
         else:
@@ -1044,7 +1051,7 @@ class VerizonDriver:
 
         # Wait for it to show as "added"
         testResult = self.browser.searchForElement(by=By.XPATH,value=specificFeatureIsActiveXPath,timeout=30)
-        if (testResult):
+        if testResult:
             return ActionResult(status=StatusCode.SUCCESS)
         else:
             return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
@@ -1058,7 +1065,7 @@ class VerizonDriver:
         # Test to make sure we've arrived back at the shopping cart.
         shoppingCartHeaderXPath = "//div[contains(@class,'device-shopping-cart-content-left')]//h1[contains(text(),'Shopping cart')]"
         testResult = self.browser.searchForElement(by=By.XPATH, value=shoppingCartHeaderXPath, timeout=60, minSearchTime=5)
-        if (testResult):
+        if testResult:
             return ActionResult(status=StatusCode.SUCCESS)
         else:
             return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
@@ -1074,14 +1081,14 @@ class VerizonDriver:
 
         # First, if the "show lines button" exists, make sure its open.
         showLinesButton = self.browser.searchForElements(by=By.XPATH,value=showLinesButtonXPath,timeout=10)
-        if(showLinesButton):
+        if showLinesButton:
             # Test to make sure there's not multiple show line buttons..
-            if(len(showLinesButton) > 1):
+            if len(showLinesButton) > 1:
                 log.error("Attempted to validate a single line in the shopping cart, but found multiple instead!")
                 raise ValueError("Attempted to validate a single line in the shopping cart, but found multiple instead!")
             # Test if it's already open.
             isShowLinesButtonOpen = self.browser.searchForElement(by=By.XPATH,value=isShowLinesButtonOpenXPath,timeout=3)
-            if(not isShowLinesButtonOpen):
+            if not isShowLinesButtonOpen:
                 showLinesButton[0].click()
         # Get a list of all line elements in the cart.
         allCartLines = self.browser.searchForElements(by=By.XPATH,value=[allCartLinesXPath2,allCartLinesXPath1],timeout=15)
@@ -1090,12 +1097,12 @@ class VerizonDriver:
         #    raise ValueError("Attempted to validate a single line in the shopping cart, but found zero lines instead!")
         #    #return ActionResult(status=StatusCode.SUCCESS)
         #TODO GLUE. Verizon literally has two checkout pages and one breaks here, and i genuinely don't have the willpower to fix it right now. So glue. Suck it up.
-        if(len(allCartLines) <= 1):
+        if len(allCartLines) <= 1:
             expandLineButtonXPath = f"{allCartLinesXPath2}/parent::div/following-sibling::div[@class='right-wrap']/i"
 
             # Test to make sure the line is expanded
             closedExpandLineButton = self.browser.searchForElement(by=By.XPATH,value=f"{expandLineButtonXPath}[contains(@class,'icon-down-caret')]",timeout=1.5)
-            if(closedExpandLineButton):
+            if closedExpandLineButton:
                 self.browser.safeClick(element=closedExpandLineButton,timeout=15,
                                        successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=f"{expandLineButtonXPath}[contains(@class,'icon-up-caret')]"))
             return ActionResult(status=StatusCode.SUCCESS)
@@ -1109,7 +1116,7 @@ class VerizonDriver:
     def ShoppingCart_AddAccessories(self):
         # First, validate that they're only one line added.
         validateSingleLineResult = self.ShoppingCart_ValidateSingleLine()
-        if(not validateSingleLineResult.status):
+        if not validateSingleLineResult.status:
             return ActionResult(status=validateSingleLineResult.status)
 
         # Then, click on "Add accessories"
@@ -1122,7 +1129,7 @@ class VerizonDriver:
         shopAccessoriesHeaderXPath = "//section[contains(@class,'top-section')]//div[contains(text(),'Shop Accessories')]"
         testResult = self.browser.searchForElement(by=By.XPATH, value=shopAccessoriesHeaderXPath, timeout=60,
                                       testClickable=True, testLiteralClick=True)
-        if (testResult):
+        if testResult:
             return ActionResult(status=StatusCode.SUCCESS)
         else:
             return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
@@ -1140,7 +1147,7 @@ class VerizonDriver:
         selectFeaturesHeaderXPath = "//h3[contains(text(),'Select features')]"
         testResult = self.browser.searchForElement(by=By.XPATH, value=selectFeaturesHeaderXPath, timeout=60,
                                       testClickable=True, testLiteralClick=True)
-        if (testResult):
+        if testResult:
             return ActionResult(status=StatusCode.SUCCESS)
         else:
             return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
@@ -1156,7 +1163,7 @@ class VerizonDriver:
         # Test to ensure we've arrived at the checkout screen.
         checkoutHeaderXPath = "//div[@class='checkoutBox']//h1[text()='Checkout']"
         testResult = self.browser.searchForElement(by=By.XPATH,value=checkoutHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True)
-        if (testResult):
+        if testResult:
             return ActionResult(status=StatusCode.SUCCESS)
         else:
             return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
@@ -1166,7 +1173,7 @@ class VerizonDriver:
     @action()
     def Checkout_AddAddressInfo(self,company,attention,address1,city,stateAbbrev,zipCode,contactPhone,
                                 notificationEmails : list = None,address2 = "",overrideVerizonInvalidAddress=False):
-        if(address2 is None):
+        if address2 is None:
             address2 = ""
 
         # First, convert contactPhone to the correct format.
@@ -1204,7 +1211,7 @@ class VerizonDriver:
         address1Field.send_keys(address1)
 
         # Write address2
-        if(address2 is not None and address2 != ""):
+        if address2 is not None and address2 != "":
             address2FieldXPath = "//input[@id='add2']"
             address2Field = self.browser.searchForElement(by=By.XPATH,value=address2FieldXPath,timeout=30,testClickable=True)
             address2Field.clear()
@@ -1276,15 +1283,15 @@ class VerizonDriver:
             foundElement,pageName = self.browser.searchForElement(by=By.XPATH,value=pageMap,testClickable=True,
                                                                   timeout=30,scrollIntoView=True,raiseError=True)
             # Handle cases where Verizon reports the address as invalid.
-            if(pageName == "AddressNotValid"):
+            if pageName == "AddressNotValid":
                 # If address could not be validated, but override is on, simply click continue again.
-                if (overrideVerizonInvalidAddress):
+                if overrideVerizonInvalidAddress:
                     continueToPaymentButton = self.browser.searchForElement(by=By.XPATH, value=continueToPaymentButtonXPath,testClickable=True)
                     self.browser.safeClick(element=continueToPaymentButton, timeout=120,scrollIntoView=True)
                 else:
                     #TODO GLUEUEUEUEUEUEUEUE
                     userResponse = input(f"Verizon's claiming that the address is invalid. Please review - press enter to continue, press any other keys to cancel.")
-                    if (userResponse):
+                    if userResponse:
                         error = ValueError(f"Verizon believes address is invalid")
                         log.error(error)
                         raise error
@@ -1293,10 +1300,10 @@ class VerizonDriver:
                     else:
                         continueToPaymentButton = self.browser.searchForElement(by=By.XPATH,value=continueToPaymentButtonXPath,testClickable=True)
                         self.browser.safeClick(element=continueToPaymentButton, timeout=120,scrollIntoView=True)
-            elif(pageName == "ShippingReady"):
+            elif pageName == "ShippingReady":
                 shippingWritten = True
                 break
-        if(not shippingWritten):
+        if not shippingWritten:
             log.warning("Tried to continue from shipping address input 4 times, but never succeeded.")
             return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
 
@@ -1314,7 +1321,7 @@ class VerizonDriver:
 
             addresses = streetLine.strip().split(",")
             address1 = addresses[0].strip()
-            if (len(addresses) >= 2):
+            if len(addresses) >= 2:
                 address2 = addresses[1].strip()
             else:
                 address2 = None
@@ -1343,7 +1350,7 @@ class VerizonDriver:
             # TODO handle this through status codes/retroactively?
             playsoundAsync(paths["media"] / "shaman_attention.mp3")
             userResponse = input(f"Verizon ninja-edited the shipping address. Verizon's final address was :\n\n{classifiedVerizonAddress}. Press enter to proceed anyways (you may make a change in the shipping if you prefer), type anything else to cancel.")
-            if(userResponse):
+            if userResponse:
                 error = ValueError(f"Verizon ninja-edited the shipping address. Verizon's final address was :\n\n{classifiedVerizonAddress}")
                 log.error(error)
                 raise error
@@ -1370,7 +1377,7 @@ class VerizonDriver:
 
         fullOrderInfoXPath = "//div[contains(@class,'order-number')]/parent::div"
         fullOrderInfo = self.browser.searchForElement(by=By.XPATH,value=fullOrderInfoXPath,timeout=60,testClickable=True)
-        if(fullOrderInfo):
+        if fullOrderInfo:
             return ActionResult(status=StatusCode.SUCCESS,data=fullOrderInfo.text)
         else:
             return ActionResult(status=StatusCode.VERIZON_FAILED_ORDER_PLACE)

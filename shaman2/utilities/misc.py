@@ -76,7 +76,7 @@ def averageOfList(thisList):
     sumOfList = 0
     counter = 0
     for item in thisList:
-        if(str(type(item)) != "<class 'int'>"):
+        if str(type(item)) != "<class 'int'>":
             continue
         else:
             sumOfList += item
@@ -94,8 +94,8 @@ def constrainedShuffle(thisList, minimumDistance):
         # Checks for violation within the minimumDistance window
         start = max(0, pos - minimumDistance)
         end = min(n, pos + minimumDistance + 1)
-        for i in range(start, end):
-            if i != pos and thisList[i] == element:
+        for k in range(start, end):
+            if k != pos and thisList[k] == element:
                 return True
         return False
 
@@ -121,7 +121,7 @@ def constrainedShuffle(thisList, minimumDistance):
 # Cheaty way to get a dictionary KEY from a VALUE.
 def getKeyFromValue(dictionary, targetValue):
     for key, value in dictionary.items():
-        if (value == targetValue):
+        if value == targetValue:
             return key
     raise ValueError(f"Value does not exist in the dictionary: '{targetValue}'")
 
@@ -133,11 +133,11 @@ def getKeyFromValue(dictionary, targetValue):
 def getMemorySizeOf(thisObject):
     byteSize = asizeof.asizeof(thisObject)
 
-    if(byteSize > 1000):
+    if byteSize > 1000:
         kilobyteSize = byteSize / 1024
-        if(kilobyteSize > 1000):
+        if kilobyteSize > 1000:
             megabyteSize = kilobyteSize / 1024
-            if(megabyteSize > 1000):
+            if megabyteSize > 1000:
                 gigabyteSize = megabyteSize / 1024
                 return f"{round(gigabyteSize,2)} GB"
             else:

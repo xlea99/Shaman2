@@ -1,7 +1,6 @@
 import re
 from datetime import datetime
 import time
-import selenium.common.exceptions
 from selenium.webdriver.common.by import By
 from shaman2.selenium.browser import Browser
 from shaman2.selenium.baka_driver import BakaDriver
@@ -34,13 +33,13 @@ def standardizeToDateObject(dateString,carrier):
     BELL_DATE_FORMAT = "%m/%d/%Y"
     ROGERS_DATE_FORMAT = "%B %d %Y %I:%M %p"
 
-    if(carrier == "Verizon Wireless"):
+    if carrier == "Verizon Wireless":
         return datetime.strptime(dateString,VERIZON_DATE_FORMAT)
-    elif(carrier == "Bell Mobility"):
+    elif carrier == "Bell Mobility":
         return datetime.strptime(dateString,BELL_DATE_FORMAT)
-    elif(carrier == "Rogers"):
+    elif carrier == "Rogers":
         return datetime.strptime(dateString,ROGERS_DATE_FORMAT)
-    elif(carrier == "AT&T Mobility"):
+    elif carrier == "AT&T Mobility":
         return datetime.strptime(dateString, ATT_DATE_FORMAT)
     else:
         error = ValueError(f"Invalid carrier to convert date format for: {carrier}")
@@ -67,13 +66,13 @@ def validateDeviceID(deviceID,carrier):
     deviceOrderableCarriers = syscoData["Devices"][deviceID]["Orderable Carriers"].split(",") if syscoData["Devices"][deviceID]["Orderable Carriers"] else []
     deviceOrderableCarriers = [thisCarrier.strip() for thisCarrier in deviceOrderableCarriers]
     # If the carrier is listed as orderable for this device, we're good to go and simply return the deviceID as is.
-    if(carrier in deviceOrderableCarriers):
+    if carrier in deviceOrderableCarriers:
         return deviceID
     # Otherwise, we first try to fallback.
     else:
         fallbackDevice = syscoData["Devices"][deviceID][f"Fallback ({carrier})"].strip()
         # If a fallback device is found, we try to validate this instead.
-        if(fallbackDevice != ""):
+        if fallbackDevice != "":
             return validateDeviceID(deviceID=fallbackDevice,carrier=carrier)
         # Otherwise, we've reached the end of the line and simply return none.
         else:
@@ -89,14 +88,14 @@ def validateAccessoryIDs(deviceID,carrier,accessoryIDs,removeDuplicateTypes=True
 
     # Now, we add in any extra "alwaysOrder" accessoryIDs as specified by the spreadsheet.
     fullAccessoryIDs = accessoryIDs
-    if (f"{carrier} AlwaysOrder Accessories" in syscoData["Devices"][deviceID].keys()):
+    if f"{carrier} AlwaysOrder Accessories" in syscoData["Devices"][deviceID].keys():
         extraAccessories = syscoData["Devices"][deviceID][f"{carrier} AlwaysOrder Accessories"].split(",") if syscoData["Devices"][deviceID][f"{carrier} AlwaysOrder Accessories"] else []
         extraAccessories = [extraAccessory.strip() for extraAccessory in extraAccessories]
         fullAccessoryIDs.extend(extraAccessories)
 
     # Helper methods to check availability and compatibility of a single accessoryID.
     def checkAccessoryAvailability(_accessoryID):
-        if(_accessoryID not in syscoData["Accessories"].keys()):
+        if _accessoryID not in syscoData["Accessories"].keys():
             error = ValueError(f"Invalid accessoryID in list: '{_accessoryID}'")
             log.error(error)
             raise error
@@ -151,11 +150,11 @@ def validateAccessoryIDs(deviceID,carrier,accessoryIDs,removeDuplicateTypes=True
             validatedAccessoryIDs.append(substitutedAccessoryID)
 
     # If set to removeDuplicateTypes, we do that here, simply prioritizing the first valid accessory of each type.
-    if(removeDuplicateTypes):
+    if removeDuplicateTypes:
         cleanedAccessoryIDs = []
         usedAccessoryTypes = set()
         for accessoryID in validatedAccessoryIDs:
-            if(syscoData["Accessories"][accessoryID]["Accessory Type"] not in usedAccessoryTypes):
+            if syscoData["Accessories"][accessoryID]["Accessory Type"] not in usedAccessoryTypes:
                 usedAccessoryTypes.add(syscoData["Accessories"][accessoryID]["Accessory Type"])
                 cleanedAccessoryIDs.append(accessoryID)
             else:
@@ -167,7 +166,7 @@ def validateAccessoryIDs(deviceID,carrier,accessoryIDs,removeDuplicateTypes=True
     finalAccessoryIDs = []
     eyesafeAccessories = []
     for accessoryID in cleanedAccessoryIDs:
-        if(syscoData["Accessories"][accessoryID]["Accessory Type"] == "Eyesafe"):
+        if syscoData["Accessories"][accessoryID]["Accessory Type"] == "Eyesafe":
             eyesafeAccessories.append(accessoryID)
         else:
             finalAccessoryIDs.append(accessoryID)
@@ -220,7 +219,7 @@ def readRogersOrder(uplandOutlookDriver : OutlookDriver, sysOrdBoxOutlookDriver 
         returnDict = {}
         for key, pattern in rogersOrderParse.items():
             matches = re.findall(pattern, rogersOrderString)
-            if (matches):
+            if matches:
                 returnDict[key] = matches[0]
         #TODO glue?
         returnDict["Courier"] = "Purolator"
@@ -231,9 +230,9 @@ def readRogersOrder(uplandOutlookDriver : OutlookDriver, sysOrdBoxOutlookDriver 
 
     targetEmail = None
     for result in searchResults:
-        if(result["Subject"].strip() == f"Order {rogersOrderNumber} Closed" and result["SenderEmail"] == "mheather@imaginewireless.net"):
+        if result["Subject"].strip() == f"Order {rogersOrderNumber} Closed" and result["SenderEmail"] == "mheather@imaginewireless.net":
             targetEmail = result
-    if(not targetEmail):
+    if not targetEmail:
         return False
 
 
@@ -251,21 +250,21 @@ def placeVerizonNewInstall(verizonDriver : VerizonDriver,deviceID : str,accessor
                            address2="",reviewMode = True,emptyCart=True,deviceColor=None):
     maintenance.validateVerizon(verizonDriver)
 
-    if(emptyCart):
+    if emptyCart:
         verizonDriver.emptyCart()
 
     # Search for the device, click on it, select contract, and add to cart.
     verizonDriver.shopNewDevice()
     verizonDriver.DeviceSelection_SearchSelectDevice(deviceID=deviceID,orderPath="NewInstall")
-    verizonDriver.DeviceSelection_DeviceView_SelectColor(deviceID=deviceID,colorName=deviceColor,orderPath="NewInstall")
-    if(deviceID != "iPad11_128GB"): #TODO glue
+    verizonDriver.DeviceSelection_DeviceView_SelectSizeColor(deviceID=deviceID,colorName=deviceColor,orderPath="NewInstall")
+    if deviceID != "iPad11_128GB": #TODO glue
         verizonDriver.DeviceSelection_DeviceView_Select2YearContract(orderPath="NewInstall")
     verizonDriver.DeviceSelection_DeviceView_AddToCartAndContinue(orderPath="NewInstall")
     # This should send us to the Accessories shopping screen.
 
     # Search for each requested accessory, add it to the cart, then continue.
     for accessoryID in accessoryIDs:
-        if(accessoryID):
+        if accessoryID:
             verizonDriver.AccessorySelection_SearchForAccessory(accessoryID=accessoryID)
             verizonDriver.AccessorySelection_AddAccessoryToCart(accessoryID=accessoryID)
     verizonDriver.AccessorySelection_Continue(orderPath="NewInstall")
@@ -292,7 +291,7 @@ def placeVerizonNewInstall(verizonDriver : VerizonDriver,deviceID : str,accessor
     # This should send us to the shopping cart page.
 
     # Add any necessary features.
-    if(features):
+    if features:
         verizonDriver.ShoppingCart_AddFeatures()
         for feature in features:
             verizonDriver.FeatureSelection_SelectFeature(featureName=feature["Carrier Lookup Code"])
@@ -304,18 +303,18 @@ def placeVerizonNewInstall(verizonDriver : VerizonDriver,deviceID : str,accessor
     # This should send us to the checkout screen
 
     # "Clean" the contact emails for special characters which break Verizon.
-    if(type(contactEmails) is not list):
+    if type(contactEmails) is not list:
         contactEmails = [contactEmails]
     finalContactEmails = []
     for contactEmail in contactEmails:
-        if(contactEmail is None):
+        if contactEmail is None:
             continue
         contactEmail = contactEmail.lower().strip()
         isValidEmail = True
         for character in contactEmail:
-            if(not (character.isalnum() or character in "._@")):
+            if not (character.isalnum() or character in "._@"):
                 isValidEmail = False
-        if(isValidEmail):
+        if isValidEmail:
             finalContactEmails.append(contactEmail)
 
 
@@ -325,10 +324,10 @@ def placeVerizonNewInstall(verizonDriver : VerizonDriver,deviceID : str,accessor
                                           address1=address1,address2=address2,city=city,zipCode=zipCode,
                                           stateAbbrev=convertStateFormat(stateString=state,targetFormat="abbreviation"),
                                           contactPhone=mainConfig["misc"]["contactPhone"],notificationEmails=finalContactEmails)
-    if(reviewMode):
+    if reviewMode:
         playsoundAsync(paths["media"] / "shaman_order_ready.mp3")
         userResponse = input("Order is ready to be submitted. Please review, then press enter to place. Type anything else to cancel.")
-        if(userResponse):
+        if userResponse:
             error = ValueError("User cancelled submission of order.")
             log.error(error)
             raise error
@@ -344,19 +343,19 @@ def placeVerizonUpgrade(verizonDriver : VerizonDriver,serviceID,deviceID : str,a
                         address2="",reviewMode = True,emptyCart=True,deviceColor=None):
     maintenance.validateVerizon(verizonDriver)
 
-    if(emptyCart):
+    if emptyCart:
         verizonDriver.emptyCart()
 
     # Pull up the line and click "upgrade"
     verizonDriver.pullUpLine(serviceID=serviceID)
     upgradeStatus = verizonDriver.LineViewer_UpgradeLine()
-    if(upgradeStatus in ["NotETFEligible","MTNPending"]):
+    if upgradeStatus in ["NotETFEligible", "MTNPending"]:
         return upgradeStatus
     # This should send us to the device selection page.
 
     # Search for the device, click on it, select contract, and add to cart.
     verizonDriver.DeviceSelection_SearchSelectDevice(deviceID=deviceID,orderPath="Upgrade")
-    verizonDriver.DeviceSelection_DeviceView_SelectColor(deviceID=deviceID, colorName=deviceColor,orderPath="Upgrade")
+    verizonDriver.DeviceSelection_DeviceView_SelectSizeColor(deviceID=deviceID, colorName=deviceColor,orderPath="Upgrade")
     verizonDriver.DeviceSelection_DeviceView_Select2YearContract(orderPath="Upgrade")
     verizonDriver.DeviceSelection_DeviceView_DeclineDeviceProtection()
     verizonDriver.DeviceSelection_DeviceView_AddToCartAndContinue(orderPath="Upgrade")
@@ -380,16 +379,16 @@ def placeVerizonUpgrade(verizonDriver : VerizonDriver,serviceID,deviceID : str,a
 
 
     # "Clean" the contact emails for special characters which break Verizon.
-    if (type(contactEmails) is not list):
+    if type(contactEmails) is not list:
         contactEmails = [contactEmails]
     finalContactEmails = []
     for contactEmail in contactEmails:
         contactEmail = contactEmail.lower().strip()
         isValidEmail = True
         for character in contactEmail:
-            if (not (character.isalnum() or character in "._@")):
+            if not (character.isalnum() or character in "._@"):
                 isValidEmail = False
-        if (isValidEmail):
+        if isValidEmail:
             finalContactEmails.append(contactEmail)
 
     # Fill in shipping information, then submit the order.
@@ -397,10 +396,10 @@ def placeVerizonUpgrade(verizonDriver : VerizonDriver,serviceID,deviceID : str,a
                                           address1=address1,address2=address2,city=city,zipCode=zipCode,
                                           stateAbbrev=convertStateFormat(stateString=state,targetFormat="abbreviation"),
                                           contactPhone=mainConfig["misc"]["contactPhone"],notificationEmails=finalContactEmails)
-    if(reviewMode):
+    if reviewMode:
         playsoundAsync(paths["media"] / "shaman_order_ready.mp3")
         userResponse = input("Order is ready to be submitted. Please review, then press enter to place. Type anything else to cancel.")
-        if(userResponse):
+        if userResponse:
             error = ValueError("User cancelled submission of order.")
             log.error(error)
             raise error
@@ -428,7 +427,7 @@ def writeServiceToCimplWorkorder(cimplDriver : CimplDriver,serviceNum,carrier,in
     maintenance.validateCimpl(cimplDriver)
 
     currentLocation = cimplDriver.getLocation()
-    if(not currentLocation["Location"].startswith("Workorder_")):
+    if not currentLocation["Location"].startswith("Workorder_"):
         error = ValueError("Couldn't run writeServiceToCimplWorkorder, as Cimpl Driver is not currently on a workorder!")
         log.error(error)
         raise error
@@ -486,7 +485,7 @@ def readCimplWorkorder(cimplDriver : CimplDriver,workorderNumber):
 # Performs a full New Install in TMA, building a new service based on the provided information.
 def documentTMANewInstall(tmaDriver : TMADriver,client,netID,serviceNum,installDate,device,imei,carrier,planFeatures):
     maintenance.validateTMA(tmaDriver, client=client)
-    if(device not in syscoData["Devices"].keys()):
+    if device not in syscoData["Devices"].keys():
         error = ValueError(f"Specified device '{device}' is not configured in devices.toml.")
         log.error(error)
         raise error
@@ -509,7 +508,7 @@ def documentTMANewInstall(tmaDriver : TMADriver,client,netID,serviceNum,installD
 
 
     installDateObj = standardizeToDateObject(dateString=installDate,carrier=carrier)
-    if(carrier in ["Verizon Wireless"]):
+    if carrier in ["Verizon Wireless"]:
         contractEndDateYears = 2
     else:
         contractEndDateYears = 3
@@ -525,18 +524,18 @@ def documentTMANewInstall(tmaDriver : TMADriver,client,netID,serviceNum,installD
                                      make=syscoData["Devices"][device]["TMA Make"],
                                      model=syscoData["Devices"][device]["TMA Model"])
     newService.info_LinkedEquipment = thisEquipment
-    if(imei is None):
+    if imei is None:
         newService.info_LinkedEquipment.info_IMEI = ""
     else:
         newService.info_LinkedEquipment.info_IMEI = imei
 
-    if(newService.info_ServiceType == "iPhone" or newService.info_ServiceType == "Android"):
+    if newService.info_ServiceType == "iPhone" or newService.info_ServiceType == "Android":
         costType = "Smart Phone"
-    elif(newService.info_ServiceType == "Cell Phone"):
+    elif newService.info_ServiceType == "Cell Phone":
         costType = "Cell Phone"
-    elif(newService.info_ServiceType == "Tablet"):
+    elif newService.info_ServiceType == "Tablet":
         costType = "Tablet"
-    elif(newService.info_ServiceType == "Mifi"):
+    elif newService.info_ServiceType == "Mifi":
         costType = "Aircard"
     else:
         raise ValueError(f"Invalid service type: {newService.info_ServiceType}")
@@ -546,8 +545,8 @@ def documentTMANewInstall(tmaDriver : TMADriver,client,netID,serviceNum,installD
     for planFeature in planFeatures:
         newCost = TMACost(isBaseCost=planFeature["TMA IsBaseCost"], featureName=planFeature["TMA Feature Name"], gross=planFeature["TMA Gross Cost"],
                           discountFlat=planFeature["TMA Discount Flat"], discountPercentage=planFeature["TMA Discount Percent"])
-        if(planFeature["TMA IsBaseCost"] == "TRUE"):
-            if(baseCost is not None):
+        if planFeature["TMA IsBaseCost"] == "TRUE":
+            if baseCost is not None:
                 raise ValueError(f"Multiple base costs for a single equipment entry in equipment.toml: {costType}|{carrier}")
             else:
                 baseCost = newCost
@@ -570,7 +569,7 @@ def documentTMANewInstall(tmaDriver : TMADriver,client,netID,serviceNum,installD
     # We can now insert the service.
     result = tmaDriver.Service_InsertUpdate()
     #TODO better handling for this?
-    if(result == "ServiceAlreadyExists"):
+    if result == "ServiceAlreadyExists":
         tmaDriver.returnToBaseTMA()
         return "ServiceAlreadyExists"
 
@@ -617,7 +616,7 @@ def documentTMANewInstall(tmaDriver : TMADriver,client,netID,serviceNum,installD
 # Performs a full Upgrade in TMA, editing an existing service based on the provided information.
 def documentTMAUpgrade(tmaDriver : TMADriver,client,serviceNum,installDate,device,imei,carrier):
     maintenance.validateTMA(tmaDriver,client=client)
-    if(device not in syscoData["Devices"].keys()):
+    if device not in syscoData["Devices"].keys():
         error = ValueError(f"Specified device '{device}' is not configured in devices.toml.")
         log.error(error)
         raise error
@@ -634,7 +633,7 @@ def documentTMAUpgrade(tmaDriver : TMADriver,client,serviceNum,installDate,devic
 
     # Now we check to make sure that the Service Type hasn't changed.
     newServiceType = syscoData["Devices"][device]["TMA Service Type"]
-    if(newServiceType != tmaDriver.Service_ReadMainInfo().info_ServiceType):
+    if newServiceType != tmaDriver.Service_ReadMainInfo().info_ServiceType:
         tmaDriver.Service_WriteServiceType(rawValue=newServiceType)
         tmaDriver.Service_InsertUpdate()
 
@@ -646,7 +645,7 @@ def documentTMAUpgrade(tmaDriver : TMADriver,client,serviceNum,installDate,devic
                                      make=syscoData["Devices"][device]["TMA Make"],
                                      model=syscoData["Devices"][device]["TMA Model"])
     deviceToBuild = thisEquipment
-    if(imei is None):
+    if imei is None:
         deviceToBuild.info_IMEI = ""
     else:
         deviceToBuild.info_IMEI = imei
@@ -670,55 +669,63 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
     workorder = readCimplWorkorder(cimplDriver=cimplDriver,workorderNumber=workorderNumber)
 
     # Test to ensure the operation type is valid
-    if(workorder["OperationType"] not in ("New Request","Upgrade")):
+    if workorder["OperationType"] not in ("New Request", "Upgrade"):
         print(f"Cimpl WO {workorderNumber}: Can't complete WO, as order type '{workorder['OperationType']}' is not understood by the Shaman.")
         return False
     # Test to ensure status is operable
-    if(workorder["Status"] == "Completed" or workorder["Status"] == "Cancelled"):
+    if workorder["Status"] == "Completed" or workorder["Status"] == "Cancelled":
         print(f"Cimpl WO {workorderNumber}: Can't complete WO, as order is already {workorder['Status']}")
         return False
     # Test for correct carrier
-    if(workorder["Carrier"].lower() == "verizon wireless"):
+    if workorder["Carrier"].lower() == "verizon wireless":
         carrier = "Verizon Wireless"
     else:
         print(f"Cimpl WO {workorderNumber}: Can't complete WO, as carrier is not Verizon ({workorder['Carrier']})")
         return False
     # Test to ensure it hasn't already been placed
-    if (workorder.getLatestOrderNote() is not None):
+    if workorder.getLatestOrderNote() is not None:
         warningMessage = f"Cimpl WO {workorderNumber}: An order has already been submitted for this Cimpl WO."
-        if(not consoleUserWarning(warningMessage)):
+        if not consoleUserWarning(warningMessage):
             return False
     # Check to make sure no existing comments interfere with the request.
-    if(workorder["Comment"] != ""):
+    if workorder["Comment"] != "":
         # Cimpl requests often have comments now that read something like "Request Number REQ10005410981". These are
         # simply API submitted orders, and we assume these don't need to be checked.
         snowRequestNumberRegex = r"^\s*Request Number REQ\d+\s*$"
         workorderRegexMatches = re.findall(snowRequestNumberRegex,workorder["Comment"].strip())
-        if(not workorderRegexMatches):
+        if not workorderRegexMatches:
             warningMessage = f"Cimpl WO {workorderNumber}: WARNING - There is a comment on this workorder:\n\"{workorder['Comment']}\"\n\n"
-            if(not consoleUserWarning(warningMessage)):
+            if not consoleUserWarning(warningMessage):
                 return False
     # Check to make sure no existing notes interfere with the request.
-    if(len(workorder["Notes"]) > 0):
+    if len(workorder["Notes"]) > 0:
         warningMessage = f"Cimpl WO {workorderNumber}: WARNING - There are existing notes on this workorder."
-        if(not consoleUserWarning(warningMessage)):
+        if not consoleUserWarning(warningMessage):
             return False
 
     # Validate and get the true plans/features, deviceID, and accessoryIDs for this orders.
     deviceID = validateDeviceID(workorder["DeviceID"],carrier=workorder["Carrier"])
-    if(not deviceID):
+    if not deviceID:
         print(f"Cimpl WO {workorderNumber}: Can't complete WO, as no device could validate from this entry: '{workorder['DeviceID']}'")
         return False
     validatedAccessories = validateAccessoryIDs(deviceID=deviceID,carrier=workorder["Carrier"],accessoryIDs=workorder["AccessoryIDs"])
     accessoryIDs = validatedAccessories["AccessoryIDs"]
     eyesafeAccessoryIDs = validatedAccessories["EyesafeAccessoryIDs"]
+
+    #TODO THIS IS TEMPORARY
+    if deviceID == "iPhone16e_128GB":
+        for accessoryID in accessoryIDs:
+            if syscoData["Accessories"][accessoryID]["Accessory Type"] != "Wall Adapter" or len(eyesafeAccessoryIDs) > 0:
+                print(f"Cimpl WO {workorderNumber}: Skipping workorder, as its for an iPhone with Accessories.")
+                return False
+
     basePlan, features = getPlansAndFeatures(deviceID=deviceID,carrier=workorder["Carrier"])
     featuresToBuildOnCarrier = []
     for feature in features:
-        if(feature["BuildOnCarrier"] == "TRUE"):
+        if feature["BuildOnCarrier"] == "TRUE":
             featuresToBuildOnCarrier.append(feature)
     # Get the eyesafe accessoryID or set to None
-    if(eyesafeAccessoryIDs):
+    if eyesafeAccessoryIDs:
         eyesafeAccessoryID = eyesafeAccessoryIDs[0]
     else:
         eyesafeAccessoryID = None
@@ -728,20 +735,20 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
     tmaDriver.navToLocation(TMALocation(client="Sysco", entryType="People", entryID=workorder["UserNetID"]))
     thisPerson = tmaDriver.People_ReadAllInformation()
 
-    if(workorder["OperationType"] == "New Request"):
-        if(len(thisPerson.info_LinkedServices) > 0):
+    if workorder["OperationType"] == "New Request":
+        if len(thisPerson.info_LinkedServices) > 0:
             warningMessage = f"WARNING: User '{workorder['UserNetID']}' already has linked services."
-            if (not consoleUserWarning(warningMessage)):
+            if not consoleUserWarning(warningMessage):
                 return False
         maintenance.validateTMA(tmaDriver,"Sysco")
-    elif(workorder["OperationType"] == "Upgrade"):
+    elif workorder["OperationType"] == "Upgrade":
         # TODO We just navigate here to raise errors in case the line is inactive. Maybe come up with better system?
         maintenance.validateTMA(tmaDriver,"Sysco")
         tmaDriver.navToLocation(TMALocation(client="Sysco", entryType="Service", entryID=workorder["ServiceID"]))
 
     # Write name on order
     print(f"Cimpl WO {workorderNumber}: Determined as valid WO for Shaman rituals")
-    if(referenceNumber is not None):
+    if referenceNumber is not None:
         maintenance.validateCimpl(cimplDriver)
         cimplDriver.Workorders_NavToSummaryTab()
         cimplDriver.Workorders_WriteReferenceNo(referenceNo=referenceNumber)
@@ -753,7 +760,7 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
     print(f"Cimpl WO {workorderNumber}: Validated address as: {validatedAddress}")
 
     # If operation type is a New Install
-    if(workorder["OperationType"] == "New Request"):
+    if workorder["OperationType"] == "New Request":
         print(f"Cimpl WO {workorderNumber}: Ordering new device ({deviceID}) and service for user {workorder['UserNetID']}")
         results = placeVerizonNewInstall(verizonDriver=verizonDriver,deviceID=deviceID,accessoryIDs=accessoryIDs,companyName="Sysco",plan=basePlan,features=featuresToBuildOnCarrier,
                                             firstName=workorder["UserFirstName"],lastName=workorder["UserLastName"],userEmail=thisPerson.info_Email,
@@ -762,18 +769,18 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
         print(f"Cimpl WO {workorderNumber}: Finished ordering new device and service for user {workorder['UserNetID']}")
         orderNumber = results.data
     # If op type is Upgrade
-    elif(workorder["OperationType"] == "Upgrade"):
+    elif workorder["OperationType"] == "Upgrade":
         print(f"Cimpl WO {workorderNumber}: Ordering upgrade ({workorder['DeviceID']}) and service for user {workorder['UserNetID']} with service {workorder['ServiceID']}")
         results = placeVerizonUpgrade(verizonDriver=verizonDriver,deviceID=deviceID,serviceID=workorder['ServiceID'],accessoryIDs=accessoryIDs,
                                           firstName=workorder["UserFirstName"],lastName=workorder["UserLastName"],companyName="Sysco",
                                           address1=validatedAddress["Address1"],address2=validatedAddress.get("Address2", None),city=validatedAddress["City"],
                                           state=validatedAddress["State"], zipCode=validatedAddress["ZipCode"],reviewMode=reviewMode,contactEmails=thisPerson.info_Email)
         orderNumber = results.data
-        if(orderNumber == "NotETFEligible"):
+        if orderNumber == "NotETFEligible":
             playsoundAsync(paths["media"] / "shaman_attention.mp3")
             input(f"Cimpl WO {workorderNumber}: Not yet eligible for ETF upgrade. Open SNow ticket and cancel request. Press any key to continue to next request.")
             return False
-        elif(orderNumber == "MTNPending"):
+        elif orderNumber == "MTNPending":
             playsoundAsync(paths["media"] / "shaman_attention.mp3")
             input(f"Cimpl WO {workorderNumber}: Line is stuck on 'MTNPending' error. Please submit an SM ticket with Verizon to resolve. Press any ket to continue to next request.")
             return False
@@ -786,12 +793,12 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
         raise error
 
     maintenance.validateCimpl(cimplDriver)
-    if(orderNumber is False):
+    if orderNumber is False:
         return False
-    elif(orderNumber == "MTNPending"):
+    elif orderNumber == "MTNPending":
         print(f"Cimpl WO {workorderNumber}: Couldn't upgrade line {workorder['ServiceID']} due to 'MTN Pending' error on Verizon.")
         return False
-    elif(orderNumber == "NotETFEligible"):
+    elif orderNumber == "NotETFEligible":
         print(f"Cimpl WO {workorderNumber}: Couldn't upgrade line {workorder['ServiceID']} because it is too early to upgrade with ETF waiver.")
         return False
 
@@ -799,15 +806,15 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
     cimplDriver.Workorders_WriteNote(subject="Order Placed",noteType="Information Only",status="Completed",content=orderNumber)
 
     # Confirm workorder, if not already confirmed.
-    if(workorder["Status"] == "Pending"):
+    if workorder["Status"] == "Pending":
         templateFileName = None
-        if(workorder["OperationType"].lower() == "new request"):
+        if workorder["OperationType"].lower() == "new request":
             templateFileName = syscoData["Devices"][deviceID][f"{carrier} New Install Email Template"].strip()
-        elif(workorder["OperationType"].lower() == "upgrade"):
+        elif workorder["OperationType"].lower() == "upgrade":
             templateFileName = syscoData["Devices"][deviceID][f"{carrier} Upgrade Email Template"].strip()
 
 
-        if(templateFileName):
+        if templateFileName:
             templatePath = paths["emailTemplates"] / templateFileName
             with open(templatePath, "r") as file:
                 emailContent = file.read()
@@ -818,14 +825,14 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
             cimplDriver.Workorders_SetStatus(status="Confirm")
             print(f"Cimpl WO {workorderNumber}: Added order number to workorder notes and confirmed request.")
 
-    if(subjectLine is not None):
+    if subjectLine is not None:
         cimplDriver.Workorders_NavToSummaryTab()
         subjectLine = subjectLine.replace("%D",datetime.now().strftime('%m/%d/%Y'))
         cimplDriver.Workorders_WriteSubject(subject=subjectLine)
         cimplDriver.Workorders_ApplyChanges()
 
     # Handle ordering Eyesafe, if specified
-    if(eyesafeAccessoryID):
+    if eyesafeAccessoryID:
         #TODO temporarily disabled
         with open(paths["root"] / "eyesafe_wos_to_place.txt", "a") as f:
             f.write(f"\n{workorderNumber}")
@@ -859,49 +866,49 @@ def processPostOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,vz
     workorder = readCimplWorkorder(cimplDriver=cimplDriver,workorderNumber=workorderNumber)
 
     # Test to ensure the operation type is valid
-    if(workorder["OperationType"] not in ("New Request","Upgrade")):
+    if workorder["OperationType"] not in ("New Request", "Upgrade"):
         print(f"Cimpl WO {workorderNumber}: Can't complete WO, as order type '{workorder['OperationType']}' is not understood by the Shaman.")
         return False
 
     # Test to ensure status is operable
-    if(workorder["Status"] == "Completed" or workorder["Status"] == "Cancelled"):
+    if workorder["Status"] == "Completed" or workorder["Status"] == "Cancelled":
         print(f"Cimpl WO {workorderNumber}: Can't complete WO, as order is already {workorder['Status']}")
         return False
 
     # Test for correct carrier
     carrier = validateCarrier(workorder["Carrier"])
-    if(not carrier):
+    if not carrier:
         print(f"Cimpl WO {workorderNumber}: Can't complete WO, as carrier is not Verizon, Bell, or Rogers: ({workorder['Carrier']})")
         return False
 
     # Test to ensure it can properly locate the order number
     carrierOrderNote = workorder.getLatestOrderNote()
-    if (carrierOrderNote is None):
+    if carrierOrderNote is None:
         print(f"Cimpl WO {workorderNumber}: Can't complete WO, as no completed carrier order can be found.")
         return False
     else:
         carrierOrderNumber = carrierOrderNote["ClassifiedValue"]
 
     # Read Verizon Order
-    if(carrier == "Verizon Wireless"):
+    if carrier == "Verizon Wireless":
         carrierOrder = readVerizonOrder(verizonDriver=vzwDriver,verizonOrderNumber=carrierOrderNumber,orderViewPeriod=orderViewPeriod)
-        if(carrierOrder is None):
+        if carrierOrder is None:
             print(f"Cimpl WO {workorderNumber}: Can't complete WO, as order number '{carrierOrderNumber}' is not yet showing in the Verizon Order Viewer.")
             return False
-        elif(carrierOrder["Status"] != "Completed"):
+        elif carrierOrder["Status"] != "Completed":
             print(f"Cimpl WO {workorderNumber}: Can't complete WO, as order number '{carrierOrderNumber}' has status '{carrierOrder['Status']}' and not Complete.")
             return False
     # Read Bell Order
-    elif(carrier == "Bell Mobility"):
+    elif carrier == "Bell Mobility":
         carrierOrder = readBakaOrder(bakaDriver=bakaDriver,bakaOrderNumber=carrierOrderNumber)
-        if(carrierOrder["Status"] != "Complete"):
+        if carrierOrder["Status"] != "Complete":
             print(f"Cimpl WO {workorderNumber}: Can't complete WO, as order number '{carrierOrderNumber}' has status '{carrierOrder['Status']}' and not Complete.")
             return False
     # Read Rogers Order
-    elif(carrier == "Rogers"):
+    elif carrier == "Rogers":
         carrierOrder = readRogersOrder(uplandOutlookDriver=uplandOutlookDriver,sysOrdBoxOutlookDriver=sysOrdBoxOutlookDriver,
                         rogersOrderNumber=carrierOrderNumber)
-        if(not carrierOrder):
+        if not carrierOrder:
             print(f"Cimpl WO {workorderNumber}: Can't complete WO, as no completed order info email for order number '{carrierOrderNumber}' has been received by the SysOrdBox.")
             return False
     else:
@@ -909,7 +916,7 @@ def processPostOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,vz
 
     # Get device model ID from Cimpl
     print(f"Cimpl WO {workorderNumber}: Determined as valid WO for Shaman rituals")
-    if(not workorder["DeviceID"]):
+    if not workorder["DeviceID"]:
         # Quickly generate a list of devices currently specified in device_cimpl_mappings to prompt the user with.
         commonMappedDevices = set()
         for thisDeviceID in syscoData["Devices"].keys():
@@ -920,7 +927,7 @@ def processPostOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,vz
         for counter, thisDeviceID in enumerate(commonMappedDevices):
             promptString += f"{counter}. {thisDeviceID}\n"
         userInput = input(promptString).strip()
-        if(isNumber(userInput) and (0 <= int(userInput) < len(commonMappedDevices))):
+        if isNumber(userInput) and (0 <= int(userInput) < len(commonMappedDevices)):
             deviceID = commonMappedDevices[int(userInput)]
         else:
             return False
@@ -931,36 +938,36 @@ def processPostOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,vz
     features.append(basePlan)
     featuresToBuildOnTMA = []
     for feature in features:
-        if (feature["WriteToTMA"] == "TRUE"):
+        if feature["WriteToTMA"] == "TRUE":
             featuresToBuildOnTMA.append(feature)
 
     # If operation type is a New Install
-    if(workorder["OperationType"] == "New Request"):
+    if workorder["OperationType"] == "New Request":
         print(f"Cimpl WO {workorderNumber}: Building new service {carrierOrder['WirelessNumber']} for user {workorder['UserNetID']}")
         returnCode = documentTMANewInstall(tmaDriver=tmaDriver,client="Sysco",netID=workorder['UserNetID'],serviceNum=carrierOrder["WirelessNumber"],installDate=carrierOrder["OrderDate"],device=deviceID,imei=carrierOrder["IMEI"],carrier=carrier,planFeatures=featuresToBuildOnTMA)
-        if(returnCode == "Completed"):
+        if returnCode == "Completed":
             writeServiceToCimplWorkorder(cimplDriver=cimplDriver,serviceNum=carrierOrder["WirelessNumber"],carrier=carrier,installDate=carrierOrder["OrderDate"])
             print(f"Cimpl WO {workorderNumber}: Finished building new service {carrierOrder['WirelessNumber']} for user {workorder['UserNetID']}")
-        elif(returnCode == "ServiceAlreadyExists"):
+        elif returnCode == "ServiceAlreadyExists":
             print(f"Cimpl WO {workorderNumber}: Can't build new service for {carrierOrder['WirelessNumber']}, as the service already exists in the TMA database")
             return False
-        elif(returnCode == "WrongDevice"):
+        elif returnCode == "WrongDevice":
             print(f"Cimpl WO {workorderNumber}: Failed to build new service in TMA, got wrong device '{deviceID}'")
             return False
     # If operation type is an Upgrade
-    elif(workorder["OperationType"] == "Upgrade"):
+    elif workorder["OperationType"] == "Upgrade":
         print(f"Cimpl WO {workorderNumber}: Processing Upgrade for service {carrierOrder['WirelessNumber']}")
         returnCode = documentTMAUpgrade(tmaDriver=tmaDriver,client="Sysco",serviceNum=workorder["ServiceID"],installDate=carrierOrder["OrderDate"],device=deviceID,imei=carrierOrder["IMEI"],carrier=carrier)
-        if(returnCode == "Completed"):
+        if returnCode == "Completed":
             print(f"Cimpl WO {workorderNumber}: Finished upgrading TMA service {carrierOrder['WirelessNumber']}")
-        elif(returnCode == "WrongDevice"):
+        elif returnCode == "WrongDevice":
             print(f"Cimpl WO {workorderNumber}: Failed to upgrade service in TMA, got wrong device '{deviceID}'")
             return False
 
     # Write tracking information
     maintenance.validateCimpl(cimplDriver)
     cimplDriver.Workorders_NavToSummaryTab()
-    if(carrierOrder.get("TrackingNumber",None) is not None and carrierOrder["TrackingNumber"].strip() != ""):
+    if carrierOrder.get("TrackingNumber", None) is not None and carrierOrder["TrackingNumber"].strip() != "":
         cimplDriver.Workorders_WriteNote(subject="Tracking",noteType="Information Only",status="Completed",content=f"Courier: {carrierOrder['Courier']}\nTracking Number: {carrierOrder['TrackingNumber']}")
 
     # Complete workorder
@@ -980,16 +987,16 @@ def processPreOrderSCTASK(tmaDriver : TMADriver,snowDriver : SnowDriver,verizonD
     scTask = readSnowTask(snowDriver=snowDriver,taskNumber=taskNumber)
 
     # Make sure the note isn't assigned to somebody else, then assign it to assignTo
-    if(scTask["AssignedTo"] is not None and scTask["AssignedTo"] != "" and scTask["AssignedTo"].lower() != assignTo.lower()):
+    if scTask["AssignedTo"] is not None and scTask["AssignedTo"] != "" and scTask["AssignedTo"].lower() != assignTo.lower():
         warningMessage = f"WARNING: This SCTASK is already assigned to '{scTask['AssignedTo']}'"
-        if (not consoleUserWarning(warningMessage)):
+        if not consoleUserWarning(warningMessage):
             return False
     snowDriver.Tasks_WriteAssignedTo(assignedTo=assignTo)
 
     foundVerizonOrders = getSCTaskOrders(scTask=scTask)
-    if(foundVerizonOrders):
+    if foundVerizonOrders:
         warningMessage = f"WARNING: There are existing Verizon orders on the SCTASK."
-        if (not consoleUserWarning(warningMessage)):
+        if not consoleUserWarning(warningMessage):
             return False
 
     # Add the Upland/Cimpl tag to the SCTASK.
@@ -1004,9 +1011,9 @@ def processPreOrderSCTASK(tmaDriver : TMADriver,snowDriver : SnowDriver,verizonD
 
     # Classify the device intended to be ordered.
     #TODO GET THIS SHIT UP TO DATE STUPID BITCH
-    if(scTask["OrderDevice"].lower() == "apple"):
+    if scTask["OrderDevice"].lower() == "apple":
         deviceID = DEFAULT_SNOW_IPHONE
-    elif(scTask["OrderDevice"].lower() == "android"):
+    elif scTask["OrderDevice"].lower() == "android":
         deviceID = DEFAULT_SNOW_ANDROID
     else:
         playsoundAsync(paths["media"] / "shaman_attention.mp3")
@@ -1014,9 +1021,9 @@ def processPreOrderSCTASK(tmaDriver : TMADriver,snowDriver : SnowDriver,verizonD
         return False
 
     # Classify accessoryIDs depending on if accessories were requested.
-    if(scTask["OrderAccessoryBundle"]):
+    if scTask["OrderAccessoryBundle"]:
         accessoryIDs = [DEFAULT_SNOW_CHARGER]
-        if(scTask["OrderDevice"].lower() == "apple"):
+        if scTask["OrderDevice"].lower() == "apple":
             accessoryIDs.append(DEFAULT_SNOW_IPHONE_CASE)
         else:
             accessoryIDs.append(DEFAULT_SNOW_ANDROID_CASE)
@@ -1029,21 +1036,21 @@ def processPreOrderSCTASK(tmaDriver : TMADriver,snowDriver : SnowDriver,verizonD
     basePlan, features = getPlansAndFeatures(deviceID=deviceID,carrier="Verizon Wireless")
     featuresToBuildOnCarrier = []
     for feature in features:
-        if(feature["BuildOnCarrier"] == "TRUE"):
+        if feature["BuildOnCarrier"] == "TRUE":
             featuresToBuildOnCarrier.append(feature)
 
     # Try to determine the employee's info given the order's username and supervisor name.
     maintenance.validateTMA(tmaDriver=tmaDriver,client="Sysco")
     searchedPeopleObject = tmaDriver.searchPeopleFromNameAndSup(userName=scTask["OrderEmployeeName"],supervisorName=scTask["OrderSupervisorName"])
-    if(searchedPeopleObject):
+    if searchedPeopleObject:
         userFirstName = searchedPeopleObject.info_FirstName
         userLastName = searchedPeopleObject.info_LastName
         contactEmail = searchedPeopleObject.info_Email
 
         # Check to make sure the user doesn't already have a service.
-        if (len(searchedPeopleObject.info_LinkedServices) > 0):
+        if len(searchedPeopleObject.info_LinkedServices) > 0:
             warningMessage = f"WARNING: User '{searchedPeopleObject.info_EmployeeID}' already has linked services."
-            if (not consoleUserWarning(warningMessage)):
+            if not consoleUserWarning(warningMessage):
                 return False
     else:
         userFirstName,userLastName = scTask["OrderEmployeeName"].split(" ",maxsplit=1)
@@ -1072,19 +1079,19 @@ def processPreOrderSCTASK(tmaDriver : TMADriver,snowDriver : SnowDriver,verizonD
 
     # Document the order.
     storeResult = documentation.storeSCTASKToGoogle(taskNumber=taskNumber,orderNumber=verizonOrderNumber,userName=f"{userFirstName} {userLastName}",deviceID=deviceID,datePlaced=datetime.today().strftime("%H:%M:%S %d-%m-%Y"))
-    if(not storeResult):
+    if not storeResult:
         warningMessage = f"WARNING: Tried to store result of order 5 times, but google failed five times. Manually document?"
-        if (not consoleUserWarning(warningMessage)):
+        if not consoleUserWarning(warningMessage):
             return False
 
 # This method attempts to close an SCTASK (simply updating the ticket with tracking, and close) based
 # on the given SCTASK number.
 def processPostOrdersSCTASK(snowDriver : SnowDriver,verizonDriver : VerizonDriver,taskNumber : (str,list) = None,useDriveSCTasks=True):
-    if (taskNumber):
-        if (type(taskNumber) is not list):
+    if taskNumber:
+        if type(taskNumber) is not list:
             taskNumber = [taskNumber]
 
-    if (useDriveSCTasks):
+    if useDriveSCTasks:
         # First, get the full list of pending SCTASKs to close.
         scTasks = documentation.downloadSCTASKs()
     else:
@@ -1099,8 +1106,8 @@ def processPostOrdersSCTASK(snowDriver : SnowDriver,verizonDriver : VerizonDrive
         thisTaskNumber = scTask["ServiceNow Ticket"] if useDriveSCTasks else scTask
 
         # Filter for specific tasks, if necessary.
-        if(useDriveSCTasks and taskNumber):
-            if(thisTaskNumber not in taskNumber):
+        if useDriveSCTasks and taskNumber:
+            if thisTaskNumber not in taskNumber:
                 continue
 
         print(f"{thisTaskNumber}: Beginning request close.")
@@ -1111,11 +1118,11 @@ def processPostOrdersSCTASK(snowDriver : SnowDriver,verizonDriver : VerizonDrive
         thisSnowRequest = snowDriver.Tasks_ReadFullTask()
 
         # If using the sheets doc, simply pull stored order. Otherwise, read from the literal task.
-        if(useDriveSCTasks):
+        if useDriveSCTasks:
             orderNumber = scTask["Order"]
         else:
             allVerizonOrders = getSCTaskOrders(scTask=thisSnowRequest)
-            if(allVerizonOrders):
+            if allVerizonOrders:
                 # Use latest order number by default #TODO glue?
                 orderNumber = allVerizonOrders[-1]
             else:
@@ -1126,20 +1133,20 @@ def processPostOrdersSCTASK(snowDriver : SnowDriver,verizonDriver : VerizonDrive
         # First, try to pull up the order in Verizon.
         maintenance.validateVerizon(verizonDriver)
         carrierOrder = readVerizonOrder(verizonDriver=verizonDriver, verizonOrderNumber=orderNumber,orderViewPeriod="180 Days")
-        if (carrierOrder is None):
+        if carrierOrder is None:
             print(f"{thisTaskNumber}: Can't close request, as order number '{orderNumber}' is not yet showing in the Verizon Order Viewer.")
             continue
-        elif (carrierOrder["Status"] != "Completed"):
+        elif carrierOrder["Status"] != "Completed":
             print(f"{thisTaskNumber}: Can't complete WO, as order number '{orderNumber}' has status '{carrierOrder['Status']}' and not Complete.")
             continue
 
         # Check to make sure the request is still open.
-        if(thisSnowRequest["State"] in ["Closed Complete","Closed Incomplete","Closed Skipped"]):
+        if thisSnowRequest["State"] in ["Closed Complete", "Closed Incomplete", "Closed Skipped"]:
             print(f"{thisTaskNumber}: Task is already in state '{thisSnowRequest['State']}'")
         else:
             trackingNote = f"Service Number: {carrierOrder['WirelessNumber']}\n"
             # Get tracking number if provided, and write to the SNow ticket.
-            if (carrierOrder["TrackingNumber"] is not None and carrierOrder["TrackingNumber"].strip() != ""):
+            if carrierOrder["TrackingNumber"] is not None and carrierOrder["TrackingNumber"].strip() != "":
                 trackingNote += f"Courier: {carrierOrder['Courier']}\nTracking Number: {carrierOrder['TrackingNumber']}"
 
             # Close the order.
@@ -1148,7 +1155,7 @@ def processPostOrdersSCTASK(snowDriver : SnowDriver,verizonDriver : VerizonDrive
             snowDriver.Tasks_Update()
 
         # Archive the task in the Google sheet.
-        if(useDriveSCTasks):
+        if useDriveSCTasks:
             documentation.archiveSCTASKOnGoogle(taskNumber=thisTaskNumber, closedBy="Alex", serviceNumber="", fullSCTASKSheet=scTasks)
 
         print(f"{thisTaskNumber}: Closed request.")
@@ -1156,7 +1163,7 @@ def processPostOrdersSCTASK(snowDriver : SnowDriver,verizonDriver : VerizonDrive
 
 #endregion === Full SNow Workflows
 
-if(True):
+if True:
     try:
         # Drivers init
         br = Browser()
@@ -1175,7 +1182,7 @@ if(True):
         input("Please turn off Zscaler before continuing, friend.")
 
         # Manually log in to Verizon first, just to make life easier atm
-        #maintenance.validateVerizon(verizonDriver=vzw)
+        maintenance.validateVerizon(verizonDriver=vzw)
 
         # SCTASK processing
         preProcessSCTASKs = []
@@ -1183,7 +1190,7 @@ if(True):
         for task in preProcessSCTASKs:
             processPreOrderSCTASK(tmaDriver=tma,snowDriver=snow,verizonDriver=vzw,
                                   taskNumber=task,assignTo="Alex Somheil",reviewMode=True)
-        processPostOrdersSCTASK(snowDriver=snow,verizonDriver=vzw,taskNumber=postProcessSCTASKs,useDriveSCTasks=False)
+        #processPostOrdersSCTASK(snowDriver=snow,verizonDriver=vzw,taskNumber=postProcessSCTASKs,useDriveSCTasks=False)
 
 
 
@@ -1191,14 +1198,24 @@ if(True):
 
 
         # Cimpl processing
-        preProcessWOs = [50675]
+        preProcessWOs = [51157,50982, 50986, 50988, 50990, 50991, 50992,
+                         50994, 50997, 50998, 51000, 51001, 51002, 51003, 51005, 51006, 51009, 51011, 51014, 51015,
+                         51016, 51017, 51018, 51023, 51026, 51027, 51028, 51029, 51032, 51036, 51037, 51038, 51039,
+                         51040, 51044, 51045, 51046, 51047, 51048, 51049, 51050, 51051, 51052, 51053, 51054, 51055,
+                         51056, 51057, 51058, 51059, 51060, 51061, 51062, 51063, 51065, 51066, 51067, 51068, 51069,
+                         51073, 51074, 51075, 51076, 51077, 51078, 51080, 51081, 51082, 51083, 51085, 51087, 51088,
+                         51092, 51093, 51094, 51096, 51097, 51098, 51100, 51101, 51102, 51103, 51104, 51106, 51107,
+                         51108, 51109, 51110, 51111, 51112, 51113, 51114, 51115, 51116, 51118, 51119, 51120, 51121,
+                         51122, 51125, 51126, 51127, 51128, 51129, 51130, 51131, 51133, 51134, 51136, 51137, 51138,
+                         51139, 51140, 51141, 51142, 51143, 51147, 51150, 51151, 51152, 51153, 51154, 51155]
+
         postProcessWOs = []
         for wo in postProcessWOs:
             processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,uplandOutlookDriver=uplandOutlook,sysOrdBoxOutlookDriver=sysOrdBoxOutlook,
                                   workorderNumber=wo)
         for wo in preProcessWOs:
             processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
-                                  workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D",reviewMode=True)
+                                  workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D",reviewMode=False)
 
     except Exception as e:
         playsoundAsync(paths["media"] / "shaman_error.mp3")

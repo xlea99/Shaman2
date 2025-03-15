@@ -1,8 +1,7 @@
-from datetime import datetime
 from shaman2.selenium.browser import Browser
 from shaman2.selenium.baka_driver import BakaDriver
 from shaman2.selenium.cimpl_driver import CimplDriver
-from shaman2.selenium.tma_driver import TMADriver, TMALocation
+from shaman2.selenium.tma_driver import TMADriver
 from shaman2.selenium.verizon_driver import VerizonDriver
 from shaman2.selenium.eyesafe_driver import EyesafeDriver
 from shaman2.selenium.snow_driver import SnowDriver
@@ -19,9 +18,9 @@ from shaman2.common.logger import log
 def validateTMA(tmaDriver : TMADriver,client):
     tmaDriver.browser.switchToTab("TMA")
     currentLocation = tmaDriver.readPage()
-    if(not currentLocation.isLoggedIn):
+    if not currentLocation.isLoggedIn:
         tmaDriver.logInToTMA()
-    if(currentLocation.client != client):
+    if currentLocation.client != client:
         tmaDriver.navToClientHome(client)
 
 # Validates that Cimpl is logged and the active tab.

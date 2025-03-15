@@ -46,8 +46,8 @@ class TMALocation:
         # -People (Network ID)
         # -Interactions (Interaction Number)
         # -Always will be RegularEquipment
-        if(entryType == "Order"):
-            if(type(entryID) is not dict):
+        if entryType == "Order":
+            if type(entryID) is not dict:
                 error = ValueError(f"When creating a TMA Location for an order, the entryID must be a dict ({{TMAOrderNumber,ticketOrderNumber,vendorOrderNumber}}), not '{entryID}' of type '{type(entryID)}'")
                 log.error(error)
                 raise error
@@ -68,20 +68,20 @@ class TMALocation:
 
     # Equal operator == method compares the values of each important data point.
     def __eq__(self, otherLocationData):
-        if(isinstance(otherLocationData,TMALocation)):
+        if isinstance(otherLocationData, TMALocation):
             isEqual = False
-            if(self.isLoggedIn == otherLocationData.isLoggedIn and self.client == otherLocationData.client and self.entryType == otherLocationData.entryType):
-                if(self.entryType == "Service"):
-                    if(convertServiceIDFormat(self.entryID,"raw") == convertServiceIDFormat(otherLocationData.entryID,"raw")):
+            if self.isLoggedIn == otherLocationData.isLoggedIn and self.client == otherLocationData.client and self.entryType == otherLocationData.entryType:
+                if self.entryType == "Service":
+                    if convertServiceIDFormat(self.entryID, "raw") == convertServiceIDFormat(otherLocationData.entryID, "raw"):
                         isEqual = True
                 else:
-                    if(self.entryType == "Order"):
+                    if self.entryType == "Order":
                         if((self.entryID["TMAOrderNumber"] is not None and self.entryID["TMAOrderNumber"] == otherLocationData.entryID["TMAOrderNumber"]) or
                         (self.entryID["ticketOrderNumber"] is not None and self.entryID["ticketOrderNumber"] == otherLocationData.entryID["ticketOrderNumber"]) or
                         (self.entryID["vendorOrderNumber"] is not None and self.entryID["vendorOrderNumber"] == otherLocationData.entryID["vendorOrderNumber"])):
                             isEqual = True
                     else:
-                        if(self.entryID == otherLocationData.entryID):
+                        if self.entryID == otherLocationData.entryID:
                             isEqual = True
 
             log.debug(f"Tested equality between {self} and {otherLocationData} : {isEqual}")
@@ -94,11 +94,11 @@ class TMALocation:
     def __str__(self):
         returnString = ""
 
-        if (self.isLoggedIn):
+        if self.isLoggedIn:
             returnString += f"* Client({self.client}) | EType({self.entryType}) | EID({self.entryID}) | ITab({self.activeInfoTab}) | LTab({self.activeLinkTab})"
         else:
             returnString += "? "
-            if (self.entryType == "LoginPage"):
+            if self.entryType == "LoginPage":
                 returnString += "TMA Login Page"
                 return returnString
             else:
@@ -107,7 +107,7 @@ class TMALocation:
                 maxChars = 30
                 for i in str(self.rawURL):
                     counter += 1
-                    if (counter > maxChars):
+                    if counter > maxChars:
                         returnString += "...)"
                         return returnString
                     returnString += i
@@ -140,7 +140,7 @@ class TMAPeople:
         returnString += ("Name: " + self.info_FirstName + " " + self.info_LastName + " (" + self.info_EmployeeID + ")\n")
         returnString += ("Title: " + self.info_EmployeeTitle + " (" + self.info_Client + ", " + self.info_OpCo + ")\n")
         returnString += ("Email: " + self.info_Email + "\n")
-        if (self.info_IsTerminated):
+        if self.info_IsTerminated:
             returnString += "Status: Terminated\n"
         else:
             returnString += "Status: Active\n"
@@ -192,9 +192,9 @@ class TMAService:
         returnString += "\n\nService Number: " + str(self.info_ServiceNumber)
         returnString += "\nUser Name: " + str(self.info_UserName)
         returnString += "\nAlias: " + str(self.info_Alias)
-        if (self.info_Client == "LYB"):
+        if self.info_Client == "LYB":
             returnString += "\nContract Start Date: " + str(self.info_ContractStartDate)
-        elif (self.info_Client == "Sysco"):
+        elif self.info_Client == "Sysco":
             pass
         returnString += "\nContract End Date: " + str(self.info_ContractEndDate)
         returnString += "\nUpgrade Eligibility Date: " + str(self.info_UpgradeEligibilityDate)
@@ -214,9 +214,9 @@ class TMAService:
             returnString += "\n------------------\n"
         returnString += "\n\n==LINKS INFO==\n"
         returnString += "Linked User: " + str(self.info_LinkedPersonName)
-        if (self.info_Client == "LYB"):
+        if self.info_Client == "LYB":
             returnString += "\n"
-        elif (self.info_Client == "Sysco"):
+        elif self.info_Client == "Sysco":
             returnString += " (" + str(self.info_LinkedPersonNID) + ")\n"
         returnString += "Linked User's Email: " + str(self.info_LinkedPersonEmail)
         returnString += "\n"
@@ -258,7 +258,7 @@ class TMACost:
 
     # Basic init method to initialize instance variables.
     def __init__(self, isBaseCost=True, featureName=None, gross=0, discountPercentage=0, discountFlat=0):
-        if(type(isBaseCost) is bool):
+        if type(isBaseCost) is bool:
             self.info_IsBaseCost = isBaseCost
         else:
             self.info_IsBaseCost = isBaseCost == "TRUE"
@@ -339,7 +339,7 @@ class TMAAssignment:
 #TODO doesn't actually work yet, i don't think
 MAXIMUM_STORED_HISTORY = 20
 
-class TMADriver():
+class TMADriver:
 
     # To initialize our TMA driver class, we have to first attach an existing
     # Browser object.
@@ -347,7 +347,7 @@ class TMADriver():
         logMessage = "Initialized new TMADriver object"
         self.browser = browserObject
 
-        if("TMA" in self.browser.tabs.keys()):
+        if "TMA" in self.browser.tabs.keys():
             self.browser.closeTab("TMA")
             logMessage += ", and closed existing TMA tab."
         else:
@@ -370,7 +370,7 @@ class TMADriver():
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
         self.readPage()
 
-        if (not self.currentLocation.isLoggedIn):
+        if not self.currentLocation.isLoggedIn:
             self.browser.get("https://tma4.icomm.co/tma/NonAuthentic/Login.aspx")
             self.readPage()
             usernameField = self.browser.find_element(by=By.CSS_SELECTOR,value="#ctl00_ContentPlaceHolder1_Login1_UserName")
@@ -383,9 +383,9 @@ class TMADriver():
             loginButtonElement = self.browser.find_element(by=By.CSS_SELECTOR,value="#ctl00_ContentPlaceHolder1_Login1_LoginButton")
             self.browser.safeClick(element=loginButtonElement,timeout=10,
                                    successfulClickCondition=lambda b: b.searchForElement(element=loginButtonElement,timeout=5,invertedSearch=True))
-            if (self.browser.current_url == "https://tma4.icomm.co/tma/Authenticated/Domain/Default.aspx"):
+            if self.browser.current_url == "https://tma4.icomm.co/tma/Authenticated/Domain/Default.aspx":
                 self.readPage()
-                if (self.currentLocation.isLoggedIn):
+                if self.currentLocation.isLoggedIn:
                     log.info("Successfully logged in to TMA.")
                     return True
         else:
@@ -400,15 +400,15 @@ class TMADriver():
 
             newTMATabs = []
             for newPopupTab in popupDict["newPopupTabs"]:
-                if(newPopupTab.startswith("tma4.icomm.co")):
+                if newPopupTab.startswith("tma4.icomm.co"):
                     newTMATabs.append(newPopupTab)
 
             # This means we haven't yet found any new TMA popup tabs.
-            if(len(newTMATabs) == 0):
+            if len(newTMATabs) == 0:
                 time.sleep(1)
                 continue
             # This means we've located our target TMA popup tab.
-            elif(len(newTMATabs) == 1):
+            elif len(newTMATabs) == 1:
                 self.browser.switchToTab(newTMATabs[0],popup=True)
                 self.currentTMATab = [newTMATabs[0],True]
                 log.info(f"Successfully switched to open TMA tab, with handle {newTMATabs[0]}")
@@ -426,7 +426,7 @@ class TMADriver():
     def returnToBaseTMA(self):
         self.browser.checkForPopupTabs()
         for popupTabName in self.browser.popupTabs.keys():
-            if(popupTabName.startswith("tma4.icomm.co")):
+            if popupTabName.startswith("tma4.icomm.co"):
                 self.browser.closeTab(popupTabName,popup=True)
         self.browser.switchToTab("TMA",popup=False)
         self.currentTMATab = ["TMA",False]
@@ -441,9 +441,9 @@ class TMADriver():
 
         locationData.rawURL = self.browser.current_url
         # Test if we're even on a TMA page.
-        if ("tma4.icomm.co" in locationData.rawURL):
+        if "tma4.icomm.co" in locationData.rawURL:
             # Test if we're logged in to TMA.
-            if ("https://tma4.icomm.co/tma/Authenticated" in locationData.rawURL):
+            if "https://tma4.icomm.co/tma/Authenticated" in locationData.rawURL:
                 locationData.isLoggedIn = True
 
                 # ----------------------------------------------------------
@@ -452,7 +452,7 @@ class TMADriver():
                 clientNameHeaderPath = "//a[contains(@id,'lnkDomainHome')]/parent::div"
                 headerText = self.browser.searchForElement(by=By.XPATH, value=clientNameHeaderPath,timeout=3).text
                 clientName = headerText.split("-")[1].strip()
-                if (clientName == ""):
+                if clientName == "":
                     locationData.client = None
                     locationData.entryType = "DomainPage"
                     #locationData.isInactive = None
@@ -464,30 +464,30 @@ class TMADriver():
                     # associated "EntryID", and whether it is considered
                     # "inactive".
                     # ----------------------------------------------------------
-                    if ("Client/People/" in locationData.rawURL):
+                    if "Client/People/" in locationData.rawURL:
                         locationData.entryType = "People"
                         # TODO implement dynamic support for other clients than just Sysco
                         # We pull the Sysco Network ID as our EntryID for People.
                         networkIDString = "//span[contains(@id,'lblEmployeeID')]/following-sibling::span"
                         networkID = self.browser.find_element(by=By.XPATH, value=networkIDString).text
                         locationData.entryID = networkID
-                    elif ("Client/Services/" in locationData.rawURL):
+                    elif "Client/Services/" in locationData.rawURL:
                         locationData.entryType = "Service"
                         # We pull the service number as our EntryID for Service.
                         serviceNumberPath = "//input[contains(@id,'txtServiceId')]"
                         serviceNumber = self.browser.searchForElement(by=By.XPATH, value=serviceNumberPath,timeout=3).get_attribute("value")
                         locationData.entryID = convertServiceIDFormat(serviceID=serviceNumber,targetFormat="dashed")
-                    elif ("Client/Interactions/" in locationData.rawURL):
+                    elif "Client/Interactions/" in locationData.rawURL:
                         locationData.entryType = "Interaction"
                         # Here, we pull the Interaction Number as our EntryID.
                         interactionNumberPath = "//span[contains(@id,'txtInteraction')]/following-sibling::span"
                         interactionNumberElement = self.browser.searchForElement(by=By.CSS_SELECTOR, value=interactionNumberPath,timeout=1)
-                        if (interactionNumberElement):
+                        if interactionNumberElement:
                             interactionNumber = interactionNumberElement.text
                             locationData.entryID = interactionNumber
                         else:
                             locationData.entryID = "InteractionSearch"
-                    elif ("Client/Orders/" in locationData.rawURL):
+                    elif "Client/Orders/" in locationData.rawURL:
                         locationData.entryType = "Order"
                         # Orders are special in that their entryID should consist of three
                         # separate parts - the TMAOrderNumber, ticketOrderNumber, and
@@ -507,10 +507,10 @@ class TMADriver():
                         locationData.entryID = {"TMAOrderNumber": TMAOrderNumber,
                                                 "ticketOrderNumber": ticketOrderNumber,
                                                 "vendorOrderNumber": vendorOrderNumber}
-                    elif ("Client/Equipment/" in locationData.rawURL):
+                    elif "Client/Equipment/" in locationData.rawURL:
                         locationData.entryType = "Equipment"
                         locationData.entryID = "RegularEquipment"
-                    elif ("Client/ClientHome" in locationData.rawURL):
+                    elif "Client/ClientHome" in locationData.rawURL:
                         locationData.entryType = "ClientHomePage"
                         locationData.entryID = None
                     # ----------------------------------------------------------
@@ -534,7 +534,7 @@ class TMADriver():
             #locationData.isInactive = None
             locationData.entryID = None
 
-        if(storeAsCurrent):
+        if storeAsCurrent:
             self.currentLocation = locationData
 
         log.debug(f"Read this page: ({locationData})")
@@ -546,13 +546,13 @@ class TMADriver():
         while time.time() < endTime:
             try:
                 newLocationData = self.readPage(storeAsCurrent=False)
-                if(newLocationData == location and ((newLocationData.activeLinkTab == location.activeLinkTab and newLocationData.activeInfoTab == location.activeInfoTab) or fuzzyPageDetection)):
+                if newLocationData == location and ((newLocationData.activeLinkTab == location.activeLinkTab and newLocationData.activeInfoTab == location.activeInfoTab) or fuzzyPageDetection):
                     return True
                 else:
                     time.sleep(0.5)
             # A bit gluey or nah?
             except Exception as e:
-                if(time.time() >= endTime):
+                if time.time() >= endTime:
                     raise e
                 else:
                     time.sleep(0.5)
@@ -567,12 +567,12 @@ class TMADriver():
         loaderXPath = "//div[@id='ctl00_updateMainPage'][@aria-hidden='false']"
         loaderElement = self.browser.searchForElement(by=By.XPATH,value=loaderXPath,timeout=1.5)
         loaderSuccessfullyFound = False
-        if(loaderElement):
+        if loaderElement:
             self.browser.searchForElement(by=By.XPATH,value=loaderXPath,timeout=timeout,invertedSearch=True,raiseError=True)
             loaderSuccessfullyFound = True
 
         logMessage = f"Waited on TMA loader for {time.time() - startTime} seconds"
-        if(not loaderSuccessfullyFound):
+        if not loaderSuccessfullyFound:
             logMessage += f", failed to find loader to exist for longer than a second"
         log.debug(logMessage)
 
@@ -581,7 +581,7 @@ class TMADriver():
     def navToClientHome(self,clientName):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
-        if(not self.currentLocation.isLoggedIn):
+        if not self.currentLocation.isLoggedIn:
             log.error(f"Could not navToClientHome '{clientName}', as TMA is not currently logged in.")
             return False
 
@@ -600,7 +600,7 @@ class TMADriver():
 
         self.readPage()
         # TODO is shit like this really helpful?
-        if(not self.currentLocation.isLoggedIn):
+        if not self.currentLocation.isLoggedIn:
             log.error("Could not execute navToDomain, as TMA is not currently logged in!")
             return False
 
@@ -616,20 +616,20 @@ class TMADriver():
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         self.readPage()
-        if(not self.currentLocation.isLoggedIn):
+        if not self.currentLocation.isLoggedIn:
             error = PermissionError(f"Can not navigate to location '{locationData}' - not currently logged in to TMA.")
             log.error(error)
             raise error
 
         # First, we need to make sure we're on the correct client.
-        if(locationData.client != self.currentLocation.client):
+        if locationData.client != self.currentLocation.client:
             self.navToClientHome(locationData.client)
 
         selectionMenuString = "//div/div/div/div/div/div/select[starts-with(@id,'ctl00_LeftPanel')]/option"
         searchBarString = "//div/div/fieldset/input[@title='Press (ENTER) to submit. ']"
         inactiveCheckboxString = "//div/div/div/input[starts-with(@id,'ctl00_LeftPanel')][contains(@id,'chkClosed')][@type='checkbox']"
 
-        if(locationData.entryType == "Interaction"):
+        if locationData.entryType == "Interaction":
             interactionsOption = self.browser.find_element(by=By.XPATH,value=f"{selectionMenuString}[@value='interactions']")
             interactionsOption.click()
             self.waitForTMALoader()
@@ -641,7 +641,7 @@ class TMADriver():
             resultString = "//div[contains(@id,'UpdatePanelResults')]/fieldset/div/div/table/tbody/tr[contains(@class,'sgvitems')]/td/a[starts-with(text(),'" + locationData.entryID + " (')]"
             resultItem = self.browser.searchForElement(by=By.XPATH,value=resultString,timeout=120,raiseError=True)
             resultItem.click()
-        elif(locationData.entryType == "Service"):
+        elif locationData.entryType == "Service":
             servicesOption = self.browser.find_element(by=By.XPATH,value=selectionMenuString + "[@value='services']")
             servicesOption.click()
             self.waitForTMALoader()
@@ -649,10 +649,10 @@ class TMADriver():
             # TODO right now, this ALWAYS sets inactive to false. Come back here if we need to actually
             # account for inactive users.
             inactiveCheckbox = self.browser.find_element(by=By.XPATH,value=inactiveCheckboxString)
-            if (str(inactiveCheckbox.get_attribute("CHECKED")) == "true"):
+            if str(inactiveCheckbox.get_attribute("CHECKED")) == "true":
                 inactiveCheckbox.click()
                 self.waitForTMALoader()
-            elif (str(inactiveCheckbox.get_attribute("CHECKED")) == "None"):
+            elif str(inactiveCheckbox.get_attribute("CHECKED")) == "None":
                 pass
             self.waitForTMALoader()
             searchBar = self.browser.find_element(by=By.XPATH,value=searchBarString)
@@ -666,17 +666,17 @@ class TMADriver():
             resultItem = self.browser.searchForElement(by=By.XPATH,value=resultString,timeout=120,raiseError=True)
             self.browser.safeClick(element=resultItem,timeout=120,retryClicks=True,testInterval=3,
                                    successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=targetServiceIDField,invertedSearch=True,timeout=5))
-        elif(locationData.entryType == "People"):
+        elif locationData.entryType == "People":
             peopleOption = self.browser.find_element(by=By.XPATH,value=selectionMenuString + "[@value='people']")
             peopleOption.click()
             self.waitForTMALoader()
             #TODO right now, this ALWAYS sets inactive to false. Come back here if we need to actually
             # account for inactive users.
             inactiveCheckbox = self.browser.find_element(by=By.XPATH,value=inactiveCheckboxString)
-            if (str(inactiveCheckbox.get_attribute("CHECKED")) == "true"):
+            if str(inactiveCheckbox.get_attribute("CHECKED")) == "true":
                 inactiveCheckbox.click()
                 self.waitForTMALoader()
-            elif (str(inactiveCheckbox.get_attribute("CHECKED")) == "None"):
+            elif str(inactiveCheckbox.get_attribute("CHECKED")) == "None":
                 pass
             searchBar = self.browser.find_element(by=By.XPATH,value=searchBarString)
             searchBar.clear()
@@ -688,16 +688,16 @@ class TMADriver():
             resultString = f"//div[contains(@id,'UpdatePanelResults')]/fieldset/div/div/table/tbody/tr[contains(@class,'sgvitems')]/td/a[contains(translate(text(),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),': {caseAdjustedPeopleID} ')]"
             resultItem = self.browser.searchForElement(by=By.XPATH,value=resultString,timeout=120)
             resultItem.click()
-        elif(locationData.entryType == "Order"):
+        elif locationData.entryType == "Order":
             ordersOption = self.browser.find_element(by=By.XPATH,value=selectionMenuString + "[@value='orders']")
             ordersOption.click()
             self.waitForTMALoader()
             searchBar = self.browser.find_element(by=By.XPATH,value=searchBarString)
             searchBar.clear()
             # For orders, since there are 3 potential numbers to search by, we prioritize them in this order: TMA Order Number, Vendor Order Number, Ticket Order Number.
-            if(locationData.entryID["TMAOrderNumber"] is None):
-                if (locationData.entryID["vendorOrderNumber"] is None):
-                    if(locationData.entryID["ticketOrderNumber"] is None):
+            if locationData.entryID["TMAOrderNumber"] is None:
+                if locationData.entryID["vendorOrderNumber"] is None:
+                    if locationData.entryID["ticketOrderNumber"] is None:
                         error = ValueError(f"Tried navigating to order '{locationData}', but all 3 order specifiers are None.")
                         log.error(error)
                         raise error
@@ -742,23 +742,23 @@ class TMADriver():
     def Service_ReadMainInfo(self, serviceObject : TMAService = None, client = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
-        if(serviceObject is None):
+        if serviceObject is None:
             serviceObject = TMAService()
         xpathPrefix = "//div/fieldset/ol/li"
         self.Service_NavToServiceTab("Line Info")
 
         # Handle getting the client
-        if(client is None):
-            if(serviceObject.info_Client is None):
+        if client is None:
+            if serviceObject.info_Client is None:
                 log.warning(f"Main info of service is trying to be read without specifying a client in the serivce OR the funciton call. Defaulting to Sysco.")
                 client = "Sysco"
             else:
                 client = serviceObject.info_Client
         else:
-            if(serviceObject.info_Client is None):
+            if serviceObject.info_Client is None:
                 serviceObject.info_Client = client
 
-        if (client == "LYB"):
+        if client == "LYB":
             serviceObject.info_ServiceNumber = self.browser.find_element(by=By.XPATH, value=
             xpathPrefix + "/input[contains(@name,'Detail$txtServiceId')][contains(@id,'Detail_txtServiceId')]").get_attribute(
                 "value")
@@ -781,7 +781,7 @@ class TMADriver():
             xpathPrefix + "/select[contains(@name,'Detail$ddlServiceType$ddlServiceType_ddl')][contains(@id,'Detail_ddlServiceType_ddlServiceType_ddl')]")).first_selected_option.text
             serviceObject.info_Carrier = Select(self.browser.find_element(by=By.XPATH, value=
             xpathPrefix + "/select[contains(@name,'Detail$ddlCarrier$ddlCarrier_ddl')][contains(@id,'Detail_ddlCarrier_ddlCarrier_ddl')]")).first_selected_option.text
-        elif (client == "Sysco"):
+        elif client == "Sysco":
             serviceObject.info_ServiceNumber = self.browser.find_element(by=By.XPATH, value=
             xpathPrefix + "/input[contains(@name,'Detail$txtServiceId')][contains(@id,'Detail_txtServiceId')]").get_attribute(
                 "value")
@@ -810,7 +810,7 @@ class TMADriver():
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         self.Service_NavToServiceTab("line info")
-        if(serviceObject is None):
+        if serviceObject is None:
             serviceObject = TMAService()
 
         prefix = "//div/div/ol/li"
@@ -830,13 +830,13 @@ class TMADriver():
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         self.Service_NavToServiceTab("base costs")
-        if(serviceObject is None):
+        if serviceObject is None:
             serviceObject = TMAService()
         # We always overwrite the existing info_BaseCost if there was one.
         serviceObject.info_BaseCost = TMACost(isBaseCost=True)
         baseCostRowXPath = "//table[contains(@id,'Detail_sfBaseCosts_sgvFeatures')]/tbody/tr[contains(@class,'sgvitems')]"
         baseCostRow = self.browser.searchForElement(by=By.XPATH,value=baseCostRowXPath,timeout=1)
-        if(baseCostRow):
+        if baseCostRow:
             allDataEntries = baseCostRow.find_elements(by=By.TAG_NAME,value="td")
             serviceObject.info_BaseCost.info_FeatureString = allDataEntries[0].text
             serviceObject.info_BaseCost.info_Gross = allDataEntries[1].text
@@ -848,13 +848,13 @@ class TMADriver():
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         self.Service_NavToServiceTab("features")
-        if(serviceObject is None):
+        if serviceObject is None:
             serviceObject = TMAService()
         serviceObject.info_FeatureCosts = []
 
         featureCostRowsXPath = "//table[contains(@id,'Detail_sfStandardFeatures_sgvFeatures')]/tbody/tr[contains(@class,'sgvitems')]"
         featureCostRows = self.browser.find_elements(by=By.XPATH, value=featureCostRowsXPath)
-        if(featureCostRows):
+        if featureCostRows:
             for featureCostRow in featureCostRows:
                 thisFeatureCostObject = TMACost(isBaseCost=False)
                 allDataEntries = featureCostRow.find_elements(by=By.TAG_NAME, value="td")
@@ -868,8 +868,8 @@ class TMADriver():
     # LINKED ITEMS : Read methods pertaining to linked items to this service. Some methods are sensitive to
     # client, particularly linked people.
     def Service_ReadLinkedPerson(self, serviceObject : TMAService = None, client=None):
-        if(client is None):
-            if(serviceObject.info_Client is None):
+        if client is None:
+            if serviceObject.info_Client is None:
                 log.warning("No client specified in function call OR provided in serviceObject. Defaulting to sysco.")
                 client = "Sysco"
             else:
@@ -883,7 +883,7 @@ class TMADriver():
         linkedPersonNameXPath = "//table[contains(@id,'ucassociations_link_sgvAssociations')]/tbody/tr[contains(@class,'sgvitems')]/td[5]"
         linkedPersonNameElement = self.browser.find_element(by=By.XPATH,value=linkedPersonNameXPath)
         linkedPersonName = linkedPersonNameElement.text
-        if(client == "Sysco"):
+        if client == "Sysco":
             linkedPersonNetIDXPath = "//table[contains(@id,'ucassociations_link_sgvAssociations')]/tbody/tr[contains(@class,'sgvitems')]/td[7]"
             linkedPersonNetIDElement = self.browser.find_element(by=By.XPATH,value=linkedPersonNetIDXPath)
             linkedPersonNetID = linkedPersonNetIDElement.text
@@ -891,15 +891,15 @@ class TMADriver():
         linkedPersonEmailElement = self.browser.find_element(by=By.XPATH, value=linkedPersonEmailXPath)
         linkedPersonEmail = linkedPersonEmailElement.text
 
-        if(client == "Sysco"):
+        if client == "Sysco":
             # noinspection PyUnboundLocalVariable
             log.debug(f"Successfully read linked person: {linkedPersonName} | {linkedPersonNetID} | {linkedPersonEmail}")
-        if(serviceObject is None):
-            if(client == "Sysco"):
+        if serviceObject is None:
+            if client == "Sysco":
                 return {"Name" : linkedPersonName, "NetID" : linkedPersonNetID, "Email" : linkedPersonEmail}
         else:
             serviceObject.info_LinkedPersonName = linkedPersonName
-            if(client == "Sysco"):
+            if client == "Sysco":
                 serviceObject.info_LinkedPersonNID = linkedPersonNetID
             serviceObject.info_LinkedPersonEmail = linkedPersonEmail
             return serviceObject
@@ -925,11 +925,11 @@ class TMADriver():
             for j in arrayOfLinkedInteractionsOnPage:
                 arrayOfLinkedIntNumbersOnPage.append(j.text)
             for j in arrayOfLinkedIntNumbersOnPage:
-                if (j in arrayOfLinkedIntNumbers):
+                if j in arrayOfLinkedIntNumbers:
                     continue
                 arrayOfLinkedIntNumbers.append(j)
 
-            if ((i + 1) < pageCount):
+            if (i + 1) < pageCount:
                 nextButton = self.browser.find_element(by=By.XPATH, value=nextButtonXPath)
 
                 while True:
@@ -939,14 +939,14 @@ class TMADriver():
                     pageCountMatch = re.search(r'Page (\d+)', pageCountText)
                     currentPageNumber = int(pageCountMatch.group(1))
 
-                    if (currentPageNumber == i + 2):
+                    if currentPageNumber == i + 2:
                         break
                     self.waitForTMALoader()
                     continue
                 continue
 
         log.info(f"Successfully read: {arrayOfLinkedIntNumbers}")
-        if(serviceObject is None):
+        if serviceObject is None:
             return arrayOfLinkedIntNumbers
         else:
             serviceObject.info_LinkedInteractions = arrayOfLinkedIntNumbers
@@ -972,12 +972,12 @@ class TMADriver():
             for j in arrayOfLinkedOrdersOnPage:
                 arrayOfLinkedOrderNumbersOnPage.append(j.text)
             for j in arrayOfLinkedOrderNumbersOnPage:
-                if (j in arrayOfLinkedOrderNumbers):
+                if j in arrayOfLinkedOrderNumbers:
                     continue
                 arrayOfLinkedOrderNumbers.append(j)
 
             time.sleep(1)
-            if ((i + 1) < pageCount):
+            if (i + 1) < pageCount:
                 while True:
                     self.browser.safeClick(by=By.XPATH, value=nextButtonXPath)
                     self.waitForTMALoader()
@@ -985,14 +985,14 @@ class TMADriver():
                     pageCountMatch = re.search(r'Page (\d+)', pageCountText)
                     currentPageNumber = int(pageCountMatch.group(1))
 
-                    if (currentPageNumber == i + 2):
+                    if currentPageNumber == i + 2:
                         break
                     self.waitForTMALoader()
                     continue
                 continue
 
         log.info(f"Successfully read: {arrayOfLinkedOrderNumbers}.")
-        if(serviceObject is None):
+        if serviceObject is None:
             return arrayOfLinkedOrderNumbers
         else:
             serviceObject.info_LinkedOrders = arrayOfLinkedOrderNumbers
@@ -1000,7 +1000,7 @@ class TMADriver():
     def Service_ReadAllLinkedInformation(self, serviceObject : TMAService = None, client=None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
-        if(serviceObject is None):
+        if serviceObject is None:
             serviceObject = TMAService()
         self.Service_ReadLinkedPerson(serviceObject,client=client)
         self.Service_ReadLinkedInteractions(serviceObject)
@@ -1016,7 +1016,7 @@ class TMADriver():
     def Service_ReadSimpleEquipmentInfo(self, serviceObject : TMAService = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
-        if(serviceObject is None):
+        if serviceObject is None:
             serviceObject = TMAService()
         serviceObject.info_LinkedEquipment = TMAEquipment()
 
@@ -1042,12 +1042,12 @@ class TMADriver():
     def Service_WriteServiceNumber(self, serviceObject : TMAService = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
-        if(serviceObject is None):
+        if serviceObject is None:
             valueToWrite = rawValue
         else:
             valueToWrite = serviceObject.info_ServiceNumber
 
-        if (valueToWrite is None):
+        if valueToWrite is None:
             log.warning(f"Didn't write, as valueToWrite is {valueToWrite}")
             return False
 
@@ -1059,12 +1059,12 @@ class TMADriver():
     def Service_WriteUserName(self, serviceObject : TMAService = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
-        if (serviceObject is None):
+        if serviceObject is None:
             valueToWrite = rawValue
         else:
             valueToWrite = serviceObject.info_UserName
 
-        if (valueToWrite is None):
+        if valueToWrite is None:
             log.warning(f"Didn't write, as valueToWrite is {valueToWrite}")
             return False
 
@@ -1076,12 +1076,12 @@ class TMADriver():
     def Service_WriteAlias(self, serviceObject : TMAService = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
-        if (serviceObject is None):
+        if serviceObject is None:
             valueToWrite = rawValue
         else:
             valueToWrite = serviceObject.info_Alias
 
-        if (valueToWrite is None):
+        if valueToWrite is None:
             log.warning(f"Didn't write, as valueToWrite is {valueToWrite}")
             return False
 
@@ -1093,12 +1093,12 @@ class TMADriver():
     def Service_WriteContractStartDate(self, serviceObject : TMAService = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
-        if (serviceObject is None):
+        if serviceObject is None:
             valueToWrite = rawValue
         else:
             valueToWrite = serviceObject.info_ContractStartDate
 
-        if (valueToWrite is None):
+        if valueToWrite is None:
             log.warning(f"Didn't write, as valueToWrite is {valueToWrite}")
             return False
 
@@ -1110,12 +1110,12 @@ class TMADriver():
     def Service_WriteContractEndDate(self, serviceObject : TMAService = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
-        if (serviceObject is None):
+        if serviceObject is None:
             valueToWrite = rawValue
         else:
             valueToWrite = serviceObject.info_ContractEndDate
 
-        if (valueToWrite is None):
+        if valueToWrite is None:
             log.warning(f"Didn't write, as valueToWrite is {valueToWrite}")
             return False
 
@@ -1127,12 +1127,12 @@ class TMADriver():
     def Service_WriteUpgradeEligibilityDate(self, serviceObject : TMAService = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
-        if (serviceObject is None):
+        if serviceObject is None:
             valueToWrite = rawValue
         else:
             valueToWrite = serviceObject.info_UpgradeEligibilityDate
 
-        if (valueToWrite is None):
+        if valueToWrite is None:
             log.warning(f"Didn't write, as valueToWrite is {valueToWrite}")
             return False
 
@@ -1144,12 +1144,12 @@ class TMADriver():
     def Service_WriteServiceType(self, serviceObject : TMAService = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
-        if (serviceObject is None):
+        if serviceObject is None:
             valueToWrite = rawValue
         else:
             valueToWrite = serviceObject.info_ServiceType
 
-        if (valueToWrite is None):
+        if valueToWrite is None:
             log.warning(f"Didn't write, as valueToWrite is {valueToWrite}")
             return False
 
@@ -1161,12 +1161,12 @@ class TMADriver():
     def Service_WriteCarrier(self, serviceObject : TMAService = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
-        if (serviceObject is None):
+        if serviceObject is None:
             valueToWrite = rawValue
         else:
             valueToWrite = serviceObject.info_Carrier
 
-        if (valueToWrite is None):
+        if valueToWrite is None:
             log.warning(f"Didn't write, as valueToWrite is {valueToWrite}")
             return False
 
@@ -1178,12 +1178,12 @@ class TMADriver():
     def Service_WriteComments(self,serviceObject : TMAService = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0], self.currentTMATab[1])
 
-        if (serviceObject is None):
+        if serviceObject is None:
             valueToWrite = str(rawValue)
         else:
             valueToWrite = str(serviceObject.info_Comments)
 
-        if (valueToWrite is None):
+        if valueToWrite is None:
             log.warning(f"Didn't write, as valueToWrite is {valueToWrite}")
             return False
 
@@ -1195,8 +1195,8 @@ class TMADriver():
     def Service_WriteMainInformation(self, serviceObject : TMAService, client : str = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
-        if(client is None):
-            if(serviceObject.info_Client is None):
+        if client is None:
+            if serviceObject.info_Client is None:
                 error = ValueError("Tried to writeMainInformation without specifying a client OR having info_Client in the serviceObject.")
                 log.error(error)
                 raise error
@@ -1207,13 +1207,13 @@ class TMADriver():
         self.Service_WriteUserName(serviceObject)
         self.Service_WriteAlias(serviceObject)
         # List clients here that use contract start dates.
-        if (client in ["LYB"]):
+        if client in ["LYB"]:
             self.Service_WriteContractStartDate(serviceObject)
         self.Service_WriteContractEndDate(serviceObject)
         self.Service_WriteUpgradeEligibilityDate(serviceObject)
         self.Service_WriteServiceType(serviceObject)
         self.Service_WriteCarrier(serviceObject)
-        if(serviceObject.info_Comments):
+        if serviceObject.info_Comments:
             self.Service_WriteComments()
         log.debug(f"Successfully wrote all main information.")
     # Write methods for each of the "Line Info" values. If a serviceObject is
@@ -1222,12 +1222,12 @@ class TMADriver():
     def Service_WriteInstalledDate(self, serviceObject : TMAService = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
-        if (serviceObject is None):
+        if serviceObject is None:
             valueToWrite = rawValue
         else:
             valueToWrite = serviceObject.info_InstalledDate
 
-        if (valueToWrite is None):
+        if valueToWrite is None:
             log.warning(f"Didn't write, as valueToWrite is {valueToWrite}")
             return False
 
@@ -1239,12 +1239,12 @@ class TMADriver():
     def Service_WriteDisconnectedDate(self, serviceObject : TMAService = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
-        if (serviceObject is None):
+        if serviceObject is None:
             valueToWrite = rawValue
         else:
             valueToWrite = serviceObject.info_DisconnectedDate
 
-        if (valueToWrite is None):
+        if valueToWrite is None:
             log.warning(f"Didn't write, as valueToWrite is {valueToWrite}")
             return False
 
@@ -1256,12 +1256,12 @@ class TMADriver():
     def Service_WriteIsInactiveService(self, serviceObject : TMAService = None, rawValue : bool = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
-        if(rawValue is None):
+        if rawValue is None:
             valueToWrite = serviceObject.info_IsInactiveService
         else:
             valueToWrite = rawValue
 
-        if (valueToWrite is None):
+        if valueToWrite is None:
             log.warning(f"Didn't write, as valueToWrite is {valueToWrite}")
             return False
 
@@ -1276,23 +1276,23 @@ class TMADriver():
     # Otherwise, if a raw costObject is given, it'll simply build that cost object.
     def Service_WriteCosts(self, serviceObject : TMAService = None, costObjects : (TMACost, list) = None, isBase : bool = True):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
-        if(costObjects is None):
-            if(serviceObject is None):
+        if costObjects is None:
+            if serviceObject is None:
                 error = ValueError("Can't write costs object without either specifying costObjects to write directly, or providing a serviceObjects with prespecified cost objects.")
                 log.error(error)
                 raise error
 
-            if(isBase):
+            if isBase:
                 costsToWrite = [serviceObject.info_BaseCost]
             else:
                 costsToWrite = serviceObject.info_FeatureCosts
         else:
-            if(type(costObjects) is list):
+            if type(costObjects) is list:
                 costsToWrite = costObjects
             else:
                 costsToWrite = [costObjects]
 
-        if(isBase):
+        if isBase:
             self.Service_NavToServiceTab("base costs")
         else:
             self.Service_NavToServiceTab("features")
@@ -1316,13 +1316,13 @@ class TMADriver():
                                                                             minSearchTime=3,testClickable=True))
             featureSelectionDropdown.select_by_visible_text(costToWrite.info_FeatureString)
 
-            if(costToWrite.info_Gross is not None):
+            if costToWrite.info_Gross is not None:
                 grossForm = self.browser.searchForElement(by=By.XPATH, value=grossFormXPath,testClickable=True,testLiteralClick=True,timeout=5)
                 grossForm.send_keys(costToWrite.info_Gross)
-            if(costToWrite.info_DiscountPercentage is not None):
+            if costToWrite.info_DiscountPercentage is not None:
                 discountPercentForm = self.browser.searchForElement(by=By.XPATH, value=discountPercentFormXPath,testClickable=True,testLiteralClick=True,timeout=5)
                 discountPercentForm.send_keys(costToWrite.info_DiscountPercentage)
-            if(costToWrite.info_DiscountFlat is not None):
+            if costToWrite.info_DiscountFlat is not None:
                 discountFlatForm = self.browser.searchForElement(by=By.XPATH, value=discountFlatFormXPath,testClickable=True,testLiteralClick=True,timeout=5)
                 discountFlatForm.send_keys(costToWrite.info_DiscountFlat)
 
@@ -1342,16 +1342,16 @@ class TMADriver():
 
         insertButtonXPath = "//span[@class='buttons']/div[@class='buttons']/input[contains(@name,'ButtonControl1$ctl')][@value='Insert']"
         updateButtonXPath = "//span[@class='buttons']/div[@class='buttons']/input[contains(@name,'ButtonControl1$ctl')][@value='Update']"
-        if (self.browser.searchForElement(by=By.XPATH, value=updateButtonXPath,timeout=1)):
+        if self.browser.searchForElement(by=By.XPATH, value=updateButtonXPath, timeout=1):
             self.browser.safeClick(by=By.XPATH,value=updateButtonXPath,clickDelay=1,timeout=5)
             log.debug("Updated service.")
             return True
-        elif(self.browser.searchForElement(by=By.XPATH,value=insertButtonXPath,timeout=1)):
+        elif self.browser.searchForElement(by=By.XPATH, value=insertButtonXPath, timeout=1):
             self.browser.safeClick(by=By.XPATH,value=insertButtonXPath,clickDelay=1,timeout=5)
             # Tests for whether the service might already exist and handles it.
             # TODO come back here to determine how to actually intercept this.
             serviceAlreadyExistsString = "//span[text()='The Service already exists in the database.']"
-            if (self.browser.searchForElement(by=By.XPATH, value=serviceAlreadyExistsString, timeout=2)):
+            if self.browser.searchForElement(by=By.XPATH, value=serviceAlreadyExistsString, timeout=2):
                 log.warning("Tried to insert service, but service already exists in database!")
                 return "ServiceAlreadyExists"
             log.info("Inserted service.")
@@ -1411,11 +1411,11 @@ class TMADriver():
         self.Service_NavToServiceTab("links")
         self.Service_NavToLinkedTab("equipment")
         equipmentArray = self.browser.find_elements(by=By.XPATH, value="//table[contains(@id,'ucassociations_link_sgvAssociations')]/tbody/tr[contains(@class,'sgvitems')]")
-        if (len(equipmentArray) == 0):
+        if len(equipmentArray) == 0:
             error = RuntimeError("Could not navToEquipmentFromService, as there is no equipment presently linked.")
             log.error(error)
             raise error
-        elif (len(equipmentArray) > 1):
+        elif len(equipmentArray) > 1:
             error = ValueError("Multiple equipments linked to service. This is not yet handled - will require some refactoring of code.")
             log.error(error)
             raise error
@@ -1448,7 +1448,7 @@ class TMADriver():
     # Read methods for each part of the Order entry.
     def Order_ReadMainInfo(self, orderObject : TMAOrder = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
-        if(orderObject is None):
+        if orderObject is None:
             orderObject = TMAOrder()
 
         orderObject.info_PortalOrderNumber = self.browser.find_element(by=By.XPATH,value="//span[text()='Portal Order Number']/following-sibling::input").text
@@ -1474,7 +1474,7 @@ class TMADriver():
         return orderObject
     def Order_ReadOrderNotes(self, orderObject : TMAOrder = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
-        if(orderObject is None):
+        if orderObject is None:
             orderObject = TMAOrder()
 
         self.Order_NavToOrderTab("notes")
@@ -1483,7 +1483,7 @@ class TMADriver():
     # TODO hehe this function doesn't actually work. Make it work.
     def Order_ReadLinkedService(self, orderObject : TMAOrder = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
-        if(orderObject is None):
+        if orderObject is None:
             orderObject = TMAOrder()
 
         self.Order_NavToOrderTab("links")
@@ -1493,11 +1493,11 @@ class TMADriver():
     # Main Info
     def Order_WritePortalOrderNumber(self, orderObject : TMAOrder = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
-        if (orderObject is None):
+        if orderObject is None:
             valueToWrite = rawValue
         else:
             valueToWrite = orderObject.info_PortalOrderNumber
-        if (valueToWrite is None):
+        if valueToWrite is None:
             log.warning(f"Didn't write, as valueToWrite is {valueToWrite}")
             return False
 
@@ -1507,11 +1507,11 @@ class TMADriver():
         portalOrderField.send_keys(rawValue)
     def Order_WriteVendorOrderNumber(self, orderObject : TMAOrder = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
-        if (orderObject is None):
+        if orderObject is None:
             valueToWrite = rawValue
         else:
             valueToWrite = orderObject.info_VendorOrderNumber
-        if (valueToWrite is None):
+        if valueToWrite is None:
             log.warning(f"Didn't write, as valueToWrite is {valueToWrite}")
             return False
 
@@ -1521,11 +1521,11 @@ class TMADriver():
         vendorOrderField.send_keys(rawValue)
     def Order_WriteVendorTrackingNumber(self, orderObject : TMAOrder = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
-        if (orderObject is None):
+        if orderObject is None:
             valueToWrite = rawValue
         else:
             valueToWrite = orderObject.info_VendorTrackingNumber
-        if (valueToWrite is None):
+        if valueToWrite is None:
             log.warning(f"Didn't write, as valueToWrite is {valueToWrite}")
             return False
 
@@ -1535,11 +1535,11 @@ class TMADriver():
         vendorTrackingField.send_keys(rawValue)
     def Order_WriteContactName(self, orderObject : TMAOrder = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
-        if (orderObject is None):
+        if orderObject is None:
             valueToWrite = rawValue
         else:
             valueToWrite = orderObject.info_ContactName
-        if (valueToWrite is None):
+        if valueToWrite is None:
             log.warning(f"Didn't write, as valueToWrite is {valueToWrite}")
             return False
 
@@ -1549,11 +1549,11 @@ class TMADriver():
         contactNameField.send_keys(rawValue)
     def Order_WriteSubmittedDate(self, orderObject : TMAOrder = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
-        if (orderObject is None):
+        if orderObject is None:
             valueToWrite = rawValue
         else:
             valueToWrite = orderObject.info_SubmittedDate
-        if (valueToWrite is None):
+        if valueToWrite is None:
             log.warning(f"Didn't write, as valueToWrite is {valueToWrite}")
             return False
 
@@ -1563,11 +1563,11 @@ class TMADriver():
         submittedDateField.send_keys(rawValue)
     def Order_WriteCompletedDate(self, orderObject : TMAOrder = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
-        if (orderObject is None):
+        if orderObject is None:
             valueToWrite = rawValue
         else:
             valueToWrite = orderObject.info_CompletedDate
-        if (valueToWrite is None):
+        if valueToWrite is None:
             log.warning(f"Didn't write, as valueToWrite is {valueToWrite}")
             return False
 
@@ -1577,11 +1577,11 @@ class TMADriver():
         completedDateField.send_keys(rawValue)
     def Order_WriteDueDate(self, orderObject : TMAOrder = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
-        if (orderObject is None):
+        if orderObject is None:
             valueToWrite = rawValue
         else:
             valueToWrite = orderObject.info_DueDate
-        if (valueToWrite is None):
+        if valueToWrite is None:
             log.warning(f"Didn't write, as valueToWrite is {valueToWrite}")
             return False
 
@@ -1591,11 +1591,11 @@ class TMADriver():
         dueDateField.send_keys(rawValue)
     def Order_WriteRecurringCost(self, orderObject : TMAOrder = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
-        if (orderObject is None):
+        if orderObject is None:
             valueToWrite = rawValue
         else:
             valueToWrite = orderObject.info_RecurringCost
-        if (valueToWrite is None):
+        if valueToWrite is None:
             log.warning(f"Didn't write, as valueToWrite is {valueToWrite}")
             return False
 
@@ -1605,11 +1605,11 @@ class TMADriver():
         recurringCostField.send_keys(rawValue)
     def Order_WriteRecurringSavings(self, orderObject : TMAOrder = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
-        if (orderObject is None):
+        if orderObject is None:
             valueToWrite = rawValue
         else:
             valueToWrite = orderObject.info_RecurringSavings
-        if (valueToWrite is None):
+        if valueToWrite is None:
             log.warning(f"Didn't write, as valueToWrite is {valueToWrite}")
             return False
 
@@ -1619,11 +1619,11 @@ class TMADriver():
         recurringSavingsField.send_keys(rawValue)
     def Order_WriteCredits(self, orderObject : TMAOrder = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
-        if (orderObject is None):
+        if orderObject is None:
             valueToWrite = rawValue
         else:
             valueToWrite = orderObject.info_Credits
-        if (valueToWrite is None):
+        if valueToWrite is None:
             log.warning(f"Didn't write, as valueToWrite is {valueToWrite}")
             return False
 
@@ -1633,11 +1633,11 @@ class TMADriver():
         creditsField.send_keys(rawValue)
     def Order_WriteOneTimeCost(self, orderObject : TMAOrder = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
-        if (orderObject is None):
+        if orderObject is None:
             valueToWrite = rawValue
         else:
             valueToWrite = orderObject.info_OneTimeCost
-        if (valueToWrite is None):
+        if valueToWrite is None:
             log.warning(f"Didn't write, as valueToWrite is {valueToWrite}")
             return False
 
@@ -1647,11 +1647,11 @@ class TMADriver():
         oneTimeCostField.send_keys(rawValue)
     def Order_WriteRefundAmount(self, orderObject : TMAOrder = None, rawValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
-        if (orderObject is None):
+        if orderObject is None:
             valueToWrite = rawValue
         else:
             valueToWrite = orderObject.info_RefundAmount
-        if (valueToWrite is None):
+        if valueToWrite is None:
             log.warning(f"Didn't write, as valueToWrite is {valueToWrite}")
             return False
 
@@ -1661,11 +1661,11 @@ class TMADriver():
         refundAmountField.send_keys(rawValue)
     def Order_WriteOrderStatus(self, orderObject: TMAOrder = None, rawValue=None):
         self.browser.switchToTab(self.currentTMATab[0], self.currentTMATab[1])
-        if (orderObject is None):
+        if orderObject is None:
             valueToWrite = rawValue
         else:
             valueToWrite = orderObject.info_OrderStatus
-        if (valueToWrite is None):
+        if valueToWrite is None:
             log.warning(f"Didn't write, as valueToWrite is {valueToWrite}")
             return False
 
@@ -1674,11 +1674,11 @@ class TMADriver():
         orderStatusDropdown.click()
     def Order_WritePlacedBy(self, orderObject: TMAOrder = None, rawValue=None):
         self.browser.switchToTab(self.currentTMATab[0], self.currentTMATab[1])
-        if (orderObject is None):
+        if orderObject is None:
             valueToWrite = rawValue
         else:
             valueToWrite = orderObject.info_PlacedBy
-        if (valueToWrite is None):
+        if valueToWrite is None:
             log.warning(f"Didn't write, as valueToWrite is {valueToWrite}")
             return False
 
@@ -1687,11 +1687,11 @@ class TMADriver():
         placedByDropdown.click()
     def Order_WriteOrderClass(self, orderObject: TMAOrder = None, rawValue=None):
         self.browser.switchToTab(self.currentTMATab[0], self.currentTMATab[1])
-        if (orderObject is None):
+        if orderObject is None:
             valueToWrite = rawValue
         else:
             valueToWrite = orderObject.info_OrderClass
-        if (valueToWrite is None):
+        if valueToWrite is None:
             log.warning(f"Didn't write, as valueToWrite is {valueToWrite}")
             return False
 
@@ -1700,11 +1700,11 @@ class TMADriver():
         orderClassDropdown.click()
     def Order_WriteOrderType(self, orderObject: TMAOrder = None, rawValue=None):
         self.browser.switchToTab(self.currentTMATab[0], self.currentTMATab[1])
-        if (orderObject is None):
+        if orderObject is None:
             valueToWrite = rawValue
         else:
             valueToWrite = orderObject.info_OrderType
-        if (valueToWrite is None):
+        if valueToWrite is None:
             log.warning(f"Didn't write, as valueToWrite is {valueToWrite}")
             return False
 
@@ -1713,11 +1713,11 @@ class TMADriver():
         orderTypeDropdown.click()
     def Order_WriteOrderSubType(self, orderObject: TMAOrder = None, rawValue=None):
         self.browser.switchToTab(self.currentTMATab[0], self.currentTMATab[1])
-        if (orderObject is None):
+        if orderObject is None:
             valueToWrite = rawValue
         else:
             valueToWrite = orderObject.info_OrderSubType
-        if (valueToWrite is None):
+        if valueToWrite is None:
             log.warning(f"Didn't write, as valueToWrite is {valueToWrite}")
             return False
 
@@ -1727,11 +1727,11 @@ class TMADriver():
     # Other
     def Order_WriteOrderNotes(self, orderObject: TMAOrder = None, rawValue=None):
         self.browser.switchToTab(self.currentTMATab[0], self.currentTMATab[1])
-        if (orderObject is None):
+        if orderObject is None:
             valueToWrite = rawValue
         else:
             valueToWrite = orderObject.info_RecurringCost
-        if (valueToWrite is None):
+        if valueToWrite is None:
             log.warning(f"Didn't write, as valueToWrite is {valueToWrite}")
             return False
 
@@ -1745,13 +1745,13 @@ class TMADriver():
     def Order_InsertUpdate(self):
         insertButtonString = "//input[@value='Insert']"
         insertButton = self.browser.searchForElement(by=By.XPATH,value=insertButtonString)
-        if(insertButton):
+        if insertButton:
             insertButton.click()
             return True
 
         updateButtonString = "//input[@value='Update']"
         updateButton = self.browser.searchForElement(by=By.XPATH,value=updateButtonString)
-        if(updateButton):
+        if updateButton:
             updateButton.click()
             return True
 
@@ -1789,7 +1789,7 @@ class TMADriver():
     def People_ReadBasicInfo(self, peopleObject : TMAPeople = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
-        if(peopleObject is None):
+        if peopleObject is None:
             peopleObject = TMAPeople()
         peopleObject.location = self.currentLocation
 
@@ -1805,7 +1805,7 @@ class TMADriver():
         peopleObject.info_Email = self.browser.searchForElement(by=By.XPATH, value=emailString,timeout=10).text
         employeeStatusString = "//div/div/fieldset/ol/li/span[contains(@id,'Detail_ddlpeopleStatus__label')]/following-sibling::span"
         employeeStatus = self.browser.searchForElement(by=By.XPATH, value=employeeStatusString,timeout=10).text
-        if (employeeStatus == "Active"):
+        if employeeStatus == "Active":
             peopleObject.info_IsTerminated = False
         else:
             peopleObject.info_IsTerminated = True
@@ -1821,7 +1821,7 @@ class TMADriver():
     def People_ReadLinkedInteractions(self, peopleObject : TMAPeople = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
-        if(peopleObject is None):
+        if peopleObject is None:
             peopleObject = TMAPeople()
         self.People_NavToLinkedTab("interactions")
 
@@ -1839,11 +1839,11 @@ class TMADriver():
             for j in arrayOfLinkedInteractionsOnPage:
                 arrayOfLinkedIntNumbersOnPage.append(j.text)
             for j in arrayOfLinkedIntNumbersOnPage:
-                if (j in arrayOfLinkedIntNumbers):
+                if j in arrayOfLinkedIntNumbers:
                     continue
                 arrayOfLinkedIntNumbers.append(j)
 
-            if ((i + 1) < pageCount):
+            if (i + 1) < pageCount:
                 while True:
                     self.browser.safeClick(by=By.XPATH, value=nextButtonXPath,timeout=3)
                     self.waitForTMALoader()
@@ -1851,7 +1851,7 @@ class TMADriver():
                     pageCountMatch = re.search(r'Page (\d+)', pageCountText)
                     currentPageNumber = int(pageCountMatch.group(1))
 
-                    if (currentPageNumber == i + 2):
+                    if currentPageNumber == i + 2:
                         break
                     continue
                 continue
@@ -1865,7 +1865,7 @@ class TMADriver():
     def People_ReadLinkedServices(self, peopleObject : TMAPeople = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
-        if(peopleObject is None):
+        if peopleObject is None:
             peopleObject = TMAPeople()
         self.People_NavToLinkedTab("services")
 
@@ -1883,11 +1883,11 @@ class TMADriver():
             for j in arrayOfLinkedServicesOnPage:
                 arrayOfLinkedServiceNumbersOnPage.append(j.text)
             for j in arrayOfLinkedServiceNumbersOnPage:
-                if (j in arrayOfLinkedServiceNumbers):
+                if j in arrayOfLinkedServiceNumbers:
                     continue
                 arrayOfLinkedServiceNumbers.append(j)
 
-            if ((i + 1) < pageCount):
+            if (i + 1) < pageCount:
                 while True:
                     self.browser.safeClick(by=By.XPATH, value=nextButtonXPath)
                     self.waitForTMALoader()
@@ -1895,7 +1895,7 @@ class TMADriver():
                     pageCountMatch = re.search(r'Page (\d+)', pageCountText)
                     currentPageNumber = int(pageCountMatch.group(1))
 
-                    if (currentPageNumber == i + 2):
+                    if currentPageNumber == i + 2:
                         break
                     continue
                 continue
@@ -1908,7 +1908,7 @@ class TMADriver():
     def People_ReadAllInformation(self, peopleObject : TMAPeople = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
-        if(peopleObject is None):
+        if peopleObject is None:
             peopleObject = TMAPeople()
 
         self.People_ReadBasicInfo(peopleObject)
@@ -1953,9 +1953,9 @@ class TMADriver():
         for i in range(50):
             pagesChecked += 1
             openServiceButton = self.browser.searchForElement(by=By.XPATH, value=openServiceButtonXPath,timeout=3+extraWaitTime)
-            if(not openServiceButton):
+            if not openServiceButton:
                 nextPageButton = self.browser.find_element(by=By.XPATH,value=nextPageButtonXPath)
-                if(nextPageButton.get_attribute("disabled") != "true"):
+                if nextPageButton.get_attribute("disabled") != "true":
                     nextPageButton.click()
                     self.waitForTMALoader()
                 else:
@@ -1963,7 +1963,7 @@ class TMADriver():
             else:
                 break
 
-        if(openServiceButton):
+        if openServiceButton:
             targetAddress = openServiceButton.get_attribute("href")
             self.browser.get(targetAddress)
             self.browser.waitForURL(urlSnippet="tma4.icomm.co/tma/Authenticated/Client/Services",timeout=60)
@@ -1986,7 +1986,7 @@ class TMADriver():
     def Equipment_ReadMainInfo(self, equipmentObject : TMAEquipment = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
-        if(equipmentObject is None):
+        if equipmentObject is None:
             equipmentObject = TMAEquipment()
         xpathPrefix = "//div/fieldset/ol/li"
 
@@ -2015,8 +2015,8 @@ class TMADriver():
     def Equipment_WriteSubType(self, equipmentObject : TMAEquipment = None, literalValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
-        if (literalValue is None):
-            if(equipmentObject.info_SubType is None):
+        if literalValue is None:
+            if equipmentObject.info_SubType is None:
                 error = ValueError("Neither a literalValue nor a specified equipment value is specified, and one must exist to write.")
                 log.error(error)
                 raise error
@@ -2032,8 +2032,8 @@ class TMADriver():
     def Equipment_WriteMake(self, equipmentObject : TMAEquipment = None, literalValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
-        if (literalValue is None):
-            if(equipmentObject.info_Make is None):
+        if literalValue is None:
+            if equipmentObject.info_Make is None:
                 error = ValueError("Neither a literalValue nor a specified equipment value is specified, and one must exist to write.")
                 log.error(error)
                 raise error
@@ -2049,8 +2049,8 @@ class TMADriver():
     def Equipment_WriteModel(self, equipmentObject : TMAEquipment = None, literalValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
-        if (literalValue is None):
-            if(equipmentObject.info_Model is None):
+        if literalValue is None:
+            if equipmentObject.info_Model is None:
                 error = ValueError("Neither a literalValue nor a specified equipment value is specified, and one must exist to write.")
                 log.error(error)
                 raise error
@@ -2066,8 +2066,8 @@ class TMADriver():
     def Equipment_WriteIMEI(self, equipmentObject : TMAEquipment = None, literalValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
-        if (literalValue is None):
-            if(equipmentObject.info_IMEI is None):
+        if literalValue is None:
+            if equipmentObject.info_IMEI is None:
                 error = ValueError("Neither a literalValue nor a specified equipment value is specified, and one must exist to write.")
                 log.error(error)
                 raise error
@@ -2097,8 +2097,8 @@ class TMADriver():
     def Equipment_WriteSIM(self, equipmentObject : TMAEquipment = None, literalValue = None):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
-        if (literalValue is None):
-            if(equipmentObject.info_SIM is None):
+        if literalValue is None:
+            if equipmentObject.info_SIM is None:
                 error = ValueError("Neither a literalValue nor a specified equipment value is specified, and one must exist to write.")
                 log.error(error)
                 raise error
@@ -2119,17 +2119,17 @@ class TMADriver():
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
         errorMessage = "Can't writeAll from given equipment object, as it is missing "
-        if(equipmentObject.info_SubType is None):
+        if equipmentObject.info_SubType is None:
             errorMessage += "a subtype."
             error = ValueError(errorMessage)
             log.error(error)
             raise error
-        if(equipmentObject.info_Make is None):
+        if equipmentObject.info_Make is None:
             errorMessage += "a make."
             error = ValueError(errorMessage)
             log.error(error)
             raise error
-        if(equipmentObject.info_Model is None):
+        if equipmentObject.info_Model is None:
             errorMessage += "a model."
             error = ValueError(errorMessage)
             log.error(error)
@@ -2138,9 +2138,9 @@ class TMADriver():
         self.Equipment_WriteSubType(equipmentObject)
         self.Equipment_WriteMake(equipmentObject)
         self.Equipment_WriteModel(equipmentObject)
-        if(writeSIM):
+        if writeSIM:
             self.Equipment_WriteSIM(equipmentObject)
-        if(writeIMEI):
+        if writeIMEI:
             self.Equipment_WriteIMEI(equipmentObject)
     # Simply clicks on either "insert" or "update" on this equipment.
     def Equipment_InsertUpdate(self):
@@ -2148,12 +2148,12 @@ class TMADriver():
 
         insertButtonXPath = "//span/div/input[contains(@name,'ButtonControl1')][@value = 'Insert']"
         updateButtonXPath = "//span/div/input[contains(@name,'ButtonControl1')][@value = 'Update']"
-        if(self.browser.searchForElement(by=By.XPATH,value=insertButtonXPath,timeout=1)):
+        if self.browser.searchForElement(by=By.XPATH, value=insertButtonXPath, timeout=1):
             self.browser.safeClick(by=By.XPATH,value=insertButtonXPath,timeout=5)
             self.waitForTMALoader()
             self.browser.safeClick(by=By.XPATH,value=updateButtonXPath,timeout=5)
             log.info("Successfully inserted equipment.")
-        elif(self.browser.searchForElement(by=By.XPATH,value=updateButtonXPath,timeout=1)):
+        elif self.browser.searchForElement(by=By.XPATH, value=updateButtonXPath, timeout=1):
             self.browser.safeClick(by=By.XPATH,value=updateButtonXPath,minClicks=1,timeout=5)
             log.debug("Successfully updated equipment.")
         else:
@@ -2210,8 +2210,8 @@ class TMADriver():
     def Assignment_BuildAssignmentFromAccount(self,client,vendor,siteCode):
         self.browser.switchToTab(self.currentTMATab[0],self.currentTMATab[1])
 
-        if(validateCarrier(carrierString=vendor) == "AT&T Mobility"):
-            if(str(siteCode) in self.bellManualOverrides.keys()):
+        if validateCarrier(carrierString=vendor) == "AT&T Mobility":
+            if str(siteCode) in self.bellManualOverrides.keys():
                 siteCode = self.bellManualOverrides[str(siteCode)]
         # This helper function will help us quickly get the current and total pages number of whatever tab we're on
         # in the assignment wizard.
@@ -2245,7 +2245,7 @@ class TMADriver():
         # Select the vendor from the dropdown.
         vendorDropdownSelectionXPath = f"//tr/td/div/fieldset/ol/li/select[contains(@id,'wizFindExistingAssigment_ddlVendor')]/option[text()='{vendor}']"
         vendorDropdownSelection = self.browser.searchForElement(by=By.XPATH,value=vendorDropdownSelectionXPath)
-        if(not vendorDropdownSelection):
+        if not vendorDropdownSelection:
             log.error(f"Incorrect vendor selected to make assignment: {vendor}")
         self.browser.safeClick(element=vendorDropdownSelection)
         # Now select the appropriate account as found based on the vendor.
@@ -2268,9 +2268,9 @@ class TMADriver():
         while True:
             currentPageNumber,totalPageNumber = getPageNumbers()
             targetSiteElement = self.browser.searchForElement(by=By.XPATH,value=targetSiteXPath,timeout=1,testClickable=True)
-            if(targetSiteElement):
+            if targetSiteElement:
                 break
-            elif(currentPageNumber >= totalPageNumber):
+            elif currentPageNumber >= totalPageNumber:
                 error = RuntimeError(f"Could not find site code '{siteCode}' in assignment wizard after flipping through {totalPageNumber} pages on the Sites sideTab.")
                 log.error(error)
                 raise error
@@ -2293,7 +2293,7 @@ class TMADriver():
             currentTab = self.browser.find_element(by=By.XPATH,value=currentSideTabXPath).text.lower()
             # If TMA pops up with "Company" selection. This usually only happens with OpCo 000,in which case
             # we'd select 000. There are a couple other special cases which are handled as well.
-            if (currentTab == "company"):
+            if currentTab == "company":
                 log.debug(f"{logMessage} Found company page on assignment wizard")
                 selectorForSiteCodeXPath = f"//table/tbody/tr/td/div/div/table/tbody/tr[contains(@class,'sgvitems')]/td[text()='{siteCode}']"
                 self.browser.safeClick(by=By.XPATH,value=selectorForSiteCodeXPath,retryClicks=True,timeout=60,clickDelay=3,
@@ -2302,9 +2302,9 @@ class TMADriver():
             # If TMA pops up with "Division" selection. Again, this usually only occurs (to my knowledge) on 000
             # OpCo, in which case the only selectable option is "Corp Offices". If this shows up on a non-000
             # OpCo, the method will throw an error.
-            elif (currentTab == "division"):
+            elif currentTab == "division":
                 log.debug(f"{logMessage} Found division page on assignment wizard")
-                if (siteCode == "000"):
+                if siteCode == "000":
                     selectorForCorpOfficesXPath = "//table/tbody/tr/td/div/div/table/tbody/tr[contains(@class,'sgvitems')]/td[text()='Corp Offices']"
                     self.browser.safeClick(by=By.XPATH, value=selectorForCorpOfficesXPath, retryClicks=True, timeout=60,clickDelay=3,
                                            successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=sideTabXPathTemplate.format(tabName="division"),invertedSearch=True))
@@ -2316,9 +2316,9 @@ class TMADriver():
             # If TMA pops up with "Department" selection. In almost every case, I believe we should be selecting
             # Wireless-OPCO. The one exception seems to be, of course, OpCo 000. In that case, we select
             # "Wireless-Corp Liable".
-            elif (currentTab == "department"):
+            elif currentTab == "department":
                 log.debug(f"{logMessage} Found department page on assignment wizard")
-                if (siteCode == "000"):
+                if siteCode == "000":
                     departmentSelectionChoiceXPATH = "//table/tbody/tr/td/div/div/table/tbody/tr[contains(@class,'sgvitems')]/td[text()='Wireless-Corp Liable']"
                 else:
                     departmentSelectionChoiceXPATH = "//table/tbody/tr/td/div/div/table/tbody/tr[contains(@class,'sgvitems')]/td[text()='Wireless-OPCO']"
@@ -2327,7 +2327,7 @@ class TMADriver():
 
             # If TMA pops up with "CostCenters" selection. We've been told to essentially ignore this, and pick whatever
             # the last option is.
-            elif (currentTab == "costcenters"):
+            elif currentTab == "costcenters":
                 log.debug(f"{logMessage} Found cost centers page on assignment wizard")
                 allCostCenterEntriesXPath = "//table/tbody/tr/td/div/div/table/tbody/tr[contains(@class,'sgvitems')]/td"
                 allEntries = self.browser.find_elements(by=By.XPATH, value=allCostCenterEntriesXPath)
@@ -2338,7 +2338,7 @@ class TMADriver():
 
             # If TMA pops up with "ProfitCenter" selection. This is essentially the same as CostCenters, with no necessary
             # special exception for OpCo 000.
-            elif (currentTab == "profitcenter"):
+            elif currentTab == "profitcenter":
                 log.debug(f"{logMessage} Found profit center page on assignment wizard")
                 allProfitCenterEntriesXPath = "//table/tbody/tr/td/div/div/table/tbody/tr[contains(@class,'sgvitems')]/td"
                 allEntries = self.browser.find_elements(by=By.XPATH, value=allProfitCenterEntriesXPath)
@@ -2348,14 +2348,14 @@ class TMADriver():
                                        successfulClickCondition=lambda b: b.searchForElement(by=By.XPATH,value=sideTabXPathTemplate.format(tabName="profitcenter"),invertedSearch=True))
 
             # If TMA brings us to "Finalize" we exit the loop as we've finished with making the assignment.
-            elif (currentTab == "finalize"):
+            elif currentTab == "finalize":
                 log.debug(f"{logMessage} Found finalize page of assignment wizard!")
                 break
 
             # Other cases.
             else:
                 # Sometimes sites will still register - just skip it if so. Any other case REALLY shouldn't ever happen.
-                if(currentTab != "sites"):
+                if currentTab != "sites":
                     error = RuntimeError(f"{logMessage} Found strange value for assignment wizard tab: {currentTab}")
                     log.error(error)
                     raise error
@@ -2380,7 +2380,7 @@ class TMADriver():
         supervisorName = re.sub(r'[^A-Za-z0-9]', '', supervisorName)
 
         # First, we need to make sure we're on Sysco
-        if(self.currentLocation.client != "Sysco"):
+        if self.currentLocation.client != "Sysco":
             self.navToClientHome("Sysco")
 
         selectionMenuString = "//div/div/div/div/div/div/select[starts-with(@id,'ctl00_LeftPanel')]/option"
@@ -2393,10 +2393,10 @@ class TMADriver():
 
         # Make sure inactive is False
         inactiveCheckbox = self.browser.find_element(by=By.XPATH,value=inactiveCheckboxString)
-        if (str(inactiveCheckbox.get_attribute("CHECKED")) == "true"):
+        if str(inactiveCheckbox.get_attribute("CHECKED")) == "true":
             inactiveCheckbox.click()
             self.waitForTMALoader()
-        elif (str(inactiveCheckbox.get_attribute("CHECKED")) == "None"):
+        elif str(inactiveCheckbox.get_attribute("CHECKED")) == "None":
             pass
 
         searchBar = self.browser.find_element(by=By.XPATH,value=searchBarString)
@@ -2411,7 +2411,7 @@ class TMADriver():
         peopleResults = self.browser.find_elements(by=By.XPATH,value=peopleResultsXPath)
 
         # If there's no results, assume the person doesn't exist.
-        if(len(peopleResults) == 0):
+        if len(peopleResults) == 0:
             return None
         # Otherwise, document each found netID for later testing.
         else:
@@ -2419,7 +2419,7 @@ class TMADriver():
             for peopleResult in peopleResults:
                 netIDPattern = r":\s([A-Za-z0-9]{8,10})(?=\s)"
                 netIDMatch = re.search(netIDPattern,peopleResult.text)
-                if(netIDMatch):
+                if netIDMatch:
                     potentialNetIDs.add(str(netIDMatch.group(1)).strip().lower())
 
             # Now that we have a list of NetIDs that may be our target user, we test each one to check for
@@ -2428,7 +2428,7 @@ class TMADriver():
                 self.navToLocation(TMALocation(client="Sysco",entryType="People",entryID=potentialNetID))
                 resultPeopleObject = self.People_ReadAllInformation()
                 # This means we found our network ID, and return it
-                if(supervisorName == re.sub(r'[^A-Za-z0-9]', '', resultPeopleObject.info_Manager)):
+                if supervisorName == re.sub(r'[^A-Za-z0-9]', '', resultPeopleObject.info_Manager):
                     return resultPeopleObject
 
             # If we've gotten here and still haven't found anything, that means we haven't found it, and return None.
@@ -2456,9 +2456,9 @@ class TMADriver():
 def genTMAOrderNotes(orderType,carrier=None,portalOrderNum=None,orderDate=None,userName=None,device=None,imei=None,
                      monthlyChargeback=None,deviceChargeback=None,plan=None,serviceNum=None,specialNotes=None,tracking=None):
     resultString = ""
-    if(orderType == "New Install"):
+    if orderType == "New Install":
         resultString += f"{orderType.upper()} ordered per  {portalOrderNum} {orderDate} for {userName} on {carrier} account\n"
-    elif(orderType == "Upgrade"):
+    elif orderType == "Upgrade":
         resultString += f"{orderType.upper()} ordered per  {portalOrderNum} {orderDate} for {userName} - {serviceNum} on {carrier} account\n"
     resultString += "\n"
     resultString += f"DEVICE- {device}\n"
@@ -2467,11 +2467,11 @@ def genTMAOrderNotes(orderType,carrier=None,portalOrderNum=None,orderDate=None,u
     resultString += f"Chargeback Device: {deviceChargeback}\n"
     resultString += f"Chargeback Monthly Service: {monthlyChargeback}\n"
     resultString += "\n"
-    if(orderType == "New Install"):
+    if orderType == "New Install":
         resultString += f"PLANS:{plan}\n"
-    elif(orderType == "Upgrade"):
+    elif orderType == "Upgrade":
         resultString += f"PLANS changes?: {plan}\n"
-    if(orderType == "New Install"):
+    if orderType == "New Install":
         resultString += "\n"
         resultString += f"Number assigned: {serviceNum}\n"
     resultString += "\n"
