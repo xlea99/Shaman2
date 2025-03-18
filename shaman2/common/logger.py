@@ -11,7 +11,7 @@ def setupCustomLogger(logDirectory : str, level : int = logging.NOTSET,
     # Custom rotation and cleanup function
     def rotateLogs():
         # List all log files
-        logs = [log for log in os.listdir(logDirectory) if log.endswith(".log")]
+        logs = [_log for _log in os.listdir(logDirectory) if _log.endswith(".log")]
         # If we have more logs than maxLogCount, delete the oldest
         while len(logs) > maxFileCount - 1:
             oldest_log = min(logs, key=lambda x: os.path.getctime(os.path.join(logDirectory, x)))
@@ -22,7 +22,7 @@ def setupCustomLogger(logDirectory : str, level : int = logging.NOTSET,
     TEST_LOG_LEVEL = 25
     logging.addLevelName(TEST_LOG_LEVEL,"TEST")
     def test(self,message,*args,**kwargs):
-        if(self.isEnabledFor(TEST_LOG_LEVEL)):
+        if self.isEnabledFor(TEST_LOG_LEVEL):
             self._log(TEST_LOG_LEVEL,message,args,**kwargs)
     logging.Logger.test = test
 

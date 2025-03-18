@@ -115,22 +115,21 @@ def extractAddressFromGPTResponse(gptResponseString):
     match = re.findall(pattern, gptResponseString, re.DOTALL)
     rawAddressDict = json.loads(match[0].strip())
 
-    cleanedAddressDict = {}
-    cleanedAddressDict["Address1"] = rawAddressDict["Address1"]
-    cleanedAddressDict["Address2"] = rawAddressDict["Address2"]
-    cleanedAddressDict["City"] = rawAddressDict["City"]
-    cleanedAddressDict["State"] = rawAddressDict["State"]
+    cleanedAddressDict = {"Address1": rawAddressDict["Address1"],
+                          "Address2": rawAddressDict["Address2"],
+                          "City": rawAddressDict["City"],
+                          "State": rawAddressDict["State"]}
 
     # Zip Code cleaning
-    if(rawAddressDict.get("ZipCode")):
+    if rawAddressDict.get("ZipCode"):
         cleanedAddressDict["ZipCode"] = rawAddressDict["ZipCode"]
-    elif(rawAddressDict.get("Zip")):
+    elif rawAddressDict.get("Zip"):
         cleanedAddressDict["ZipCode"] = rawAddressDict["Zip"]
-    elif(rawAddressDict.get("Zip Code")):
+    elif rawAddressDict.get("Zip Code"):
         cleanedAddressDict["ZipCode"] = rawAddressDict["Zip Code"]
-    elif(rawAddressDict.get("Zip code")):
+    elif rawAddressDict.get("Zip code"):
         cleanedAddressDict["ZipCode"] = rawAddressDict["Zip code"]
-    elif(rawAddressDict.get("Zipcode")):
+    elif rawAddressDict.get("Zipcode"):
         cleanedAddressDict["ZipCode"] = rawAddressDict["Zipcode"]
 
     return cleanedAddressDict
@@ -145,7 +144,7 @@ def validateAddress(rawAddressString : str):
     classifiedAddress = extractAddressFromGPTResponse(gptResponseString=classifiedAddressResponse)
 
     # If specifically the state is missing, we can easily resolve this by querying OSMN one extra time.
-    if(classifiedAddress.get("State") is None and classifiedAddress.get("ZipCode") is not None):
+    if classifiedAddress.get("State") is None and classifiedAddress.get("ZipCode") is not None:
         classifiedAddress["State"] = getStateFromZip(classifiedAddress["ZipCode"][:5])
 
     # Now, we check the address with OSMN (along with removing the address2 to avoid confusion).
@@ -155,18 +154,18 @@ def validateAddress(rawAddressString : str):
     osmnAddressToTest += f"{classifiedAddress['ZipCode'][:5]}, " if classifiedAddress["ZipCode"] is not None else ""
 
     # Default behavior is to crash when no Address1 is found at all.
-    if(classifiedAddress["Address1"] is None):
+    if classifiedAddress["Address1"] is None:
         error = ValueError(f"ChatGPT thinks that user included literally no street address. Here's its classifiedAddress: '{classifiedAddress}'")
         log.error(error)
         raise error
 
-    if(classifiedAddress["City"] is None):
+    if classifiedAddress["City"] is None:
         userResponse = input(f"The user's shipping address is missing a CITY. Please enter a city name, then press enter to continue.")
         classifiedAddress["City"] = userResponse.strip().capitalize()
-    if(classifiedAddress["State"] is None):
+    if classifiedAddress["State"] is None:
         userResponse = input(f"The user's shipping address is missing a STATE. Please enter a state name, then press enter to continue.")
         classifiedAddress["State"] = userResponse.strip().capitalize()
-    if(classifiedAddress["ZipCode"] is None):
+    if classifiedAddress["ZipCode"] is None:
         userResponse = input(f"The user's shipping address is missing a ZIPCODE. Please enter a zipcode name, then press enter to continue.")
         classifiedAddress["ZipCode"] = userResponse.strip().capitalize()
 

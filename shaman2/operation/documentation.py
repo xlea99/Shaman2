@@ -20,14 +20,14 @@ def storeSCTASKToGoogle(taskNumber,orderNumber,userName,deviceID,datePlaced):
 
 # This method "archives" the SCTASK number given from active orders to history on the sheet.
 def archiveSCTASKOnGoogle(taskNumber,closedBy,serviceNumber,fullSCTASKSheet = None):
-    if(not fullSCTASKSheet):
+    if not fullSCTASKSheet:
         fullSCTASKSheet = downloadSCTASKs()
 
     targetTask = None
     for existingTask in fullSCTASKSheet:
-        if(existingTask["ServiceNow Ticket"].strip() == taskNumber.strip()):
+        if existingTask["ServiceNow Ticket"].strip() == taskNumber.strip():
             targetTask = existingTask
-    if(targetTask is None):
+    if targetTask is None:
         error = ValueError(f"Task number '{taskNumber}' doesn't seem to exist on sheet '{mainConfig["google"]["snowSubSheet"]}'")
         log.error(error)
         raise error

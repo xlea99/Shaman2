@@ -3,3 +3,4 @@ workspace
 fuckery.py
 bin/setup.toml
 bin/google/token.json
+/.venv/

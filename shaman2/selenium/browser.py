@@ -56,18 +56,18 @@ class Browser(uc.Chrome):
     # it throws an error unless "raiseError" is false.
     def closeTab(self,tabName,popup=False,raiseError=True):
         # Always prevent closing of Base tab.
-        if(tabName == "Base"):
+        if tabName == "Base":
             return False
 
         # Handle closing of a regular tab.
-        if(tabName in self.tabs.keys() and popup is False):
+        if tabName in self.tabs.keys() and popup is False:
             self.switchToTab(tabName,popup=False)
             self.close()
             self.switchToTab("Base",popup=False)
             log.debug(f"Closed regular tab '{tabName}'.")
             return True
         # Handle closing of a popup tab.
-        elif(tabName in self.popupTabs.keys() and popup is True):
+        elif tabName in self.popupTabs.keys() and popup is True:
             self.switchToTab(tabName,popup=True)
             self.close()
             self.switchToTab("Base",popup=False)
@@ -75,7 +75,7 @@ class Browser(uc.Chrome):
             return True
         # Do this if the target tabName isn't found - either raise an error or warning.
         else:
-            if(raiseError):
+            if raiseError:
                 log.critical(f"Could not close tab with name '{tabName}', as it doesn't exist.")
                 raise ValueError(f"The tab '{tabName}' does not appear to exist in the tabs list:\n{str(self.tabs.keys())}")
             else:
@@ -85,9 +85,9 @@ class Browser(uc.Chrome):
     # doesn't exist OR newTabName already exists, it'll raise an error.
     def renameTab(self,previousTabName,newTabName,popup=False,raiseError=True):
         # Always prevent renaming to or of Base
-        if(previousTabName == "Base" or newTabName == "Base"):
+        if previousTabName == "Base" or newTabName == "Base":
             error = ValueError("Cannot rename a tab to/from Base!")
-            if(raiseError):
+            if raiseError:
                 log.error(error)
                 raise error
             else:
@@ -95,9 +95,9 @@ class Browser(uc.Chrome):
                 return False
 
         # Protect against renaming a tab to a tabName that already exists
-        if(newTabName in self.tabs.keys() or newTabName in self.popupTabs.keys()):
+        if newTabName in self.tabs.keys() or newTabName in self.popupTabs.keys():
             error = ValueError(f"New tab name '{newTabName}' already exists!")
-            if (raiseError):
+            if raiseError:
                 log.error(error)
                 raise error
             else:
@@ -105,18 +105,18 @@ class Browser(uc.Chrome):
                 return False
 
         # If the previousTabName is a normal tab.
-        if(not popup and previousTabName in self.tabs.keys()):
+        if not popup and previousTabName in self.tabs.keys():
             thisTabContent = self.tabs[previousTabName]
             self.tabs[newTabName] = thisTabContent
             del self.tabs[previousTabName]
-        elif(popup and previousTabName in self.popupTabs.keys()):
+        elif popup and previousTabName in self.popupTabs.keys():
             thisTabContent = self.popupTabs[previousTabName]
             self.popupTabs[newTabName] = thisTabContent
             del self.popupTabs[previousTabName]
         # Handle the previousTabName not existing.
         else:
             error = ValueError(f"Could not rename tab with name '{previousTabName}', as it doesn't exist.")
-            if(raiseError):
+            if raiseError:
                 log.error(error)
                 raise error
             else:
@@ -127,7 +127,7 @@ class Browser(uc.Chrome):
     # exist, it throws an error.
     def switchToTab(self,tabName,popup=False):
         try:
-            if(self.currentTab == tabName and self.tabs.get(self.currentTab) == self.current_window_handle):
+            if self.currentTab == tabName and self.tabs.get(self.currentTab) == self.current_window_handle:
                 onTargetTab = True
             else:
                 onTargetTab = False
@@ -135,12 +135,12 @@ class Browser(uc.Chrome):
             onTargetTab = False
 
         # If we're already on the target tab, nothing more needs to be done.
-        if(onTargetTab):
+        if onTargetTab:
             return True
 
         # If the target tab is a basic tab, simply use the self.tabs dict to switch to the mapped
         # window handle.
-        if(tabName in self.tabs.keys() and popup is False):
+        if tabName in self.tabs.keys() and popup is False:
             self.switch_to.window(self.tabs[tabName])
             self.currentTab = tabName
             self.currentTabIsPopup = False
@@ -148,7 +148,7 @@ class Browser(uc.Chrome):
             return True
         # If the target tab is a popup tab, instead use the self.popupTabs dict to switch to the mapped
         # window handle of the popup tab.
-        elif(tabName in self.popupTabs.keys() and popup is True):
+        elif tabName in self.popupTabs.keys() and popup is True:
             self.switch_to.window(self.popupTabs[tabName])
             self.currentTab = tabName
             self.currentTabIsPopup = True
@@ -168,7 +168,7 @@ class Browser(uc.Chrome):
 
         # First, we check for new popup tabs.
         for windowHandle in self.window_handles:
-            if(windowHandle not in self.tabs.values() and windowHandle not in self.popupTabs.values()):
+            if windowHandle not in self.tabs.values() and windowHandle not in self.popupTabs.values():
                 self.switch_to.window(windowHandle)
 
                 # Wait until the URL netloc is non-empty, or a timeout occurs.
@@ -193,18 +193,18 @@ class Browser(uc.Chrome):
         # Next, we check for stale popup tabs.
         tabsToRemove = []
         for popupTabName, windowHandle in self.popupTabs.items():
-            if(windowHandle not in self.window_handles):
+            if windowHandle not in self.window_handles:
                 changedTabs["removedPopupTabs"].append(popupTabName)
                 tabsToRemove.append(popupTabName)
 
         removedCurrentTab = False
         for tabToRemove in tabsToRemove:
             self.popupTabs.pop(tabToRemove)
-            if(self.currentTabIsPopup and tabToRemove == self.currentTab):
+            if self.currentTabIsPopup and tabToRemove == self.currentTab:
                 removedCurrentTab = True
 
         # Do this if it's detected that the popup tab that Shaman thinks we're on right now has been closed.
-        if(removedCurrentTab):
+        if removedCurrentTab:
             self.switchToTab(tabName="Base")
 
         log.debug(f"Checked for changedTabs, found these changes: {changedTabs}")
@@ -240,18 +240,18 @@ class Browser(uc.Chrome):
                          invertedSearch = False,scrollIntoView=False,raiseError = False,logError = None,singleTestInterval = 0.1,debug=False,
                          shadowRootStack : list = None,extraElementTests : list = None):
         # Throw error if both a value and an element are given
-        if(value and element):
+        if value and element:
             error = ValueError("Both a value and an element cannot be specified together in searchForElement.")
             log.error(error,stack_info=True)
             raise error
         # Unless logError is specified, we copy the value of raiseError
-        if(logError is None):
+        if logError is None:
             logError = raiseError
 
         # Convert value to a identifierList for standardized processing.
-        if(type(value) is str or value is None):
+        if type(value) is str or value is None:
             identifierList = [value]
-        elif(type(value) is dict):
+        elif type(value) is dict:
             identifierList = list(value.keys())
         else:
             identifierList = value
@@ -261,17 +261,17 @@ class Browser(uc.Chrome):
         endTestTime = time.time() + timeout
         searchAttempt = 0
         wait = WebDriverWait(self, singleTestInterval)
-        while(searchAttempt < 1 or time.time() < endTestTime):
+        while searchAttempt < 1 or time.time() < endTestTime:
             searchAttempt += 1
             try:
                 # First, specify the root - unless there's a shadowRootStack, this is always the browser itself.
-                if(shadowRootStack):
+                if shadowRootStack:
                     root = self
                     for selector in shadowRootStack:
                         allPotentialShadowHosts = root.find_elements(by=selector["by"],value=selector["value"])#,extraElementTests=selector.get("extraElementTests",None))
 
                         # Evaluate any "extraElementTests" conditions to determine list of all valid shadow hosts
-                        if(selector.get("extraElementTests",None)):
+                        if selector.get("extraElementTests", None):
                             allValidShadowHosts = []
                             for potentialShadowHost in allPotentialShadowHosts:
                                 for extraElementTest in selector["extraElementTests"]:
@@ -284,18 +284,18 @@ class Browser(uc.Chrome):
                             allValidShadowHosts = allPotentialShadowHosts
 
                         # Raise error (fail test) if no valid shadow hosts are found.
-                        if (len(allValidShadowHosts) == 0):
+                        if len(allValidShadowHosts) == 0:
                             raise selenium.common.exceptions.NoSuchElementException(f"No valid shadow hosts found with selector '{selector['value']}'")
 
                         # Test for any specific sub elements if specified.
-                        if(selector.get("withSubElement")):
+                        if selector.get("withSubElement"):
                             targetShadowHost = None
                             for validShadowHost in allValidShadowHosts:
                                 tempRoot = self.execute_script("return arguments[0].shadowRoot",validShadowHost)
                                 withSubElementTestResult = tempRoot.find_elements(by=selector["withSubElement"]["by"],value=selector["withSubElement"]["value"])
-                                if(withSubElementTestResult):
+                                if withSubElementTestResult:
                                     # Evaluate any "extraElementTests" conditions on the sub element to determine its validity
-                                    if (selector["withSubElement"]["extraElementTests"]):
+                                    if selector["withSubElement"]["extraElementTests"]:
                                         for thisSubElement in withSubElementTestResult:
                                             for extraElementTest in selector["withSubElement"]["extraElementTests"]:
                                                 try:
@@ -305,15 +305,15 @@ class Browser(uc.Chrome):
                                                         break
                                                 except Exception as e:
                                                     pass
-                                            if(targetShadowHost):
+                                            if targetShadowHost:
                                                 break
                                     else:
                                         # This means we've located the subelement, and this is our target shadow host.
                                         targetShadowHost = validShadowHost
                                 # Break loop if the targetShadowHost has been found.
-                                if(targetShadowHost):
+                                if targetShadowHost:
                                     break
-                            if(not targetShadowHost):
+                            if not targetShadowHost:
                                 raise selenium.common.exceptions.NoSuchElementException(f"No valid shadow hosts found with selector '{selector['value']}'")
                         else:
                             targetShadowHost = allValidShadowHosts[0]
@@ -323,9 +323,9 @@ class Browser(uc.Chrome):
                     root = self
 
                 # If element is not provided, test to find it by locator
-                if(not element):
+                if not element:
                     nextIdentifier = identifierList[searchAttempt % len(identifierList)]
-                    if(debug):
+                    if debug:
                         log.debug(f"Attempting selenium find_element for next identifier: {nextIdentifier}")
                     targetElement = root.find_element(by=by,value=nextIdentifier)
                 else:
@@ -333,23 +333,23 @@ class Browser(uc.Chrome):
                     targetElement = element
                     # If it's an inverted search AND a given element, we simply try to take a sample attribute to ensure
                     # it still exists.
-                    if(invertedSearch):
+                    if invertedSearch:
                         test = targetElement.text
 
-                if(scrollIntoView):
+                if scrollIntoView:
                     self.scrollIntoView(targetElement)
 
                 # Perform various other tests if specified
-                if(testNotStale):
+                if testNotStale:
                     wait.until(wait_for_non_stale_element(targetElement))
-                if(testClickable):
+                if testClickable:
                     wait.until(EC.element_to_be_clickable(targetElement))
-                if(testScrolledInView):
+                if testScrolledInView:
                     wait.until(wait_for_element_scrolled_in_viewport(targetElement))
-                if(testLiteralClick):
+                if testLiteralClick:
                     self.safeClick(element=targetElement,timeout=singleTestInterval,raiseError=True,logging=False)
 
-                if(extraElementTests):
+                if extraElementTests:
                     for extraElementTest in extraElementTests:
                         if not extraElementTest(targetElement):
                             raise selenium.common.exceptions.NoSuchElementException(f"Extra test {extraElementTest} failed on element {targetElement}.")
@@ -357,17 +357,17 @@ class Browser(uc.Chrome):
                 # === TESTS PASS ===
                 # If all tests pass, and this is an inverted search, that means the element is still present and we
                 # need to continue testing (if timeout allows)
-                if(invertedSearch):
+                if invertedSearch:
                     time.sleep(0.1)
                     # Set the next valueIndex to test, in case there's multiple.
                     continue
                 # If all tests pass, and this is a standard search, return the element
                 else:
                     # However, as a caveat, if minTestTime hasn't been reached, we ignore success and keep searching.
-                    if(time.time() >= minTestTime):
-                        if(debug):
+                    if time.time() >= minTestTime:
+                        if debug:
                             log.debug(f"Searched successfully for element with {searchAttempt} search attempts.")
-                        if(type(value) is dict):
+                        if type(value) is dict:
                             return targetElement,value[nextIdentifier]
                         else:
                             return targetElement
@@ -381,12 +381,12 @@ class Browser(uc.Chrome):
                 lastException = e
                 # If the tests didn't pass, and this is an inverted search, that means the element is considered to
                 # be lacking from the page, and we're done.
-                if(invertedSearch):
+                if invertedSearch:
                     # Again, as a caveat, if minTestTime hasn't been reached, we ignore success and keep searching.
-                    if(time.time() >= minTestTime):
-                        if(debug):
+                    if time.time() >= minTestTime:
+                        if debug:
                             log.debug(f"InvertedSearched successfully for element with {searchAttempt} search attempts.")
-                        if(type(value) is dict):
+                        if type(value) is dict:
                             return True,None
                         else:
                             return True
@@ -400,20 +400,20 @@ class Browser(uc.Chrome):
                     continue
 
         # If timeout expires without success, return False or raise an error
-        if(raiseError):
-            if(invertedSearch):
+        if raiseError:
+            if invertedSearch:
                 error = selenium.common.exceptions.NoSuchElementException(f"InvertedSearched for element, but element persisted on page past timeout after {searchAttempt} search attempts.")
-                if(logError):
+                if logError:
                     log.error(error,stack_info=True)
                 raise error
             else:
-                if (logError):
+                if logError:
                     log.error(lastException,stack_info=True)
                 raise lastException
         else:
-            if(debug):
+            if debug:
                 log.debug(f"Failed to successfully{" inverted" if invertedSearch else ""} search for element after {searchAttempt} search attempts.")
-            if(type(value) is dict):
+            if type(value) is dict:
                 return False,None
             else:
                 return False
@@ -423,7 +423,7 @@ class Browser(uc.Chrome):
     def searchForElements(self, by, value : (str,list), timeout : float = 0, minSearchTime : float = 0,
                           invertedSearch = False, raiseError = False, pollInterval = 0.1,debug=False):
         # Convert value to a identifierList for standardized processing.
-        if (type(value) is str or value is None):
+        if type(value) is str or value is None:
             identifierList = [value]
         else:
             identifierList = value
@@ -433,19 +433,19 @@ class Browser(uc.Chrome):
         searchAttempt = 0
         searchSuccessful = False
         nextIdentifier = None
-        while (searchAttempt < 1 or time.time() < endTestTime):
+        while searchAttempt < 1 or time.time() < endTestTime:
             searchAttempt += 1
             # Try to find the next targeted element.
             nextIdentifier = identifierList[(searchAttempt-1) % len(identifierList)]
-            if(debug):
+            if debug:
                 log.debug(f"Attempting selenium find_elements for next identifier: {nextIdentifier}")
             targetElements = self.find_elements(by=by, value=nextIdentifier)
 
             # Do this if no elements are present in the return.
-            if(len(targetElements) == 0):
+            if len(targetElements) == 0:
                 # If this is an inverted search, since we found no elements we consider the search successful.
-                if (invertedSearch):
-                    if(time.time() >= minTestTime):
+                if invertedSearch:
+                    if time.time() >= minTestTime:
                         searchSuccessful = True
                         break
                     else:
@@ -458,12 +458,12 @@ class Browser(uc.Chrome):
             # Do this if elements are present in the return
             else:
                 # If this is an inverted search, we keep looking since elements are still found.
-                if (invertedSearch):
+                if invertedSearch:
                     time.sleep(pollInterval)
                     continue
                 # Otherwise, we consider the search successful.
                 else:
-                    if (time.time() >= minTestTime):
+                    if time.time() >= minTestTime:
                         searchSuccessful = targetElements
                         break
                     else:
@@ -471,10 +471,10 @@ class Browser(uc.Chrome):
                         continue
 
         # If timeout expires without success, return False or raise an error
-        if (searchSuccessful):
+        if searchSuccessful:
             return searchSuccessful
         else:
-            if(raiseError):
+            if raiseError:
                 error = ValueError(f"Failed to successfully{" inverted" if invertedSearch else ""} search for elements after {searchAttempt} search attempts.")
                 log.error(error,stack_info=True)
                 raise error
@@ -506,16 +506,16 @@ class Browser(uc.Chrome):
                   successfulClickCondition : Callable = None,prioritizeCondition = True, jsClick=False,raiseError=True,logging=True,scrollIntoView=False,
                   retryClicks = False,minClicks : int = 0,maxClicks : int = 10**10,testInterval=0.5,clickDelay=0):
         # Throw error if both a value and an element are given
-        if(value and element):
+        if value and element:
             error = ValueError("Both a value and an element cannot be specified together in safeClick.")
-            if(logging):
+            if logging:
                 log.error(error,stack_info=True)
             raise error
 
         # Helper method to evaluate if the condition is currently true.
         def evaluateCondition():
             # If condition exists, evaluate it. Otherwise, consider it successful by default.
-            if(successfulClickCondition):
+            if successfulClickCondition:
                 return successfulClickCondition(self)
             else:
                 return True
@@ -527,33 +527,33 @@ class Browser(uc.Chrome):
         endTime = time.time() + timeout
         nextClickTime = time.time()
         # Begin the click loop
-        while (testAttempt < 1 or time.time() < endTime):
+        while testAttempt < 1 or time.time() < endTime:
             hasEvaluatedConditionThisLoop = False
             testAttempt += 1
             try:
                 # Get the element, searching for it if necessary
-                if(element):
+                if element:
                     targetElement = element
                 else:
                     targetElement = self.searchForElement(by=by,value=value,timeout=testInterval,raiseError=True,logError=False)
 
                 # Attempt to scroll into view if specified. Adds a sleep to make sure the action is finished.
-                if(scrollIntoView):
+                if scrollIntoView:
                     self.scrollIntoView(targetElement)
                     time.sleep(1)
 
                 # Attempt to click if we still have clicks left and retryClicks is True.
-                if ((clickCount == 0 or (retryClicks and clickCount < maxClicks)) and time.time() >= nextClickTime):
-                    if(jsClick):
+                if (clickCount == 0 or (retryClicks and clickCount < maxClicks)) and time.time() >= nextClickTime:
+                    if jsClick:
                         self.execute_script("arguments[0].click();", targetElement)
                     else:
                         targetElement.click()
                     clickCount += 1
                     nextClickTime = time.time() + clickDelay
 
-                if (clickCount >= minClicks):
+                if clickCount >= minClicks:
                     hasEvaluatedConditionThisLoop = True
-                    if(evaluateCondition()):
+                    if evaluateCondition():
                         clickSuccessful = True
                         break
 
@@ -566,26 +566,26 @@ class Browser(uc.Chrome):
             except Exception as e:
                 lastException = e
                 # If this click has a prioritizedCondition, we evaluate the condition here.
-                if(prioritizeCondition and successfulClickCondition is not None):
-                    if(not hasEvaluatedConditionThisLoop):
-                        if(evaluateCondition()):
-                            if(clickCount >= minClicks):
+                if prioritizeCondition and successfulClickCondition is not None:
+                    if not hasEvaluatedConditionThisLoop:
+                        if evaluateCondition():
+                            if clickCount >= minClicks:
                                 clickSuccessful = True
                                 break
                 time.sleep(testInterval)
 
         # Return a boolean or raise error depending on whether the click was successful or not.
-        if(clickSuccessful):
-            if (logging):
+        if clickSuccessful:
+            if logging:
                 log.debug(f"safeClick on element '{element if element else value}' successful after {testAttempt} click attempts and {clickCount} actual clicks.")
             return True
         else:
-            if(raiseError):
-                if(logging):
+            if raiseError:
+                if logging:
                     log.error(lastException,stack_info=True)
                 raise lastException
             else:
-                if(logging):
+                if logging:
                     log.warning(lastException)
                 return False
 
@@ -597,15 +597,15 @@ class Browser(uc.Chrome):
     # Simply tests whether the element is considered "checked" or not.
     def testForSelectedElement(self,by = None, value : str = None,element : WebElement = None,inverted=False):
         # Throw error if both a value and an element are given
-        if(value and element):
+        if value and element:
             error = ValueError("Both a value and an element cannot be specified together in safeClick.")
             log.error(error,stack_info=True)
             raise error
 
-        if(value):
+        if value:
             element = self.searchForElement(by=by,value=value)
 
-        if(inverted):
+        if inverted:
             return not element.is_selected()
         else:
             return element.is_selected()
@@ -623,14 +623,14 @@ class Browser(uc.Chrome):
         while testCount < 1  or time.time() < endTime:
             testCount += 1
             # If URL is found, we return True as the wait is done.
-            if(urlSnippet in self.current_url):
+            if urlSnippet in self.current_url:
                 return True
             else:
                 time.sleep(0.5)
 
         # If we've reached the endTime without finding the URL, the wait failed.
         errorMessage = f"Waited for URL: '{urlSnippet}' on page, but URL was never found after timeout of {timeout}"
-        if(raiseError):
+        if raiseError:
             error = RuntimeError(errorMessage)
             log.error(error,stack_info=True)
             raise error
@@ -641,9 +641,9 @@ class Browser(uc.Chrome):
     # Takes a "snapshot" of the given tabName, saving a screenshot and the HTML of the full DOM at the time of
     # taking to the log folder.
     def snapshotTab(self,tabName=None,popup=False):
-        if(tabName is None):
+        if tabName is None:
             tabName = self.currentTab
-        elif((tabName not in self.tabs and not popup) or (tabName not in self.popupTabs and popup)):
+        elif (tabName not in self.tabs and not popup) or (tabName not in self.popupTabs and popup):
             log.error(f"Cannot take snapshot: Tab '{tabName}' does not exist.",stack_info=True)
             raise ValueError(f"Tab '{tabName}' does not exist.")
         self.switchToTab(tabName=tabName,popup=popup)
@@ -676,6 +676,21 @@ class Browser(uc.Chrome):
     def hoverElement(self,element : WebElement):
         actions = ActionChains(self)
         actions.move_to_element(element).perform()
+
+    # Aggressively sends keys to forms that try to block it.
+    def aggressiveSendKeys(self,element,text : str):
+        self.execute_script("""
+            let input = arguments[0];
+            let text = arguments[1];
+            
+            for (let i = 0; i < text.length; i++) {
+                let event = new KeyboardEvent('keydown', {key: text[i], bubbles: true});
+                input.dispatchEvent(event);
+                input.value += text[i];
+                let event2 = new KeyboardEvent('keyup', {key: text[i], bubbles: true});
+                input.dispatchEvent(event2);
+            }
+            """, element, text)
 
     #endregion === Utilities ===
 

@@ -1,12 +1,5 @@
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
 import time
-from datetime import datetime
-from tomlkit.items import Array as tomlkitArray
-import os
-import re
 from shaman2.selenium.browser import Browser
 from shaman2.common.logger import log
 from shaman2.common.config import mainConfig, jumpcloudOTP
@@ -23,7 +16,7 @@ class CimplDriver:
         logMessage = "Initialized new CimplDriver object"
         self.browser = browserObject
 
-        if("Cimpl" in self.browser.tabs.keys()):
+        if "Cimpl" in self.browser.tabs.keys():
             self.browser.closeTab("Cimpl")
             logMessage += ", and closed existing Cimpl tab."
         else:
@@ -42,13 +35,13 @@ class CimplDriver:
         self.browser.switchToTab("Cimpl")
         url = self.browser.current_url
 
-        if(not url.startswith("https://apps.cimpl.com")):
+        if not url.startswith("https://apps.cimpl.com"):
             return {"LoggedIn" : False, "Location" : "NotOnCimpl"}
-        elif(url.startswith("https://apps.cimpl.com/auth")):
+        elif url.startswith("https://apps.cimpl.com/auth"):
             return {"LoggedIn" : False, "Location" : "LogInScreen"}
-        elif(url.startswith("https://apps.cimpl.com//Cimpl/Actions#/home/workorder") or url.startswith("https://apps.cimpl.com//Cimpl//Actions#/home/workorder")):
+        elif url.startswith("https://apps.cimpl.com//Cimpl/Actions#/home/workorder") or url.startswith("https://apps.cimpl.com//Cimpl//Actions#/home/workorder"):
             return {"LoggedIn" : True, "Location" : "WorkorderCenter"}
-        elif(url.startswith("https://apps.cimpl.com/Cimpl/Actions#/home/workorderDetails") or url.startswith("https://apps.cimpl.com/Cimpl//Actions#/home/workorderDetails")):
+        elif url.startswith("https://apps.cimpl.com/Cimpl/Actions#/home/workorderDetails") or url.startswith("https://apps.cimpl.com/Cimpl//Actions#/home/workorderDetails"):
             thisWorkorder = self.browser.find_element(by=By.XPATH,value="//div[contains(@class,'workorder-details__woNumber')]").text
             return {"LoggedIn": True, "Location": f"Workorder_{thisWorkorder}"}
         else:
@@ -62,12 +55,12 @@ class CimplDriver:
         currentLocation = self.getLocation()
 
         # Test if already logged in
-        if(currentLocation["LoggedIn"]):
+        if currentLocation["LoggedIn"]:
             return True
         else:
             self.browser.get("https://apps.cimpl.com/Cimpl/Authentication#/logon")
 
-            if(mainConfig["cimpl"]["manualLogin"]):
+            if mainConfig["cimpl"]["manualLogin"]:
                 playsoundAsync(paths["media"] / "shaman_attention.mp3")
                 userResponse = input("Please log in to Cimpl, and press enter to continue. Type anything to cancel.")
                 return not userResponse
@@ -84,6 +77,7 @@ class CimplDriver:
                 # Now, we should be on JumpCloud login screen
                 jumpcloudEmailInputXPath = "//input[@type='email']"
                 jumpcloudEmailInput = self.browser.searchForElement(by=By.XPATH,value=jumpcloudEmailInputXPath,timeout=60)
+                #self.browser.aggressiveSendKeys(jumpcloudEmailInput,mainConfig["authentication"]["jumpcloudUser"])
                 jumpcloudEmailInput.send_keys(mainConfig["authentication"]["jumpcloudUser"])
 
                 jumpcloudContinueButtonXPath = "//button[@data-automation='loginButton']"
@@ -92,6 +86,7 @@ class CimplDriver:
 
                 jumpcloudPassInputXPath = "//input[@type='password']"
                 jumpcloudPassInput = self.browser.searchForElement(by=By.XPATH, value=jumpcloudPassInputXPath,timeout=60)
+                jumpcloudPassInput.click()
                 jumpcloudPassInput.send_keys(mainConfig["authentication"]["jumpcloudPass"])
 
                 jumpcloudContinueButtonXPath = "//button[@data-automation='loginButton']"
@@ -105,11 +100,11 @@ class CimplDriver:
                 # If the JumpCloud Protect option is listed, click on it.
                 jumpcloudProtectMFAXPath = "//button[contains(@data-test-id,'MfaButtons__push')]"
                 jumpcloudProtectMFA = self.browser.searchForElement(by=By.XPATH,value=jumpcloudProtectMFAXPath,timeout=1)
-                if(jumpcloudProtectMFA):
+                if jumpcloudProtectMFA:
                     jumpcloudProtectMFA.click()
 
                 # Prompt the user to fill in SSO, or fill in automatically if OTP code is specified.
-                if(jumpcloudOTP):
+                if jumpcloudOTP:
                     otpInputXPath = "//div[@class='TotpInput__totpInputContainer']/input[1]"
                     otpInput = self.browser.searchForElement(by=By.XPATH,value=otpInputXPath,timeout=10)
                     otpInput.send_keys(jumpcloudOTP.now())
@@ -156,7 +151,7 @@ class CimplDriver:
     def navToWorkorderCenter(self):
         self.browser.switchToTab("Cimpl")
 
-        if(self.getLocation()["Location"] == "WorkorderCenter"):
+        if self.getLocation()["Location"] == "WorkorderCenter":
             return True
         else:
             self.waitForLoadingScreen()
@@ -164,7 +159,7 @@ class CimplDriver:
             # First, we test to ensure that the menu is in the "super icon view" so that we can select
             # the inventory section. In case the menu was already open when we got here, we click it again to close it.
             menuString = "//i[text()='menu']/parent::div"
-            if(self.browser.searchForElement(by=By.XPATH,value=f"{menuString}[contains(@class,'cimpl-header__icon-transform')]",invertedSearch=True)):
+            if self.browser.searchForElement(by=By.XPATH, value=f"{menuString}[contains(@class,'cimpl-header__icon-transform')]", invertedSearch=True):
                 self.waitForLoadingScreen()
                 menuCollapserElement = self.browser.searchForElement(by=By.XPATH,value=menuString,timeout=120,testClickable=True)
                 self.browser.safeClick(element=menuCollapserElement,timeout=60)
@@ -193,12 +188,12 @@ class CimplDriver:
         workorderRowString = f"//table/tbody/tr/td/span[contains(@class,'workorder__workorder-number')][text()='{str(workorderNumber).strip()}']"
         workorderCardString = f"//workorder-card/div/div/div/span[contains(@class,'cimpl-card__clickable')][text()='{str(workorderNumber).strip()}']"
 
-        if(self.browser.searchForElement(by=By.XPATH,value=workorderRowString)):
+        if self.browser.searchForElement(by=By.XPATH, value=workorderRowString,timeout=4,scrollIntoView=True):
             workorderElement = self.browser.find_element(by=By.XPATH,value=workorderRowString)
             workorderElement.click()
             self.waitForLoadingScreen()
             return True
-        elif(self.browser.searchForElement(by=By.XPATH,value=workorderCardString)):
+        elif self.browser.searchForElement(by=By.XPATH, value=workorderCardString,timeout=4,scrollIntoView=True):
             workorderElement = self.browser.find_element(by=By.XPATH,value=workorderCardString)
             workorderElement.click()
             self.waitForLoadingScreen()
@@ -216,7 +211,7 @@ class CimplDriver:
         # Click apply.
         applyButtonString = "//div/div/cimpl-button[@class='ng-isolate-scope']/button[@automation-id='__button']/div[@class='button-content']/span[@class='button-label ng-binding uppercase'][text()='Apply']/parent::div/parent::button"
         applyButton = self.browser.searchForElement(by=By.XPATH,value=applyButtonString,timeout=3)
-        if(not self.browser.searchForElement(element=applyButton,testClickable=True)):
+        if not self.browser.searchForElement(element=applyButton, testClickable=True):
             self.Filters_OpenFilterMenu()
         self.browser.safeClick(element=applyButton,timeout=3)
         self.waitForLoadingScreen()
@@ -226,7 +221,7 @@ class CimplDriver:
         # Clear all filters.
         clearAllButtonString = "//div/div/cimpl-button[@class='ng-isolate-scope']/button[@automation-id='__button']/div[@class='button-content']/span[@class='button-label ng-binding uppercase'][text()='Clear All']/parent::div/parent::button"
         clearAllButton = self.browser.searchForElement(by=By.XPATH,value=clearAllButtonString,timeout=3)
-        if(not self.browser.searchForElement(element=clearAllButton,testClickable=True)):
+        if not self.browser.searchForElement(element=clearAllButton, testClickable=True):
             self.Filters_OpenFilterMenu()
         self.browser.safeClick(element=clearAllButton,timeout=3)
         self.waitForLoadingScreen()
@@ -242,7 +237,7 @@ class CimplDriver:
         employeeNumberFieldString = "//div[starts-with(@class,'selected-filter-container')]/div/div[starts-with(@class,'selected-filter-container__filterLabel')][text()='Employee Number']/following-sibling::div[starts-with(@class,'selected-filter-container__filterInputs')]/div[starts-with(@class,'selected-filter-container__fieldFilter')]/cimpl-meta-field/div/div/div/input[@automation-id='__filter-unique-id_21__textbox__input']"
 
         # First we test if we need to add the filter
-        if(not self.browser.searchForElement(by=By.XPATH, value=employeeNumberDropdownString)):
+        if not self.browser.searchForElement(by=By.XPATH, value=employeeNumberDropdownString):
             employeeNumberCheckbox = self.browser.find_element(by=By.XPATH, value=employeeNumberCheckboxString)
             employeeNumberCheckbox.click()
             self.waitForLoadingScreen()
@@ -251,7 +246,7 @@ class CimplDriver:
         self.selectFromDropdown(by=By.XPATH, dropdownString=employeeNumberDropdownString, selectionString=status)
 
         # Finally, we write the employeeNumber to the filter.
-        if (status != "Is Null or Empty"):
+        if status != "Is Null or Empty":
             employeeNumberField = self.browser.find_element(by=By.XPATH, value=employeeNumberFieldString)
             employeeNumberField.clear()
             employeeNumberField.send_keys(employeeNumber)
@@ -260,7 +255,7 @@ class CimplDriver:
         self.browser.switchToTab("Cimpl")
         self.Filters_OpenFilterMenu()
 
-        if (type(values) is not list):
+        if type(values) is not list:
             values = [values]
 
         operationTypeCheckboxString = "//div/div/div/div/div/cimpl-checkbox[@label='Operation Type']/div/div/label/span[@class='icon-secondary-bg-primary checkbox-input']"
@@ -268,7 +263,7 @@ class CimplDriver:
         operationTypeCriteriaDropdownString = "//div[starts-with(@class,'selected-filter-container')]/div/div[starts-with(@class,'selected-filter-container__filterLabel')][text()='Operation Type']/following-sibling::div[starts-with(@class,'selected-filter-container__filterInputs')]/div[starts-with(@class,'selected-filter-container__criteriaFilter')]/cimpl-dropdown[@automation-id='__conditions-dropdown']/div/div/span/span"
 
         # First, we check to see if we add the operation type filter (or if it's already added)
-        if (not self.browser.searchForElement(by=By.XPATH, value=operationTypeFieldString)):
+        if not self.browser.searchForElement(by=By.XPATH, value=operationTypeFieldString):
             operationTypeCheckbox = self.browser.find_element(by=By.XPATH, value=operationTypeCheckboxString)
             operationTypeCheckbox.click()
             self.waitForLoadingScreen()
@@ -278,7 +273,7 @@ class CimplDriver:
         self.waitForLoadingScreen()
 
         # Now we select all values given.
-        if (status != "Is Null or Empty"):
+        if status != "Is Null or Empty":
             for valuesToSelect in values:
                 self.selectFromDropdown(by=By.XPATH, dropdownString=operationTypeFieldString, selectionString=valuesToSelect)
         self.waitForLoadingScreen()
@@ -292,7 +287,7 @@ class CimplDriver:
         referenceNumberFieldString = "//div[starts-with(@class,'selected-filter-container')]/div/div[starts-with(@class,'selected-filter-container__filterLabel')][text()='Reference Number']/following-sibling::div[starts-with(@class,'selected-filter-container__filterInputs')]/div[starts-with(@class,'selected-filter-container__fieldFilter')]/cimpl-meta-field/div/div/div/input[@automation-id='__filter-unique-id_110__textbox__input']"
 
         # First we test if we need to add the filter
-        if(not self.browser.searchForElement(by=By.XPATH,value=referenceNumberDropdownString)):
+        if not self.browser.searchForElement(by=By.XPATH, value=referenceNumberDropdownString):
             referenceNumberCheckbox = self.browser.find_element(by=By.XPATH,value=referenceNumberCheckboxString)
             referenceNumberCheckbox.click()
             self.waitForLoadingScreen()
@@ -301,7 +296,7 @@ class CimplDriver:
         self.selectFromDropdown(by=By.XPATH,dropdownString=referenceNumberDropdownString,selectionString=status)
 
         # Finally, we write the referenceNumber to the filter.
-        if(status != "Is Null or Empty"):
+        if status != "Is Null or Empty":
             referenceNumberField = self.browser.find_element(by=By.XPATH,value=referenceNumberFieldString)
             referenceNumberField.clear()
             referenceNumberField.send_keys(referenceNumber)
@@ -317,7 +312,7 @@ class CimplDriver:
         serviceIDFieldString = "//div[starts-with(@class,'selected-filter-container')]/div/div[starts-with(@class,'selected-filter-container__filterLabel')][text()='Service ID']/following-sibling::div[starts-with(@class,'selected-filter-container__filterInputs')]/div[starts-with(@class,'selected-filter-container__fieldFilter')]/cimpl-meta-field/div/div/div/input[@automation-id='__filter-unique-id_126__textbox__input']"
 
         # First we test if we need to add the filter
-        if (not self.browser.searchForElement(by=By.XPATH, value=serviceIDDropdownString)):
+        if not self.browser.searchForElement(by=By.XPATH, value=serviceIDDropdownString):
             serviceIDCheckbox = self.browser.find_element(by=By.XPATH, value=serviceIDCheckboxString)
             serviceIDCheckbox.click()
             self.waitForLoadingScreen()
@@ -326,7 +321,7 @@ class CimplDriver:
         self.selectFromDropdown(by=By.XPATH, dropdownString=serviceIDDropdownString, selectionString=status)
 
         # Finally, we write the serviceID to the filter.
-        if (status != "Is Null or Empty"):
+        if status != "Is Null or Empty":
             serviceIDField = self.browser.find_element(by=By.XPATH, value=serviceIDFieldString)
             serviceIDField.clear()
             serviceIDField.send_keys(serviceID)
@@ -341,7 +336,7 @@ class CimplDriver:
         workorderNumberFieldString = "//div[starts-with(@class,'selected-filter-container')]/div/div[starts-with(@class,'selected-filter-container__filterLabel')][text()='Workorder Number']/following-sibling::div[starts-with(@class,'selected-filter-container__filterInputs')]/div[starts-with(@class,'selected-filter-container__fieldFilter')]/cimpl-meta-field/div/div/div/input[@automation-id='__filter-unique-id_128__textbox__input']"
 
         # First we test if we need to add the filter
-        if(not self.browser.searchForElement(by=By.XPATH,value=workorderNumberDropdownString)):
+        if not self.browser.searchForElement(by=By.XPATH, value=workorderNumberDropdownString):
             referenceNumberCheckbox = self.browser.find_element(by=By.XPATH,value=workorderNumberCheckboxString)
             referenceNumberCheckbox.click()
             self.waitForLoadingScreen()
@@ -350,7 +345,7 @@ class CimplDriver:
         self.selectFromDropdown(by=By.XPATH,dropdownString=workorderNumberDropdownString,selectionString=status)
 
         # Finally, we write the referenceNumber to the filter.
-        if(status != "Is Null or Empty"):
+        if status != "Is Null or Empty":
             referenceNumberField = self.browser.find_element(by=By.XPATH,value=workorderNumberFieldString)
             referenceNumberField.clear()
             referenceNumberField.send_keys(workorderNumber)
@@ -359,7 +354,7 @@ class CimplDriver:
         self.browser.switchToTab("Cimpl")
         self.Filters_OpenFilterMenu()
 
-        if(type(values) is not list):
+        if type(values) is not list:
             values = [values]
 
         workorderStatusCheckboxString = "//div/div/div/div/div/cimpl-checkbox[@label='Workorder Status']/div/div/label/span[@class='icon-secondary-bg-primary checkbox-input']"
@@ -367,7 +362,7 @@ class CimplDriver:
         workorderStatusCriteriaDropdownString = "//div[starts-with(@class,'selected-filter-container')]/div/div[starts-with(@class,'selected-filter-container__filterLabel')][text()='Workorder Status']/following-sibling::div[starts-with(@class,'selected-filter-container__filterInputs')]/div[starts-with(@class,'selected-filter-container__criteriaFilter')]/cimpl-dropdown[@automation-id='__conditions-dropdown']/div/div/span/span"
 
         # First, we check to see if we add the workorder status filter (or if it's already added)
-        if(not self.browser.searchForElement(by=By.XPATH,value=workorderStatusFieldString)):
+        if not self.browser.searchForElement(by=By.XPATH, value=workorderStatusFieldString):
             workorderStatusCheckbox = self.browser.find_element(by=By.XPATH, value=workorderStatusCheckboxString)
             workorderStatusCheckbox.click()
             self.waitForLoadingScreen()
@@ -377,7 +372,7 @@ class CimplDriver:
         self.waitForLoadingScreen()
 
         # Now we select all values given.
-        if(status != "Is Null or Empty"):
+        if status != "Is Null or Empty":
             for valuesToSelect in values:
                 self.selectFromDropdown(by=By.XPATH, dropdownString=workorderStatusFieldString, selectionString=valuesToSelect)
         self.waitForLoadingScreen()
@@ -388,7 +383,7 @@ class CimplDriver:
         filterDropdownArrowString = "//div/div/div/div/cimpl-collapsible-box/div/div[contains(@class,'cimpl-collapsible-box')]/div/div/i[contains(@class,'cimpl-collapsible-box')]"
         filterDropdownArrow = self.browser.searchForElement(by=By.XPATH,value=filterDropdownArrowString,timeout=30)
         # This means we have to click to expand the filter submenu.
-        if("headerArrowClose" in filterDropdownArrow.get_attribute("class")):
+        if "headerArrowClose" in filterDropdownArrow.get_attribute("class"):
             self.browser.safeClick(element=filterDropdownArrow,timeout=20)
 
     #endregion === Workorder Filtering ===
@@ -452,7 +447,7 @@ class CimplDriver:
         # First, we check to see if we need to expand the notes section.
         expandNotesButtonString = "//cimpl-collapsible-box[@header='Notes']/div/div/div/div/i[contains(@class,'cimpl-collapsible-box__headerArrow')]"
         expandNotesButton = self.browser.find_element(by=By.XPATH,value=expandNotesButtonString)
-        if("headerArrowClose" in expandNotesButton.get_attribute("class")):
+        if "headerArrowClose" in expandNotesButton.get_attribute("class"):
             expandNotesButton.click()
             self.waitForLoadingScreen()
 
@@ -462,7 +457,7 @@ class CimplDriver:
         # Now, we reach all notes on each page.
         allNotes = []
         nextArrowButton = self.browser.find_element(by=By.XPATH,value=nextArrowButtonString)
-        while(True):
+        while True:
             allNotesOnPage = self.browser.find_elements(by=By.XPATH,value=allNotesOnPageString)
             for noteOnPage in allNotesOnPage:
                 thisNoteDict = {"User": noteOnPage.find_element(by=By.XPATH, value=".//div/div[@ng-bind='note.user']").text,
@@ -474,7 +469,7 @@ class CimplDriver:
                 allNotes.append(thisNoteDict)
 
             # Check for final page, if so, end read loop
-            if("disabled" in nextArrowButton.get_attribute("class")):
+            if "disabled" in nextArrowButton.get_attribute("class"):
                 break
             # Otherwise, flip to next page and continue read loop
             else:
@@ -509,7 +504,7 @@ class CimplDriver:
         # First, we build template dict to avoid and help with error detection for cimpl updates.
         hardwareInfoHeadersString = "//wd-hardware-info/div/cimpl-grid/div/div/div[contains(@class,'k-grid-header')]/div/table/thead/tr/th"
         allHardwareInfoHeaderElements = self.browser.find_elements(by=By.XPATH,value=hardwareInfoHeadersString)
-        if(len(allHardwareInfoHeaderElements) == 0):
+        if len(allHardwareInfoHeaderElements) == 0:
             return None
         else:
             compareDict = {}
@@ -517,7 +512,7 @@ class CimplDriver:
                 compareDict[header.get_attribute("data-title")] = None
 
             # Detect if, for some reason, cimpl changed its config and error out if so.
-            if(templateDict != compareDict):
+            if templateDict != compareDict:
                 log.error("Cimpl template dict does NOT MATCH the compareDict! Will likely require code rewrites!")
                 raise ValueError
 
@@ -531,9 +526,9 @@ class CimplDriver:
                 row_data = templateDict.copy()
 
                 for i, key in enumerate(templateDict.keys()):
-                    if(key == "Primary"):
+                    if key == "Primary":
                         primaryInnerHTML = tdElements[i].get_attribute("innerHTML")
-                        if("fa-star" in primaryInnerHTML):
+                        if "fa-star" in primaryInnerHTML:
                             # noinspection PyTypeChecker
                             row_data[key] = True
                         else:
@@ -626,7 +621,7 @@ class CimplDriver:
         # First, we check to see if we need to expand the notes section.
         expandNotesButtonString = "//cimpl-collapsible-box[@header='Notes']/div/div/div/div/i[contains(@class,'cimpl-collapsible-box__headerArrow')]"
         expandNotesButton = self.browser.find_element(by=By.XPATH,value=expandNotesButtonString)
-        if("headerArrowClose" in expandNotesButton.get_attribute("class")):
+        if "headerArrowClose" in expandNotesButton.get_attribute("class"):
             expandNotesButton.click()
             self.waitForLoadingScreen()
 
@@ -670,7 +665,7 @@ class CimplDriver:
         editAccountButtonString = "//account-modal-popup-selector/div/div/div/div/div/cimpl-icon-button/div/div/i[contains(@class,'fa-pencil cimpl-icon-button')]"
 
         # This means an account currently exists, and we need to remove it first.
-        if(self.browser.searchForElement(by=By.XPATH,value=editAccountButtonString,testClickable=True)):
+        if self.browser.searchForElement(by=By.XPATH, value=editAccountButtonString, testClickable=True):
             removeAccountButtonString = "//account-modal-popup-selector/div/div/div/div/div/cimpl-icon-button/div/div/i[contains(@class,'fa-times-circle cimpl-icon-button')]"
             removeAccountButton = self.browser.find_element(by=By.XPATH,value=removeAccountButtonString)
             removeAccountButton.click()
@@ -720,13 +715,13 @@ class CimplDriver:
         summaryApplyButtonString = "//cimpl-tab/div/ng-transclude/wd-summary-tab/div/div/div/cimpl-button[@text='Apply'][@on-click='vm.update()']/button/div/span[contains(@class,'button-label')][text()='Apply']"
         detailsApplyButtonString = "//cimpl-tab/div/ng-transclude/wd-details-tab/div/div/cimpl-collapsible-box/div/div/ng-transclude/div/cimpl-form/div/div/div/span/cimpl-button/button/div/span[contains(@class,'button-label')][text()='Apply']"
         # This means we're on the summary tab.
-        if(self.browser.searchForElement(by=By.XPATH,value=summaryApplyButtonString,testClickable=True,timeout=5)):
+        if self.browser.searchForElement(by=By.XPATH, value=summaryApplyButtonString, testClickable=True, timeout=5):
             summaryApplyButtonElement = self.browser.find_element(by=By.XPATH, value=summaryApplyButtonString)
             self.waitForLoadingScreen()
             summaryApplyButtonElement.click()
             self.waitForLoadingScreen()
         # This means we're on the details tab.
-        elif(self.browser.searchForElement(by=By.XPATH,value=detailsApplyButtonString,testClickable=True,timeout=5)):
+        elif self.browser.searchForElement(by=By.XPATH, value=detailsApplyButtonString, testClickable=True, timeout=5):
             detailsApplyButtonElement = self.browser.find_element(by=By.XPATH, value=detailsApplyButtonString)
             self.waitForLoadingScreen()
             detailsApplyButtonElement.click()
@@ -742,17 +737,17 @@ class CimplDriver:
     def Workorders_SetStatus(self,status : str,emailRecipients = None,emailContent = None,emailCCs = None):
         self.browser.switchToTab("Cimpl")
 
-        if(emailRecipients is None):
+        if emailRecipients is None:
             sendEmail = False
         else:
             sendEmail = True
-            if(type(emailRecipients) is not list):
-                if(emailRecipients is None):
+            if type(emailRecipients) is not list:
+                if emailRecipients is None:
                     emailRecipients = []
                 else:
                     emailRecipients = [emailRecipients]
-            if(type(emailCCs) is not list):
-                if(emailCCs is None):
+            if type(emailCCs) is not list:
+                if emailCCs is None:
                     emailCCs = []
                 else:
                     emailCCs = [emailCCs]
@@ -770,24 +765,24 @@ class CimplDriver:
         self.waitForLoadingScreen()
 
         # We make sure the "carrier confirmation" checkbox is selected (if we're not cancelling this order)
-        if(status.lower() != "cancel"):
+        if status.lower() != "cancel":
             carrierCheckboxString = "//workorder-action-confirm-complete//div[contains(@class,'workorder-action-confirm-complete__header')]//input[@type='checkbox']"
             carrierCheckboxElement = self.browser.find_element(by=By.XPATH,value=f"{carrierCheckboxString}/parent::span")
-            if("ng-empty" in carrierCheckboxElement.find_element(by=By.XPATH,value=carrierCheckboxString).get_attribute("class")):
+            if "ng-empty" in carrierCheckboxElement.find_element(by=By.XPATH, value=carrierCheckboxString).get_attribute("class"):
                 carrierCheckboxElement.click()
 
         # We make sure that if we're sending an email, the email checkbox is selected, otherwise it's not.
         emailCheckboxString = "//workorder-action-confirm-complete/div/div/div/div/div/div/cimpl-checkbox/div/div/label[@class='checkbox-container']/span[contains(@class,'checkbox-input')]/input[@type='checkbox']"
         emailCheckboxElement = self.browser.find_element(by=By.XPATH,value=f"{emailCheckboxString}/parent::span")
-        if("ng-empty" in emailCheckboxElement.find_element(by=By.XPATH,value=emailCheckboxString).get_attribute("class")):
-            if(sendEmail):
+        if "ng-empty" in emailCheckboxElement.find_element(by=By.XPATH, value=emailCheckboxString).get_attribute("class"):
+            if sendEmail:
                 emailCheckboxElement.click()
         else:
-            if(not sendEmail):
+            if not sendEmail:
                 emailCheckboxElement.click()
 
         # Only send an email if we... sendEmail
-        if(sendEmail):
+        if sendEmail:
             # Add email recipients
             emailToFieldString = "//emailer-list[@label='To']/div/div/cimpl-textarea/div/textarea[contains(@class,'cimpl-textarea')]"
             emailToFieldElement = self.browser.find_element(by=By.XPATH,value=emailToFieldString)
@@ -795,7 +790,7 @@ class CimplDriver:
             emailToSendString = ""
             for toEmailAddress in emailRecipients:
                 emailToSendString += toEmailAddress
-                if(toEmailAddress != emailRecipients[-1]):
+                if toEmailAddress != emailRecipients[-1]:
                     emailToSendString += ","
             emailToFieldElement.send_keys(emailToSendString)
 
@@ -806,7 +801,7 @@ class CimplDriver:
             emailCCSendString = ""
             for ccEmailAddress in emailCCs:
                 emailCCSendString += ccEmailAddress
-                if(ccEmailAddress != emailCCs[-1]):
+                if ccEmailAddress != emailCCs[-1]:
                     emailCCSendString += ","
             emailCCFieldElement.send_keys(emailCCSendString)
 
@@ -840,7 +835,7 @@ class CimplDriver:
         # Wait for the dropdown to be clickable and click it to expand the options
         dropdownElement = self.browser.searchForElement(by=by,value=dropdownString,testClickable=True,timeout=30)
         currentSelection = dropdownElement.text.split("\n")[0].strip()
-        if(currentSelection == selectionString):
+        if currentSelection == selectionString:
             return True
         else:
             dropdownElement.click()
@@ -855,7 +850,7 @@ class CimplDriver:
             # Now we can actually find the element.
             targetSelectionElement = self.browser.searchForElement(by=By.XPATH,value=f"{selectionListPrefix}/li[starts-with(@class,'k-item')][normalize-space(text())='{selectionString}']",timeout=20)
             # We also check to make sure this element isn't already selected, in case our earlier check didn't catch it.
-            if("k-state-selected" not in targetSelectionElement.get_attribute("class")):
+            if "k-state-selected" not in targetSelectionElement.get_attribute("class"):
                 self.browser.execute_script("arguments[0].scrollIntoView(true);", targetSelectionElement)
                 targetSelectionElement.click()
                 self.waitForLoadingScreen()

@@ -1,9 +1,5 @@
 import re
-import datetime
-from tomlkit.items import Array as tomlkitArray
 from shaman2.common.logger import log
-from shaman2.common.paths import paths
-from shaman2.utilities.async_sound import playsoundAsync
 
 
 
@@ -34,11 +30,11 @@ class SnowTask:
     def __getitem__(self, item):
         return self.vals[item]
     def __setitem__(self, key, value):
-        if(key == "Activities"):
+        if key == "Activities":
             error = ValueError("Please use builtin 'addActivity' method to store note information.")
             log.error(error)
             raise error
-        elif(key == "Description"):
+        elif key == "Description":
             self.vals["Description"] = value
             self.__classifySnowOrderInfoFromDescription()
         else:

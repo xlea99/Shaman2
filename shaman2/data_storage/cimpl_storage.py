@@ -45,14 +45,14 @@ class CimplWO:
     def __getitem__(self, item):
         return self.vals[item]
     def __setitem__(self, key, value):
-        if(key == "Note"):
+        if key == "Note":
             error = ValueError("Please use builtin 'addNote' method to store note information.")
             log.error(error)
             raise error
-        elif(key == "Actions"):
+        elif key == "Actions":
             self.vals["Actions"] = value
             self.__scrapeActions()
-        elif(key == "HardwareInfo"):
+        elif key == "HardwareInfo":
             self.vals["HardwareInfo"] = value
             self.__classifyHardwareInfo()
         else:
@@ -70,7 +70,7 @@ class CimplWO:
                     "Timestamp" : None}
 
         # Classify the note
-        if(classifyNote):
+        if classifyNote:
             thisNote = self.__classifyNote(thisNote)
 
         # Add a datetime timestamp for easy comparison.
@@ -82,9 +82,9 @@ class CimplWO:
     def getLatestOrderNote(self):
         latestOrderNote = None
         for note in self.vals["Notes"]:
-            if(note["Classification"].endswith("Order") and note["Classification"] not in ["EyesafeOrder"]):
-                if(latestOrderNote):
-                    if(note["Timestamp"] > latestOrderNote["Timestamp"]):
+            if note["Classification"].endswith("Order") and note["Classification"] not in ["EyesafeOrder"]:
+                if latestOrderNote:
+                    if note["Timestamp"] > latestOrderNote["Timestamp"]:
                         latestOrderNote = note
                 else:
                     latestOrderNote = note
@@ -99,12 +99,12 @@ class CimplWO:
         # if it's not present, prompt the user to add it and reload.
         def getSafeHardwareMapping(hardwareName,hardwareType):
             cleanedHardwareName = hardwareName.strip().strip('"')
-            if(cleanedHardwareName in syscoData["CimplMappings"].keys()):
+            if cleanedHardwareName in syscoData["CimplMappings"].keys():
                 return syscoData["CimplMappings"][hardwareName.strip().strip('"')][f"Mapped {hardwareType.capitalize()}"]
             else:
                 playsoundAsync(paths["media"] / "shaman_attention.mp3")
                 _userResponse = input(f"Unknown Cimpl {hardwareType} detected: '{hardwareName}'. If this is a valid Cimpl {hardwareType}, add it to the google sheet and press enter to reload. Type anything else to exit.")
-                if (_userResponse):
+                if _userResponse:
                     _error = KeyError(f"'{hardwareName}' is not a mapped Cimpl {hardwareType}.")
                     log.error(_error)
                     raise _error
@@ -118,17 +118,17 @@ class CimplWO:
         # each mapped to the corresponding Shaman hardware ID.
         allDeviceIDs = []
         allAccessoryIDs = []
-        if(self.vals["HardwareInfo"]):
+        if self.vals["HardwareInfo"]:
             for hardware in self.vals["HardwareInfo"]:
-                if (hardware["Type"] == "Equipment"):
+                if hardware["Type"] == "Equipment":
                     thisDeviceID = getSafeHardwareMapping(hardware["Name"],"device")
-                    if (isinstance(thisDeviceID, (list, tomlkitArray))):
+                    if isinstance(thisDeviceID, (list, tomlkitArray)):
                         allDeviceIDs.extend(thisDeviceID)
                     else:
                         allDeviceIDs.append(thisDeviceID)
-                elif (hardware["Type"] == "Accessory"):
+                elif hardware["Type"] == "Accessory":
                     thisAccessoryID = getSafeHardwareMapping(hardware["Name"],"accessory")
-                    if (isinstance(thisAccessoryID, (list, tomlkitArray))):
+                    if isinstance(thisAccessoryID, (list, tomlkitArray)):
                         allAccessoryIDs.extend(thisAccessoryID)
                     else:
                         allAccessoryIDs.append(thisAccessoryID)
@@ -140,7 +140,7 @@ class CimplWO:
 
         # At this point, there SHOULD only be one deviceID. If there's not, this order is definitely too complex
         # for the Shaman.
-        if(len(allDeviceIDs) > 1):
+        if len(allDeviceIDs) > 1:
             error = ValueError(f"More than one deviceID present in Cimpl WO {self.vals['WONumber']}: '{allDeviceIDs}' Can't be automated ATM.")
             log.error(error)
             raise error
@@ -151,7 +151,7 @@ class CimplWO:
         # from the list.
         cleanedAccessoryIDs = []
         for accessoryID in allAccessoryIDs:
-            if(accessoryID is not None and str(accessoryID).strip() != ""):
+            if accessoryID is not None and str(accessoryID).strip() != "":
                 cleanedAccessoryIDs.append(accessoryID)
         allAccessoryIDs = list(set(cleanedAccessoryIDs))
 
@@ -161,7 +161,7 @@ class CimplWO:
     def __scrapeActions(self,):
         for actionString in self.vals["Actions"]:
             # This action string contains both our user's netID AND their name.
-            if(actionString.startswith("Assigned to Employee")):
+            if actionString.startswith("Assigned to Employee"):
                 header, netID, rawName = actionString.split("-",2)
                 lastName, firstName = rawName.split(",")
                 netID = netID.strip()
@@ -171,8 +171,8 @@ class CimplWO:
                 self.vals["UserLastName"] = lastName
                 self.vals["UserNetID"] = netID
             # This action string contains our raw shipping address.
-            elif(actionString.startswith("Shipping Address")):
-                if(actionString.startswith("Shipping Address (company):")):
+            elif actionString.startswith("Shipping Address"):
+                if actionString.startswith("Shipping Address (company):"):
                     self.vals["UserShipping"] = actionString.split(":", 1)[1].strip()
                 else:
                     self.vals["UserShipping"] = actionString.split("-",1)[1].strip()
@@ -180,7 +180,7 @@ class CimplWO:
     @staticmethod
     def __classifyNote(noteDict):
         # If "eyesafe" is in the subject, we check to try and determine the order number of the eyesafe order.
-        if("eyesafe" in noteDict["Subject"].lower()):
+        if "eyesafe" in noteDict["Subject"].lower():
             eyesafeOrderPattern = r'\d+'
 
             # Value to eventually store the matches we found.
@@ -190,15 +190,15 @@ class CimplWO:
 
             # Search for order number.
             eyesafeOrderMatch = re.findall(eyesafeOrderPattern,noteDict["Content"])
-            if(eyesafeOrderMatch):
+            if eyesafeOrderMatch:
                 orderMatch = eyesafeOrderMatch
                 orderType = "EyesafeOrder"
 
             # If no match was found, assume this isn't an order number, or is an order number that the
             # Shaman doesn't recognize, and move to the next classification test.
-            if(orderMatch):
+            if orderMatch:
                 # Assume that we've now found the order number, we test to ensure multiple weren't detected.
-                if(len(orderMatch) > 1):
+                if len(orderMatch) > 1:
                     error = ValueError(f"Multiple Eyesafe order numbers detected in note '{noteDict['Content']}'")
                     log.error(error)
                     raise error
@@ -209,7 +209,7 @@ class CimplWO:
                 return noteDict
 
         # If "order" is in the subject, we check to try and determine the order number/order type.
-        if("order" in noteDict["Subject"].lower()):
+        if "order" in noteDict["Subject"].lower():
             verizonOrderPattern = r"MB\d+"
             bakaOrderPattern = r"N\d{8}"
             rogersOrderPattern = r"\b\d{7}\b"
@@ -224,22 +224,22 @@ class CimplWO:
             bakaOrderMatch = re.findall(bakaOrderPattern,noteDict["Content"])
             rogersOrderMatch = re.findall(rogersOrderPattern,noteDict["Content"])
 
-            if(verizonOrderMatch):
-                if(orderMatch):
+            if verizonOrderMatch:
+                if orderMatch:
                     error = ValueError(f"Multiple order numbers from different carriers detected in this note: '{noteDict['Content']}'. Tf?")
                     log.error(error)
                     raise error
                 orderMatch = verizonOrderMatch
                 orderType = "VerizonOrder"
-            if(bakaOrderMatch):
-                if (orderMatch):
+            if bakaOrderMatch:
+                if orderMatch:
                     error = ValueError(f"Multiple order numbers from different carriers detected in this note: '{noteDict['Content']}'. Tf?")
                     log.error(error)
                     raise error
                 orderMatch = bakaOrderMatch
                 orderType = "BakaOrder"
-            if(rogersOrderMatch):
-                if(orderMatch):
+            if rogersOrderMatch:
+                if orderMatch:
                     error = ValueError(f"Multiple order numbers from different carriers detected in this note: '{noteDict['Content']}'. Tf?")
                     log.error(error)
                     raise error
@@ -249,9 +249,9 @@ class CimplWO:
 
             # If no match was found, assume this isn't an order number, or is an order number that the
             # Shaman doesn't recognize, and move to the next classification test.
-            if(orderMatch):
+            if orderMatch:
                 # Assume that we've now found the order number, we test to ensure multiple weren't detected.
-                if(len(orderMatch) > 1):
+                if len(orderMatch) > 1:
                     error = ValueError(f"Multiple order numbers detected in note '{noteDict['Content']}'")
                     log.error(error)
                     raise error
@@ -262,7 +262,7 @@ class CimplWO:
                 return noteDict
 
         # IF "tracking" is in the subject, we check to try and determine the tracking number/courier type.
-        if("tracking" in noteDict["Subject"].lower()):
+        if "tracking" in noteDict["Subject"].lower():
             upsTrackingPattern = r"1Z[0-9A-Z]{16}$"
             # FedEX and Purolator tracking numbers are stupidly unpredictable, so we have to rely on there being
             # another tell in the note.
@@ -279,22 +279,22 @@ class CimplWO:
             fedexTrackingMatch = re.findall(fedexTrackingPattern,noteDict["Content"])
             purolatorTrackingMatch = re.findall(purolatorTrackingPattern,noteDict["Content"])
 
-            if(upsTrackingMatch):
-                if(trackingMatch):
+            if upsTrackingMatch:
+                if trackingMatch:
                     error = ValueError(f"Multiple tracking numbers from different couriers detected in this note: '{noteDict['Content']}'. Tf?")
                     log.error(error)
                     raise error
                 trackingMatch = upsTrackingMatch
                 trackingType = "UPSTracking"
-            if(fedexTrackingMatch):
-                if(trackingMatch):
+            if fedexTrackingMatch:
+                if trackingMatch:
                     error = ValueError(f"Multiple tracking numbers from different couriers detected in this note: '{noteDict['Content']}'. Tf?")
                     log.error(error)
                     raise error
                 trackingMatch = fedexTrackingMatch
                 trackingType = "FEDEXTracking"
-            if(purolatorTrackingMatch):
-                if(trackingMatch):
+            if purolatorTrackingMatch:
+                if trackingMatch:
                     error = ValueError(f"Multiple tracking numbers from different couriers detected in this note: '{noteDict['Content']}'. Tf?")
                     log.error(error)
                     raise error
@@ -303,9 +303,9 @@ class CimplWO:
 
             # If no match was found, assume this isn't an order number, or is an order number that the
             # Shaman doesn't recognize, and move to the next classification test.
-            if(trackingMatch):
+            if trackingMatch:
                 # Assume that we've now found the order number, we test to ensure multiple weren't detected.
-                if(len(trackingMatch) > 1):
+                if len(trackingMatch) > 1:
                     error = ValueError(f"Multiple tracking numbers detected in note '{noteDict['Content']}'")
                     log.error(error)
                     raise error

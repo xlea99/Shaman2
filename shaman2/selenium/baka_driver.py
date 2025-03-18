@@ -14,7 +14,7 @@ class BakaDriver:
         logMessage = "Initialized new BakaDriver object"
         self.browser = browserObject
 
-        if ("Baka" in self.browser.tabs.keys()):
+        if "Baka" in self.browser.tabs.keys():
             self.browser.closeTab("Baka")
             logMessage += ", and closed existing Verizon tab."
         else:
@@ -31,7 +31,7 @@ class BakaDriver:
     def logInToBaka(self):
         self.browser.switchToTab("Baka")
 
-        if(not self.testIfLoggedIn()):
+        if not self.testIfLoggedIn():
             self.browser.get("https://www.baka.ca/signin?from=%2F")
 
             userNameField = self.browser.find_element(by=By.XPATH,value="//input[@id='auth_login']")
@@ -49,7 +49,7 @@ class BakaDriver:
         self.browser.switchToTab("Baka")
 
         signOutButtonString = "//a[contains(text(),'Sign Out')]"
-        if(self.browser.searchForElement(by=By.XPATH,value=signOutButtonString,timeout=1)):
+        if self.browser.searchForElement(by=By.XPATH, value=signOutButtonString, timeout=1):
             return True
         else:
             return False
@@ -66,7 +66,7 @@ class BakaDriver:
     def openOrder(self,orderNumber):
         self.browser.switchToTab("Baka")
         targetOrderEntry = self.browser.searchForElement(by=By.XPATH,value=f"//article/div[@id='{orderNumber}']//a",timeout=3)
-        if(targetOrderEntry):
+        if targetOrderEntry:
             targetOrderEntry.click()
             return True
         else:
@@ -84,30 +84,30 @@ class BakaDriver:
         returnDict = {}
         for line in fullDetails.splitlines():
             lowerLine = line.lower()
-            if("reference number:" in lowerLine):
+            if "reference number:" in lowerLine:
                 returnDict["OrderNumber"] = lowerLine.split("reference number:")[1].split("order details")[0].strip().upper()
-            elif("status:" in lowerLine):
+            elif "status:" in lowerLine:
                 returnDict["Status"] = lowerLine.split("status:")[1].split("order details")[0].strip().title()
-            elif("order placed on:" in lowerLine):
+            elif "order placed on:" in lowerLine:
                 dateObj = datetime.strptime(lowerLine.split("order placed on:")[1].split("order details")[0].strip().capitalize(), "%B %d, %Y")
                 formattedDateString = dateObj.strftime("%m/%d/%Y")
                 returnDict["OrderDate"] = formattedDateString
-            elif("purolator #:" in lowerLine):
+            elif "purolator #:" in lowerLine:
                 returnDict["TrackingNumber"] = lowerLine.split("purolator #:")[1].split("order details")[0].strip().upper()
                 returnDict["Courier"] = "Purolator"
-            elif("cell number:" in lowerLine):
+            elif "cell number:" in lowerLine:
                 returnDict["WirelessNumber"] = lowerLine.split("cell number:")[1].strip()
-            elif("agreement number" in lowerLine):
+            elif "agreement number" in lowerLine:
                 returnDict["AgreementNumber:"] = lowerLine.split("agreement number:")[1].strip()
-            elif("imei" in lowerLine):
+            elif "imei" in lowerLine:
                 returnDict["IMEI"] = lowerLine.split("imei")[1].lstrip("/ESN:").strip()
-            elif("term:" in lowerLine):
+            elif "term:" in lowerLine:
                 returnDict["Term"] = lowerLine.split("term:")[1].strip().title()
-            elif("type:" in lowerLine):
+            elif "type:" in lowerLine:
                 returnDict["OrderType"] = lowerLine.split("type:")[1].strip().title()
-            elif("name of user:" in lowerLine):
+            elif "name of user:" in lowerLine:
                 returnDict["UserName"] = lowerLine.split("name of user:")[1].strip().title()
-            elif("sim:" in lowerLine):
+            elif "sim:" in lowerLine:
                 returnDict["SIM"] = lowerLine.split("sim:")[1].split("(")[0].strip()
 
         return returnDict
@@ -152,10 +152,10 @@ class BakaDriver:
     def DeviceSelection_ChooseInstallUpgrade(self,orderType : str):
         self.browser.switchToTab("Baka")
 
-        if(orderType.lower() == "install"):
+        if orderType.lower() == "install":
             installRadioXPath = "//span[normalize-space(text())='\"I want to create a new mobile number\"']/parent::label"
             targetRadio = self.browser.searchForElement(by=By.XPATH,value=installRadioXPath,timeout=10,testClickable=True)
-        elif(orderType.lower() == "upgrade"):
+        elif orderType.lower() == "upgrade":
             upgradeRadioXPath = "//span[normalize-space(text())='\"I want to keep my number\" or \"Upgrade My Device\"']/parent::label"
             targetRadio = self.browser.searchForElement(by=By.XPATH, value=upgradeRadioXPath, timeout=10,testClickable=True)
         else:

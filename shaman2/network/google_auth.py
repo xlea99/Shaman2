@@ -15,10 +15,10 @@ def authenticateGoogleAPI():
     credentialsFilePath = paths["google"] / "credentials.json"
     tokenFilePath = paths["google"] / "token.json"
     # Load previously saved credentials, or authenticate if not found
-    if(tokenFilePath.exists()):
+    if tokenFilePath.exists():
         creds = Credentials.from_authorized_user_file(filename=tokenFilePath, scopes=SCOPES)
-    if(not creds or not creds.valid):
-        if(creds and creds.expired and creds.refresh_token):
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
             playsoundAsync(paths["media"] / "shaman_attention.mp3")

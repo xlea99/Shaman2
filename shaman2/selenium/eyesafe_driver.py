@@ -18,7 +18,7 @@ class EyesafeDriver:
         logMessage = "Initialized new EyesafeDriver object"
         self.browser = browserObject
 
-        if("Eyesafe" in self.browser.tabs.keys()):
+        if "Eyesafe" in self.browser.tabs.keys():
             self.browser.closeTab("Eyesafe")
             logMessage += ", and closed existing Cimpl tab."
         else:
@@ -37,11 +37,11 @@ class EyesafeDriver:
         self.browser.switchToTab("Eyesafe")
 
         # Check if we're on any eyesafe page at the moment.
-        if ("eyesafe" in self.browser.current_url):
+        if "eyesafe" in self.browser.current_url:
             # If we are, test if we're signed in by trying to locate a sign in button.
             signInButtonXPath = "//span[contains(text(),'Sign in')]"
             signInButton = self.browser.searchForElement(by=By.XPATH, value=signInButtonXPath, timeout=1)
-            if(signInButton):
+            if signInButton:
                 signedIn = False
             else:
                 signedIn = True
@@ -50,7 +50,7 @@ class EyesafeDriver:
 
         # First, check that we are actually not signed in. We test to see if we can find the "sign in" button and
         # that we're not on shop.eyesafe to determine this.
-        if(not signedIn):
+        if not signedIn:
             # Nav to login page
             self.browser.get("https://shop.eyesafe.com/login.php?from=account.php%3Faction%3D")
 
@@ -87,7 +87,7 @@ class EyesafeDriver:
 
         couponPopupXPath = "//a[contains(@class,'close-couponmodal')]"
         couponPopup = self.browser.searchForElement(by=By.XPATH,value=couponPopupXPath,timeout=timeout,testClickable=True)
-        if(couponPopup):
+        if couponPopup:
             couponPopup.click()
 
     # Navigates to the order history center.
@@ -175,7 +175,7 @@ class EyesafeDriver:
             loaderFind1 = self.browser.searchForElement(by=By.XPATH,value=loaderXPath,timeout=timeout,testClickable=True)
 
             # Once its found the first time, now simply wait for it to disappear.
-            if(loaderFind1):
+            if loaderFind1:
                 loaderFind2 = self.browser.searchForElement(by=By.XPATH,value=loaderXPath,timeout=60,testClickable=True,invertedSearch=True,raiseError=True)
                 return True
             # If it's not found after the full timeout, assume its not going to show up.
@@ -205,7 +205,7 @@ class EyesafeDriver:
                 # Test that it actually wrote.
                 firstNameField = self.browser.searchForElement(by=By.XPATH, value=firstNameFieldXPath, timeout=10,testClickable=True)
                 firstNameValue = firstNameField.get_attribute("value")
-                if(firstNameValue.strip().lower() == firstName.strip().lower()):
+                if firstNameValue.strip().lower() == firstName.strip().lower():
                     return True
             return False
         def writeShipping_LastName(retries=3):
@@ -220,7 +220,7 @@ class EyesafeDriver:
                 # Test that it actually wrote.
                 lastNameField = self.browser.searchForElement(by=By.XPATH, value=lastNameFieldXPath, timeout=10,testClickable=True)
                 lastNameValue = lastNameField.get_attribute("value")
-                if(lastNameValue.strip().lower() == lastName.strip().lower()):
+                if lastNameValue.strip().lower() == lastName.strip().lower():
                     return True
             return False
         def writeShipping_State(retries=3):
@@ -234,7 +234,7 @@ class EyesafeDriver:
                 # Test that it actually wrote.
                 stateDropdown = Select(self.browser.searchForElement(by=By.XPATH, value=stateDropdownXPath, timeout=60, minSearchTime=5))
                 stateValue = stateDropdown.first_selected_option.text
-                if(stateValue.strip().lower() == state.strip().lower()):
+                if stateValue.strip().lower() == state.strip().lower():
                     return True
             return False
         def writeShipping_Address1(retries=3):
@@ -249,14 +249,14 @@ class EyesafeDriver:
                 # Test to make sure that the "address 1 check" box didn't pop up.
                 address1CheckButtonXPath = "//span[normalize-space(text())='It Is Correct']"
                 address1CheckButton = self.browser.searchForElement(by=By.XPATH,value=address1CheckButtonXPath,timeout=5,testClickable=True,scrollIntoView=True)
-                if(address1CheckButton):
+                if address1CheckButton:
                     address1CheckButton.click()
                     commitField()
 
                 # Test that it actually wrote.
                 address1Field = self.browser.searchForElement(by=By.XPATH, value=address1FieldXPath, timeout=10,testClickable=True)
                 address1Value = address1Field.get_attribute("value")
-                if(address1Value.strip().lower() == address1.strip().lower()):
+                if address1Value.strip().lower() == address1.strip().lower():
                     return True
             return False
         def writeShipping_Address2(retries=3):
@@ -271,14 +271,14 @@ class EyesafeDriver:
                 # Test to make sure that the "apartment validation" box didn't pop up.
                 apartmentValidationXPath = "//span[normalize-space(text())='It Is Correct']"
                 apartmentValidation = self.browser.searchForElement(by=By.XPATH,value=apartmentValidationXPath,timeout=5,testClickable=True,scrollIntoView=True)
-                if(apartmentValidation):
+                if apartmentValidation:
                     apartmentValidation.click()
                     commitField()
 
                 # Test that it actually wrote.
                 address2Field = self.browser.searchForElement(by=By.XPATH, value=address2FieldXPath, timeout=10,testClickable=True)
                 address2Value = address2Field.get_attribute("value")
-                if(address2Value.strip().lower() == address2.strip().lower()):
+                if address2Value.strip().lower() == address2.strip().lower():
                     return True
             return False
         def writeShipping_Phone(retries=5):
@@ -294,7 +294,7 @@ class EyesafeDriver:
                 # Test that it actually wrote.
                 phoneField = self.browser.searchForElement(by=By.XPATH, value=phoneFieldXPath, timeout=10,testClickable=True)
                 phoneValue = phoneField.get_attribute("value")
-                if(phoneValue.strip().lower() == phoneNumber.strip().lower()):
+                if phoneValue.strip().lower() == phoneNumber.strip().lower():
                     return True
             return False
         def writeShipping_ZipCity(cityToTry,retries=3,promptUserOnIssue=True):
@@ -311,7 +311,7 @@ class EyesafeDriver:
                 zipCodeField.click()
                 zipCodeField.clear()
                 # We first send a dummy zip code, to trigger the dreaded loader which can kill the whole page.
-                if(zipCode[:5] == "60115"):
+                if zipCode[:5] == "60115":
                     dummyZipCode = "11001"
                 else:
                     dummyZipCode = "60115"
@@ -331,7 +331,7 @@ class EyesafeDriver:
                 allZipCityResultsXPath = "//ul[contains(@class,'ui-autocomplete')]/li[@class='ui-menu-item']/a"
                 allZipCityResults = self.browser.searchForElements(by=By.XPATH, value=allZipCityResultsXPath,timeout=15,minSearchTime=5)
                 # Consider the attempt failed if no zip-cities pop up
-                if(not allZipCityResults):
+                if not allZipCityResults:
                    continue
 
                 # Otherwise, start looking through each result for our target result
@@ -342,7 +342,7 @@ class EyesafeDriver:
                     log.debug(f" | {zipCityResultText} | ")
                     thisCity = zipCityResultText[6:].strip().lower()
                     allCities.append(thisCity)
-                    if(thisCity == cityToTry.strip().lower()):
+                    if thisCity == cityToTry.strip().lower():
                         self.browser.safeClick(element=zipCityResult,timeout=10,scrollIntoView=True)
                         foundCity = True
                         break
@@ -350,26 +350,26 @@ class EyesafeDriver:
                 commitField(timeout=3)
 
 
-                if(foundCity):
+                if foundCity:
                     return True
                 # Handle cases where the targeted city is NOT found.
                 else:
                     # First, we test to see if it's just the common "repopulate dummy" zip code issue, and if so,
                     # consider this a failed attempt.
-                    if(allCities[0].strip() == ""):
+                    if allCities[0].strip() == "":
                         continue
 
                     potentialError = ValueError(f"Eyesafe didn't show chosen city '{cityToTry}' in its result list. Here are the cities it associates with zipCode {zipCode}: {allCities}")
-                    if(promptUserOnIssue):
+                    if promptUserOnIssue:
                         # TODO GLUEEEEE
                         playsoundAsync(paths["media"] / "shaman_attention.mp3")
                         print(f"Eyesafe doesn't show chosen city '{cityToTry}' in its result list. Here are the cities it associates with zipCode {zipCode}:")
                         for counter,cityName in enumerate(allCities):
                             print(f"{counter+1}. {cityName}")
                         userResponse = input("\nIf the intended city is listed, please type its number to order for that city. Press any other non-numeric key to cancel.")
-                        if(misc.isNumber(userResponse)):
+                        if misc.isNumber(userResponse):
                             targetIndex = int(userResponse) - 1
-                            if(targetIndex < len(allCities)):
+                            if targetIndex < len(allCities):
                                 # Try again, with the new city.
                                 cityToTry = allCities[targetIndex]
                                 continue
@@ -397,7 +397,7 @@ class EyesafeDriver:
             if not writeShipping_Address1():
                 return False
             # Write Address2 (if applicable)
-            if(address2 is not None and address2 != ""):
+            if address2 is not None and address2 != "":
                 if not writeShipping_Address2():
                     return False
             if not writeShipping_Phone():
@@ -410,7 +410,7 @@ class EyesafeDriver:
         attemptSuccess = writeShipping(promptUserOnIssue=True)
 
         # On success, return True - we did it woooo!
-        if(attemptSuccess):
+        if attemptSuccess:
             return True
         # Otherwise, return False.
         else:
@@ -426,7 +426,7 @@ class EyesafeDriver:
         # Now, we click "it is correct" on all popups that may show up
         itIsCorrectButtonXPath = "//div[@class='ui-dialog-buttonset']/button/span[text()='It Is Correct']"
         itIsCorrectButton = self.browser.searchForElement(by=By.XPATH,value=itIsCorrectButtonXPath,timeout=5)
-        if(itIsCorrectButton):
+        if itIsCorrectButton:
             self.browser.safeClick(element=itIsCorrectButton,timeout=5,scrollIntoView=True,raiseError=False)
 
             # Re-click the continue button here, if it's still showing.
@@ -438,7 +438,7 @@ class EyesafeDriver:
 
     # Single function to handle the actual clusterfuck that is the eyesafe checkout process in an intelligent, adaptable
     # way. Assumes we're on the checkout page to start.
-    def checkOutAndSubmit(self,firstName,lastName,address1,city,state,zipCode,phoneNumber,address2=None):
+    def checkOutAndSubmit(self,firstName,lastName,address1,city,state,zipCode,phoneNumber,address2=None,debug=False):
         shippingAddressOpenXPath = "//legend[@data-test='shipping-address-heading']"
         billingAddressOpenXPath = "//legend[@data-test='billing-address-heading']"
         submitOrderReadyXPath = "//button[@id='checkout-payment-continue']"
@@ -453,7 +453,7 @@ class EyesafeDriver:
 
         # Begin loop to manage checkout logic.
         shippingEnteredSuccessfully = False
-        for i in range(3):
+        for i in range(5):
             print(f"ATTEMPT {i}")
             # First, get the current page we're on.
             foundElement, pageName = self.browser.searchForElement(by=By.XPATH, value=checkoutPagesMap,
@@ -461,9 +461,9 @@ class EyesafeDriver:
                                                                    raiseError=True, logError=False,minSearchTime=3)
 
             # If shipping is open, handle it here.
-            if(pageName == "ShippingOpen"):
+            if pageName == "ShippingOpen":
                 # If shipping was already entered, but is for some reason open again, try to continue from it.
-                if(shippingEnteredSuccessfully):
+                if shippingEnteredSuccessfully:
                     self.__checkout_continueFromShippingBilling()
                     # Wait until shipping is closed.
                     self.browser.searchForElement(by=By.XPATH, value=shippingAddressOpenXPath, timeout=30,
@@ -474,7 +474,7 @@ class EyesafeDriver:
                         firstName=firstName,lastName=lastName,address1=address1,
                         address2=address2,city=city,zipCode=zipCode,state=state,
                         phoneNumber=phoneNumber)
-                    if(writeShippingInfoSuccess):
+                    if writeShippingInfoSuccess:
                         shippingEnteredSuccessfully = True
                         self.__checkout_continueFromShippingBilling()
                         # Wait until shipping is closed.
@@ -485,14 +485,14 @@ class EyesafeDriver:
                     else:
                         self.__checkout_refreshCheckoutScreen()
             # If billing is open, reopen shipping to re-enter it.
-            elif(pageName == "BillingOpen"):
+            elif pageName == "BillingOpen":
                 editShippingButton = self.browser.searchForElement(by=By.XPATH, value=editShippingButtonXPath,
                                                                    testClickable=True, scrollIntoView=True)
                 self.browser.safeClick(element=editShippingButton, scrollIntoView=True, timeout=10)
                 # Trigger shipping to write again.
                 shippingEnteredSuccessfully = False
             # If the "Use Suggestion" popup is open, handle it here.
-            elif(pageName == "UseSuggestionAlert"):
+            elif pageName == "UseSuggestionAlert":
                 continueAsEnteredButtonXPath = "//span[contains(text(),'CONTINUE WITH ADDRESS AS ENTERED')]"
                 continueAsEnteredButton = self.browser.searchForElement(by=By.XPATH, value=continueAsEnteredButtonXPath,
                                                                         timeout=10, testClickable=True)
@@ -501,10 +501,10 @@ class EyesafeDriver:
                 userResponse = input(
                     f"Eyesafe is suggesting a corrected address. Press 1 to use the suggestion, and press 2 to continue with the entered address. Press anything else to cancel.")
                 # Use the suggestion.
-                if (userResponse.strip() == "1"):
+                if userResponse.strip() == "1":
                     self.browser.safeClick(element=foundElement, timeout=10, scrollIntoView=True)
                 # Continue with the entered address.
-                elif (userResponse.strip() == "2"):
+                elif userResponse.strip() == "2":
                     # This will submit the order for us.
                     self.browser.safeClick(element=continueAsEnteredButton, timeout=10, scrollIntoView=True)
                 else:
@@ -512,25 +512,52 @@ class EyesafeDriver:
                     log.error(error)
                     raise error
             # If the submit button is ready, handle that here.
-            elif(pageName == "SubmitReady"):
+            elif pageName == "SubmitReady":
                 # If shipping was entered, submit the order.
-                if(shippingEnteredSuccessfully):
+                if shippingEnteredSuccessfully:
                     # This can sometimes be intercepted by late arriving messages. If so, give it grace and don't
                     # raise error - just continue with logic.
                     print("trying to click submit")
-                    self.browser.safeClick(element=foundElement, scrollIntoView=True, timeout=15,raiseError=False)
+                    if debug:
+                        if self.browser.searchForElement(element=foundElement,testClickable=True,scrollIntoView=True,timeout=15):
+                            print("Successfully completed order in debug mode! (order has not been submitted)")
+                            return True
+                    else:
+                        self.browser.safeClick(element=foundElement, scrollIntoView=True, timeout=15,raiseError=False)
                 # If shipping wasn't entered, open it up here and continue with logic.
                 else:
                     editShippingButton = self.browser.searchForElement(by=By.XPATH,value=editShippingButtonXPath,testClickable=True,scrollIntoView=True)
                     self.browser.safeClick(element=editShippingButton,scrollIntoView=True,timeout=10)
                     time.sleep(2)
             # If the order confirmation pops up, grab it and return it!
-            elif(pageName == "OrderConfirmation"):
+            elif pageName == "OrderConfirmation":
                 orderConfirmationNumberText = foundElement.text
                 return orderConfirmationNumberText
 
-        error = RuntimeError(f"Went through more than 3 iterations of checkout logic without exiting - review process.")
+        error = RuntimeError(f"Went through more than 5 iterations of checkout logic without exiting - review process.")
         log.error(error)
         raise error
 
     #endregion === Ordering ===
+
+
+#br = Browser()
+#es = EyesafeDriver(br)
+#es.logInToEyesafe()
+#es.navToShop()
+#es.addItemToCart(itemName="Eyesafe Privacy Screen Protector for Apple iPhone 13/14")
+#es.checkOutFromCart()
+#es.checkOutAndSubmit(firstName="Jeremy",lastName="Brown",
+#                                address1="2121 Distribution Center Dr",city="Charlotte",state="North Carolina",zipCode="28269",
+#                                phoneNumber="7084341121",debug=True)
+
+
+
+
+
+
+
+
+
+
+

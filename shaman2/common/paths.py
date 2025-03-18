@@ -12,35 +12,35 @@ def validatePath(pathToValidate: Path,  # The path to actually attempt to valida
                  createMissing = False # Whether to create a directory/any subdirectories if missing
                  ):
     # Test that the path actually exists
-    if (not pathToValidate.exists()):
-        if(createMissing):
+    if not pathToValidate.exists():
+        if createMissing:
             pathToValidate.mkdir(parents=True,exist_ok=True)
-        elif(suppressErrors):
+        elif suppressErrors:
             return False
         else:
             raise ValueError(f"Path '{pathToValidate}' does not exist!")
 
     # Set up accessibility flag to be tested
     flags = 0
-    if (not readAccess):
+    if not readAccess:
         flags |= os.R_OK
-    if (not writeAccess):
+    if not writeAccess:
         flags |= os.W_OK
-    if (not execAccess):
+    if not execAccess:
         flags |= os.X_OK
     # Test accessibility of this path
-    if (not os.access(str(pathToValidate), flags)):
-        if (suppressErrors):
+    if not os.access(str(pathToValidate), flags):
+        if suppressErrors:
             return False
         else:
             raise PermissionError(f"Insufficient permissions for configured directory: {pathToValidate}")
 
     # Validate any subpaths provided
-    if (subPathsToTest):
+    if subPathsToTest:
         for subPath in subPathsToTest:
             fullSubPath = pathToValidate / subPath
-            if (not fullSubPath.exists()):
-                if (suppressErrors):
+            if not fullSubPath.exists():
+                if suppressErrors:
                     return False
                 else:
                     raise ValueError(f"File sub-structure for given path is invalid: {pathToValidate}")
@@ -94,13 +94,13 @@ class Paths:
         return self.__getitem__(pathname)
     def __getitem__(self, key):
         lowerPathname = key.lower()
-        if(lowerPathname in self.allPaths.keys()):
+        if lowerPathname in self.allPaths.keys():
             return self.allPaths[lowerPathname]["Path"]
     # Method for registering a new path with the given name, path, and options.
     def add(self,pathname,path,subPathsToTest : list = None,suppressErrors = False,createMissing=False):
-        if(pathname in self.allPaths.keys()):
+        if pathname in self.allPaths.keys():
             raise ValueError(f"Path name '{pathname}' already exists!")
-        if(type(path) is not Path):
+        if type(path) is not Path:
             path = Path(path)
         validatePath(pathToValidate=path,subPathsToTest=subPathsToTest,suppressErrors=suppressErrors,createMissing=createMissing)
         self.allPaths[pathname.lower()] = {"Path" : path}
@@ -125,7 +125,7 @@ paths["emailTemplates"] = paths["assets"] / "email_templates"
 
 # Setup workspace folder and subfolders, using setup.toml. Create a new setup.toml if it doesn't exist, defaulting
 # workspace folder to appdata folder.
-if(os.path.exists(paths["bin"] / "setup.toml")):
+if os.path.exists(paths["bin"] / "setup.toml"):
     with open(paths["bin"] / "setup.toml", "r") as f:
         setupFile = tomlkit.parse(f.read())
     workspaceFolderPath = Path(setupFile["workspaceFolderPath"]).resolve()

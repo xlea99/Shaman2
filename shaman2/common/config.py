@@ -7,7 +7,7 @@ with open(paths["config"] / "main.toml","r") as f:
 
 
 # Handle OTP generators.
-if("jumpcloudOTPCode" in mainConfig["authentication"] and mainConfig["authentication"]["jumpcloudOTPCode"].strip()):
+if "jumpcloudOTPCode" in mainConfig["authentication"] and mainConfig["authentication"]["jumpcloudOTPCode"].strip():
     jumpcloudOTP = pyotp.TOTP(mainConfig["authentication"]["jumpcloudOTPCode"].strip())
 else:
     jumpcloudOTP = None

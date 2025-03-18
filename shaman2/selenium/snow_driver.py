@@ -4,9 +4,7 @@ from selenium.webdriver.common.keys import Keys
 import time
 from shaman2.selenium.browser import Browser
 from shaman2.common.logger import log
-from shaman2.common.paths import paths
 from shaman2.common.config import mainConfig
-from shaman2.utilities.async_sound import playsoundAsync
 from shaman2.utilities.shaman_utils import convertServiceIDFormat,naturalPause
 from shaman2.data_storage.snow_storage import SnowTask
 
@@ -18,7 +16,7 @@ class SnowDriver:
         logMessage = "Initialized new SnowDriver object"
         self.browser = browserObject
 
-        if ("Snow" in self.browser.tabs.keys()):
+        if "Snow" in self.browser.tabs.keys():
             self.browser.closeTab("Snow")
             logMessage += ", and closed existing Verizon tab."
         else:
@@ -33,7 +31,7 @@ class SnowDriver:
     def logInToSnow(self):
         self.browser.switchToTab("Snow")
 
-        if("sysco.service-now" in self.browser.current_url):
+        if "sysco.service-now" in self.browser.current_url:
             return True
         else:
             self.browser.get("https://sysco.service-now.com")
@@ -100,7 +98,7 @@ class SnowDriver:
                                                                          extraElementTests=[lambda el: el.text.strip() == option])
 
             # If the menu didn't open for some reason, try the whole thing again
-            if(not(favoritesMenuItem)):
+            if not favoritesMenuItem:
                 time.sleep(1)
             else:
                 favoritesMenuItem.click()
@@ -123,17 +121,17 @@ class SnowDriver:
                                                                                       {"by": By.CSS_SELECTOR,"value": "sn-search-input-wrapper"},
                                                                                       {"by": By.CSS_SELECTOR,"value": "sn-component-workspace-global-search-typeahead"}],raiseError=True)
             clearedSearch = False
-            for i in range(5):
+            for j in range(5):
                 searchBar.clear()
                 time.sleep(1)
-                if(searchBar.get_attribute("value").strip() == ""):
+                if searchBar.get_attribute("value").strip() == "":
                     clearedSearch = True
                     break
                 else:
                     time.sleep(1)
                     continue
             # This means the page is freaking out, just refresh.
-            if(clearedSearch):
+            if clearedSearch:
                 naturalPause()
                 searchBar.send_keys(requestNumber)
                 searchBar.send_keys(Keys.ENTER)
@@ -153,7 +151,7 @@ class SnowDriver:
                                                                                       {"by": By.CSS_SELECTOR,"value": ".sn-canvas-screen > *:first-child > *:first-child"},
                                                                                       {"by": By.CSS_SELECTOR,"value": "#item-search_result_wrapper_1"},
                                                                                       {"by": By.CSS_SELECTOR,"value": "sn-component-workspace-global-search-tab"}])
-        if(exactMatch):
+        if exactMatch:
             exactMatch.click()
             naturalPause()
         # Sometimes, SNow randomly goes straight to the task. Here we test for a task frame to see if we're already there,
@@ -174,7 +172,7 @@ class SnowDriver:
     # returning true if it's already open.
     def Tasks_ScopeToTaskFrame(self):
         # Test if the previous taskFrame is still valid.
-        if(self.__lastUsedTaskFrame):
+        if self.__lastUsedTaskFrame:
             try:
                 self.browser.switch_to.frame(self.__lastUsedTaskFrame)
                 return True
@@ -218,7 +216,7 @@ class SnowDriver:
 
             # Check if there's an attached email and, if so, temporarily connect to iframe and add it to the activity.
             showEmailButton = self.browser.searchForElement(by=By.XPATH,value=f"{allActivitiesXPath}[{i+1}]//a[@action-type='show-email']")
-            if(showEmailButton):
+            if showEmailButton:
                 showEmailButton.click()
 
                 emailFrameXPath = f"{allActivitiesXPath}[{i+1}]//iframe[@class='card activity-stream-email-iframe']"
@@ -274,7 +272,7 @@ class SnowDriver:
 
         validStates = ["On Hold - With Customer","Pending","Open","Work in Progress",
                        "Closed Complete","Closed Incomplete","Closed Skipped"]
-        if(state not in validStates):
+        if state not in validStates:
             error = ValueError(f"Tried to set task's State to invalid value: '{state}'")
             log.error(error)
             raise error
@@ -291,7 +289,7 @@ class SnowDriver:
         priority = priority.strip()
 
         validPriorities = ["-- None --","1 - Critical","2 - High","3 - Moderate","4 - Low","5 - Planning"]
-        if(priority not in validPriorities):
+        if priority not in validPriorities:
             error = ValueError(f"Tried to set task's Priority to invalid value: '{priority}'")
             log.error(error)
             raise error
@@ -369,7 +367,7 @@ class SnowDriver:
                 time.sleep(1)
                 continue
 
-        if(not successfullyAddedTag):
+        if not successfullyAddedTag:
             error = RuntimeError(f"Could not add tag '{tagName}' after 5 attempts.")
             log.error(error)
             raise error
