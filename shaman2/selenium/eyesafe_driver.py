@@ -438,7 +438,7 @@ class EyesafeDriver:
 
     # Single function to handle the actual clusterfuck that is the eyesafe checkout process in an intelligent, adaptable
     # way. Assumes we're on the checkout page to start.
-    def checkOutAndSubmit(self,firstName,lastName,address1,city,state,zipCode,phoneNumber,address2=None):
+    def checkOutAndSubmit(self,firstName,lastName,address1,city,state,zipCode,phoneNumber,address2=None,debug=False):
         shippingAddressOpenXPath = "//legend[@data-test='shipping-address-heading']"
         billingAddressOpenXPath = "//legend[@data-test='billing-address-heading']"
         submitOrderReadyXPath = "//button[@id='checkout-payment-continue']"
@@ -453,7 +453,7 @@ class EyesafeDriver:
 
         # Begin loop to manage checkout logic.
         shippingEnteredSuccessfully = False
-        for i in range(3):
+        for i in range(5):
             print(f"ATTEMPT {i}")
             # First, get the current page we're on.
             foundElement, pageName = self.browser.searchForElement(by=By.XPATH, value=checkoutPagesMap,
@@ -518,7 +518,12 @@ class EyesafeDriver:
                     # This can sometimes be intercepted by late arriving messages. If so, give it grace and don't
                     # raise error - just continue with logic.
                     print("trying to click submit")
-                    self.browser.safeClick(element=foundElement, scrollIntoView=True, timeout=15,raiseError=False)
+                    if debug:
+                        if self.browser.searchForElement(element=foundElement,testClickable=True,scrollIntoView=True,timeout=15):
+                            print("Successfully completed order in debug mode! (order has not been submitted)")
+                            return True
+                    else:
+                        self.browser.safeClick(element=foundElement, scrollIntoView=True, timeout=15,raiseError=False)
                 # If shipping wasn't entered, open it up here and continue with logic.
                 else:
                     editShippingButton = self.browser.searchForElement(by=By.XPATH,value=editShippingButtonXPath,testClickable=True,scrollIntoView=True)
@@ -529,8 +534,30 @@ class EyesafeDriver:
                 orderConfirmationNumberText = foundElement.text
                 return orderConfirmationNumberText
 
-        error = RuntimeError(f"Went through more than 3 iterations of checkout logic without exiting - review process.")
+        error = RuntimeError(f"Went through more than 5 iterations of checkout logic without exiting - review process.")
         log.error(error)
         raise error
 
     #endregion === Ordering ===
+
+
+#br = Browser()
+#es = EyesafeDriver(br)
+#es.logInToEyesafe()
+#es.navToShop()
+#es.addItemToCart(itemName="Eyesafe Privacy Screen Protector for Apple iPhone 13/14")
+#es.checkOutFromCart()
+#es.checkOutAndSubmit(firstName="Jeremy",lastName="Brown",
+#                                address1="2121 Distribution Center Dr",city="Charlotte",state="North Carolina",zipCode="28269",
+#                                phoneNumber="7084341121",debug=True)
+
+
+
+
+
+
+
+
+
+
+

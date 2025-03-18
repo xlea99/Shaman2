@@ -77,6 +77,7 @@ class CimplDriver:
                 # Now, we should be on JumpCloud login screen
                 jumpcloudEmailInputXPath = "//input[@type='email']"
                 jumpcloudEmailInput = self.browser.searchForElement(by=By.XPATH,value=jumpcloudEmailInputXPath,timeout=60)
+                #self.browser.aggressiveSendKeys(jumpcloudEmailInput,mainConfig["authentication"]["jumpcloudUser"])
                 jumpcloudEmailInput.send_keys(mainConfig["authentication"]["jumpcloudUser"])
 
                 jumpcloudContinueButtonXPath = "//button[@data-automation='loginButton']"
@@ -85,6 +86,7 @@ class CimplDriver:
 
                 jumpcloudPassInputXPath = "//input[@type='password']"
                 jumpcloudPassInput = self.browser.searchForElement(by=By.XPATH, value=jumpcloudPassInputXPath,timeout=60)
+                jumpcloudPassInput.click()
                 jumpcloudPassInput.send_keys(mainConfig["authentication"]["jumpcloudPass"])
 
                 jumpcloudContinueButtonXPath = "//button[@data-automation='loginButton']"
@@ -186,12 +188,12 @@ class CimplDriver:
         workorderRowString = f"//table/tbody/tr/td/span[contains(@class,'workorder__workorder-number')][text()='{str(workorderNumber).strip()}']"
         workorderCardString = f"//workorder-card/div/div/div/span[contains(@class,'cimpl-card__clickable')][text()='{str(workorderNumber).strip()}']"
 
-        if self.browser.searchForElement(by=By.XPATH, value=workorderRowString):
+        if self.browser.searchForElement(by=By.XPATH, value=workorderRowString,timeout=4,scrollIntoView=True):
             workorderElement = self.browser.find_element(by=By.XPATH,value=workorderRowString)
             workorderElement.click()
             self.waitForLoadingScreen()
             return True
-        elif self.browser.searchForElement(by=By.XPATH, value=workorderCardString):
+        elif self.browser.searchForElement(by=By.XPATH, value=workorderCardString,timeout=4,scrollIntoView=True):
             workorderElement = self.browser.find_element(by=By.XPATH,value=workorderCardString)
             workorderElement.click()
             self.waitForLoadingScreen()

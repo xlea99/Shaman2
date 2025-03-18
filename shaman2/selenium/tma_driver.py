@@ -375,6 +375,8 @@ class TMADriver:
             self.readPage()
             usernameField = self.browser.find_element(by=By.CSS_SELECTOR,value="#ctl00_ContentPlaceHolder1_Login1_UserName")
             passwordField = self.browser.find_element(by=By.CSS_SELECTOR,value="#ctl00_ContentPlaceHolder1_Login1_Password")
+            usernameField.click()
+            passwordField.click()
             usernameField.clear()
             passwordField.clear()
             usernameField.send_keys(mainConfig["authentication"]["tmaUser"])

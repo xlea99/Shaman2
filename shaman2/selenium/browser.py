@@ -677,6 +677,21 @@ class Browser(uc.Chrome):
         actions = ActionChains(self)
         actions.move_to_element(element).perform()
 
+    # Aggressively sends keys to forms that try to block it.
+    def aggressiveSendKeys(self,element,text : str):
+        self.execute_script("""
+            let input = arguments[0];
+            let text = arguments[1];
+            
+            for (let i = 0; i < text.length; i++) {
+                let event = new KeyboardEvent('keydown', {key: text[i], bubbles: true});
+                input.dispatchEvent(event);
+                input.value += text[i];
+                let event2 = new KeyboardEvent('keyup', {key: text[i], bubbles: true});
+                input.dispatchEvent(event2);
+            }
+            """, element, text)
+
     #endregion === Utilities ===
 
 

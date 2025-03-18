@@ -75,6 +75,7 @@ class VerizonDriver:
 
                     # If we're on the username page, foundElement is our usernameField.
                     if pageName == "Username":
+                        foundElement.click()
                         foundElement.clear()
                         foundElement.send_keys(mainConfig["authentication"]["verizonUser"])
                         foundElement.send_keys(Keys.ENTER)
@@ -83,6 +84,7 @@ class VerizonDriver:
                                                       invertedSearch=True,raiseError=True)
                     # If we're on the password page, foundElement is our passwordField.
                     elif pageName == "Password":
+                        foundElement.click()
                         foundElement.clear()
                         foundElement.send_keys(mainConfig["authentication"]["verizonPass"])
                         foundElement.send_keys(Keys.ENTER)
@@ -733,15 +735,57 @@ class VerizonDriver:
     @action()
     def AccessorySelection_AddAccessoryToCart(self,accessoryID):
         targetAccessoryCardXPath = f"//app-accessory-tile/div/div/div[contains(@class,'product-name')][contains(text(),'{syscoData["Accessories"][accessoryID]["Verizon Wireless Card Name"]}')]//ancestor::div[contains(@class,'accessory-card')]"
-        targetAccessoryAddToCartButtonXPath = f"{targetAccessoryCardXPath}//button[contains(@class,'add-cart-btn')]"
-        targetAccessoryAddToCartButton = self.browser.searchForElement(by=By.XPATH,value=targetAccessoryAddToCartButtonXPath,timeout=60)
-        self.browser.safeClick(element=targetAccessoryAddToCartButton,timeout=60,scrollIntoView=True)
+        targetAccessoryCard = self.browser.searchForElement(by=By.XPATH,value=targetAccessoryCardXPath,timeout=30,testClickable=True,scrollIntoView=True)
+        targetAccessoryCard.click()
+
+        # If color is specified, handle that here.
+        colorName = syscoData["Accessories"][accessoryID]["Verizon Wireless Color"].strip()
+        if colorName:
+            currentColorHeaderXPath = "//div[normalize-space(text())='Color']/parent::div/following-sibling::div[contains(@class,'selected-value')]"
+            allColorboxOptionsXPath = "//div[contains(@class,'colorbox')]//div[@class='colorbox-button']"
+            allColorboxOptions = self.browser.find_elements(by=By.XPATH,value=allColorboxOptionsXPath)
+
+            foundColor = False
+            for colorboxOption in allColorboxOptions:
+                # First, click on this color and test if it's correct.
+                self.browser.safeClick(element=colorboxOption,timeout=20)
+                currentlySelectedColor = self.browser.searchForElement(by=By.XPATH,value=currentColorHeaderXPath,timeout=30,testClickable=True).text.strip().lower()
+                if currentlySelectedColor == colorName.lower():
+                    foundColor = True
+                    break
+                else:
+                    time.sleep(1)
+                    continue
+
+            if not foundColor:
+                log.warning(f"Supplied color '{colorName}' does not seem to exist in Verizon Wireless for the searched device!")
+                raise
+                return ActionResult(status=StatusCode.VERIZON_MISSING_COLOR)
+
+        # Click add to cart button
+        addToCartButtonXPath = "//button[contains(@class,'addToCartBtn')]"
+        addToCartButton = self.browser.searchForElement(by=By.XPATH,value=addToCartButtonXPath,timeout=30,testClickable=True,scrollIntoView=True)
+        addToCartButton.click()
+
+        time.sleep(4)
 
         # Wait for confirmation that it was added to the cart.
-        #TODO technically, it might be better to not only wait for confirmation to appear, but then to ALSO wait for
-        # it to DISAPPEAR. maybe implement?
-        addedToCartConfirmationXPath = "//div[contains(text(),'Your new accessory has been added to your cart.')]"
-        testResult = self.browser.searchForElement(by=By.XPATH,value=addedToCartConfirmationXPath,timeout=120)
+        #addedToCartConfirmationXPath = "//div[contains(text(),'Your new accessory has been added to your cart.')]"
+        #testResult = self.browser.searchForElement(by=By.XPATH,value=addedToCartConfirmationXPath,timeout=120)
+        #if testResult:
+        #    return ActionResult(status=StatusCode.SUCCESS)
+        #else:
+        #    return ActionResult(status=StatusCode.AMBIGUOUS_PAGE)
+
+        # Click the back button to return to accessories.
+        backButtonXPath = "//app-back-button//b[normalize-space(text())='Back']"
+        self.browser.safeClick(by=By.XPATH,value=backButtonXPath,timeout=30,scrollIntoView=True)
+
+        # Wait for accessories base page to load
+        shopAccessoriesHeaderXPath = "//section[contains(@class,'top-section')]//div[contains(text(),'Shop Accessories')]"
+        testResult = self.browser.searchForElement(by=By.XPATH,value=shopAccessoriesHeaderXPath,timeout=60,
+                                                   testClickable=True,testLiteralClick=True)
+
         if testResult:
             return ActionResult(status=StatusCode.SUCCESS)
         else:

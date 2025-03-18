@@ -713,11 +713,11 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
     eyesafeAccessoryIDs = validatedAccessories["EyesafeAccessoryIDs"]
 
     #TODO THIS IS TEMPORARY
-    if deviceID == "iPhone16e_128GB":
-        for accessoryID in accessoryIDs:
-            if syscoData["Accessories"][accessoryID]["Accessory Type"] != "Wall Adapter" or len(eyesafeAccessoryIDs) > 0:
-                print(f"Cimpl WO {workorderNumber}: Skipping workorder, as its for an iPhone with Accessories.")
-                return False
+    #if deviceID == "iPhone16e_128GB":
+    #    for accessoryID in accessoryIDs:
+    #        if syscoData["Accessories"][accessoryID]["Accessory Type"] != "Wall Adapter" or len(eyesafeAccessoryIDs) > 0:
+    #            print(f"Cimpl WO {workorderNumber}: Skipping workorder, as its for an iPhone with Accessories.")
+    #            return False
 
     basePlan, features = getPlansAndFeatures(deviceID=deviceID,carrier=workorder["Carrier"])
     featuresToBuildOnCarrier = []
@@ -833,13 +833,12 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
 
     # Handle ordering Eyesafe, if specified
     if eyesafeAccessoryID:
-        #TODO temporarily disabled
-        with open(paths["root"] / "eyesafe_wos_to_place.txt", "a") as f:
-            f.write(f"\n{workorderNumber}")
-            print(f"ALERT!! ALERT!! EYESAFE ORDER WO: {workorderNumber}")
-        '''if(workorder["OperationType"] == "New Request"):
+        #with open(paths["root"] / "eyesafe_wos_to_place.txt", "a") as f:
+        #    f.write(f"\n{workorderNumber}")
+        #    print(f"ALERT!! ALERT!! EYESAFE ORDER WO: {workorderNumber}")
+        if workorder["OperationType"] == "New Request":
             eyesafePhoneNumberFieldEntry = workorder['UserNetID']
-        elif(workorder["OperationType"] == "Upgrade"):
+        elif workorder["OperationType"] == "Upgrade":
             eyesafePhoneNumberFieldEntry = workorder['ServiceID']
         else:
             error = ValueError(f"Tried to place eyesafe order on a non New Install/Upgrade!")
@@ -853,7 +852,7 @@ def processPreOrderWorkorder(tmaDriver : TMADriver,cimplDriver : CimplDriver,ver
         maintenance.validateCimpl(cimplDriver)
         cimplDriver.Workorders_NavToSummaryTab()
         cimplDriver.Workorders_WriteNote(subject="Eyesafe Order Placed", noteType="Information Only", status="Completed",content=eyesafeOrderNumber)
-        log.info(f"Ordered Eyesafe device '{eyesafeAccessoryID}' per '{eyesafeOrderNumber}'")'''
+        log.info(f"Ordered Eyesafe device '{eyesafeAccessoryID}' per '{eyesafeOrderNumber}'")
 
     return True
 
@@ -1198,16 +1197,14 @@ if True:
 
 
         # Cimpl processing
-        preProcessWOs = [51157,50982, 50986, 50988, 50990, 50991, 50992,
-                         50994, 50997, 50998, 51000, 51001, 51002, 51003, 51005, 51006, 51009, 51011, 51014, 51015,
-                         51016, 51017, 51018, 51023, 51026, 51027, 51028, 51029, 51032, 51036, 51037, 51038, 51039,
-                         51040, 51044, 51045, 51046, 51047, 51048, 51049, 51050, 51051, 51052, 51053, 51054, 51055,
-                         51056, 51057, 51058, 51059, 51060, 51061, 51062, 51063, 51065, 51066, 51067, 51068, 51069,
-                         51073, 51074, 51075, 51076, 51077, 51078, 51080, 51081, 51082, 51083, 51085, 51087, 51088,
-                         51092, 51093, 51094, 51096, 51097, 51098, 51100, 51101, 51102, 51103, 51104, 51106, 51107,
-                         51108, 51109, 51110, 51111, 51112, 51113, 51114, 51115, 51116, 51118, 51119, 51120, 51121,
-                         51122, 51125, 51126, 51127, 51128, 51129, 51130, 51131, 51133, 51134, 51136, 51137, 51138,
-                         51139, 51140, 51141, 51142, 51143, 51147, 51150, 51151, 51152, 51153, 51154, 51155]
+        preProcessWOs = [51136, 51137, 51138, 51139, 51140, 51141, 51142, 51143, 51147, 51150,
+                         51151, 51152, 51153, 51154, 51155, 51156, 51159, 51161, 51162, 51164, 51169, 51170, 51171,
+                         51172, 51173, 51174, 51175, 51176, 51177, 51179, 51180, 51185, 51186, 51187, 51189, 51190,
+                         51191, 51195, 51196, 51197, 51198, 51199, 51201, 51202, 51203, 51204, 51205, 51208, 51209,
+                         51213, 51214, 51219, 51222, 51227, 51230, 51231, 51232, 51233, 51234, 51235, 51236, 51237,
+                         51238, 51239, 51240, 51241, 51242, 51244, 51245, 51246, 51247, 51255, 51256, 51257, 51258,
+                         51259, 51260, 51261, 51262, 51264]
+
 
         postProcessWOs = []
         for wo in postProcessWOs:
