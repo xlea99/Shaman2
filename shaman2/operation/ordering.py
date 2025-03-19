@@ -1184,12 +1184,7 @@ if True:
         maintenance.validateVerizon(verizonDriver=vzw)
 
         # SCTASK processing
-        preProcessSCTASKs = ["SCTASK1181790",
-                             "SCTASK1181783",
-                             "SCTASK1181778",
-                             "SCTASK1181777",
-                             "SCTASK1181776",
-                             "SCTASK1181771",
+        preProcessSCTASKs = ["SCTASK1181771",
                              "SCTASK1181769",
                              "SCTASK1181765",
                              "SCTASK1181756",
@@ -1204,7 +1199,7 @@ if True:
         postProcessSCTASKs = [] # Note that, if no postProcessSCTASKs are specified, all valid SCTASKs in the sheet will be closed. Input just "None" to NOT do this.
         for task in preProcessSCTASKs:
             processPreOrderSCTASK(tmaDriver=tma,snowDriver=snow,verizonDriver=vzw,
-                                  taskNumber=task,assignTo="Alex Somheil",reviewMode=True)
+                                  taskNumber=task,assignTo=mainConfig["snow"]["assignTo"],reviewMode=True)
         #processPostOrdersSCTASK(snowDriver=snow,verizonDriver=vzw,taskNumber=postProcessSCTASKs,useDriveSCTasks=False)
 
 
@@ -1222,7 +1217,7 @@ if True:
                                   workorderNumber=wo)
         for wo in preProcessWOs:
             processPreOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,verizonDriver=vzw,eyesafeDriver=eyesafe,
-                                  workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine="Order Placed %D",reviewMode=False)
+                                  workorderNumber=wo,referenceNumber=mainConfig["cimpl"]["referenceNumber"],subjectLine=mainConfig["cimpl"]["subjectLine"],reviewMode=False)
 
     except Exception as e:
         playsoundAsync(paths["media"] / "shaman_error.mp3")
