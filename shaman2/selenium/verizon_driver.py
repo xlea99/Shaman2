@@ -33,6 +33,13 @@ class VerizonDriver:
 
         log.info(logMessage)
 
+    #region === Common XPaths ===
+
+    shoppingCartHeaderXPath1 = "//*[normalize-space(translate(text(),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'))='shopping cart')]"
+    shoppingCartHeaderXPaths = [shoppingCartHeaderXPath1]
+
+    #endregion === Common XPaths ===
+
     #region === Site Navigation ===
 
     # This method sets the page to the Verizon log in screen, then goes through the process of
@@ -653,7 +660,7 @@ class VerizonDriver:
             foundColor = False
             for colorboxOption in allColorboxOptions:
                 # First, test if the previous selected color was correct:
-                currentlySelectedColor = self.browser.searchForElement(by=By.XPATH,value=currentColorHeaderXPath,timeout=30,testClickable=True).text.strip().lower()
+                currentlySelectedColor = self.browser.searchForElement(by=By.XPATH,value=currentColorHeaderXPath,timeout=30,testClickable=True,minSearchTime=1).text.strip().lower()
                 if currentlySelectedColor == colorName.lower():
                     foundColor = True
                     break
@@ -707,8 +714,7 @@ class VerizonDriver:
             self.browser.safeClick(element=buyNowButton,timeout=120,scrollIntoView=True)
 
             # Wait for Shopping Cart page to load to confirm successful device add
-            shoppingCartHeaderXPath = "//div[contains(@class,'device-shopping-cart-content-left')]//h1[contains(text(),'Shopping cart')]"
-            testResult = self.browser.searchForElement(by=By.XPATH,value=shoppingCartHeaderXPath,timeout=60,minSearchTime=5)
+            testResult = self.browser.searchForElement(by=By.XPATH,value=self.shoppingCartHeaderXPaths,timeout=60,minSearchTime=5)
         if testResult:
             return ActionResult(status=StatusCode.SUCCESS)
         else:
@@ -803,8 +809,7 @@ class VerizonDriver:
             testResult = self.browser.searchForElement(by=By.XPATH,value=selectPlanHeaderXPath,timeout=120,testClickable=True,testLiteralClick=True)
         else:
             # If this is an upgrade, the next page should be back on the shopping cart.
-            shoppingCartHeaderXPath = "//div[contains(@class,'device-shopping-cart-content-left')]//h1[contains(text(),'Shopping cart')]"
-            testResult = self.browser.searchForElement(by=By.XPATH,value=shoppingCartHeaderXPath,timeout=60,minSearchTime=5)
+            testResult = self.browser.searchForElement(by=By.XPATH,value=self.shoppingCartHeaderXPaths,timeout=60,minSearchTime=5)
 
         if testResult:
             return ActionResult(status=StatusCode.SUCCESS)
@@ -813,6 +818,7 @@ class VerizonDriver:
 
     # Assumes we're on the plan selection page. Given a Plan ID and a plan type,
     # selects it from this page.
+    planSelectionContinueButtonXPath = "//div/div/button[@id='stickybutton'][contains(text(),'Continue')]"
     @action()
     def PlanSelection_SelectPlan(self,planID):
         # Should start on the Plan selection page. #TODO get into the habit of checking the page before every function?
@@ -826,7 +832,7 @@ class VerizonDriver:
         self.browser.safeClick(element=targetPlanCard,timeout=60)
 
         # Wait for confirmation that the plan has been selected.
-        testResult = self.browser.searchForElement(by=By.XPATH,value="//div[contains(text(),'Continue to the next step.')]",timeout=60)
+        testResult = self.browser.searchForElement(by=By.XPATH,value=f"{self.planSelectionContinueButtonXPath}[@disabled]",timeout=60,invertedSearch=True)
         if testResult:
             return ActionResult(status=StatusCode.SUCCESS)
         else:
@@ -837,10 +843,9 @@ class VerizonDriver:
         successfullySelectedPlan = False
         # The plan selection is sometimes prone to fuckery - resolve that here.
         for i in range(5):
-            continueButtonString = "//div/div/button[@id='stickybutton'][contains(text(),'Continue')]"
-            continueButton = self.browser.searchForElement(by=By.XPATH,value=continueButtonString,timeout=60)
-            self.browser.scrollIntoView(continueButton)
-            self.browser.safeClick(element=continueButton,timeout=60)
+            planSelectionContinueButton = self.browser.searchForElement(by=By.XPATH,value=self.planSelectionContinueButtonXPath,timeout=60)
+            self.browser.scrollIntoView(planSelectionContinueButton)
+            self.browser.safeClick(element=planSelectionContinueButton,timeout=60)
 
             # We wait until the device protection header is found, meaning we went to the next page.
             testResult = self.browser.searchForElement(by=By.XPATH,value=self.deviceProtectionHeaderXPath,timeout=60,testClickable=True,testLiteralClick=True,raiseError=True)
@@ -1067,9 +1072,8 @@ class VerizonDriver:
         self.browser.safeClick(element=continueButton,timeout=30)
 
         # Test for the next page, which should be on the shopping cart.
-        shoppingCartHeaderXPath = "//div[contains(@class,'device-shopping-cart-content-left')]//h1[contains(text(),'Shopping cart')]"
         addressDoesntExistXPath = "//div[contains(text(),'The address you entered could not be validated.')]"
-        aliasDict = {shoppingCartHeaderXPath : "ShoppingCart",addressDoesntExistXPath : "AddressDoesntExist"}
+        aliasDict = {self.shoppingCartHeaderXPath1 : "ShoppingCart",addressDoesntExistXPath : "AddressDoesntExist"}
 
         foundElement,alias = self.browser.searchForElement(by=By.XPATH, value=aliasDict, timeout=60, minSearchTime=5,testClickable=True)
         if alias == "ShoppingCart":
@@ -1107,8 +1111,7 @@ class VerizonDriver:
         self.browser.safeClick(element=continueButton,timeout=30)
 
         # Test to make sure we've arrived back at the shopping cart.
-        shoppingCartHeaderXPath = "//div[contains(@class,'device-shopping-cart-content-left')]//h1[contains(text(),'Shopping cart')]"
-        testResult = self.browser.searchForElement(by=By.XPATH, value=shoppingCartHeaderXPath, timeout=60, minSearchTime=5)
+        testResult = self.browser.searchForElement(by=By.XPATH, value=self.shoppingCartHeaderXPaths, timeout=60, minSearchTime=5)
         if testResult:
             return ActionResult(status=StatusCode.SUCCESS)
         else:

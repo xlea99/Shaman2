@@ -23,9 +23,9 @@ from shaman2.utilities.misc import isNumber
 
 DEFAULT_SNOW_IPHONE = "iPhone14_128GB"
 DEFAULT_SNOW_ANDROID = "GalaxyS24_128GB"
-DEFAULT_SNOW_IPHONE_CASE = "iPhone14_Commuter"
-DEFAULT_SNOW_ANDROID_CASE = "SamsungS24_Commuter"
-DEFAULT_SNOW_CHARGER = "AppleWallAdapter"
+DEFAULT_SNOW_IPHONE_CASE = syscoData["Devices"][DEFAULT_SNOW_IPHONE]["Verizon Wireless Default Case"]
+DEFAULT_SNOW_ANDROID_CASE = syscoData["Devices"][DEFAULT_SNOW_ANDROID]["Verizon Wireless Default Case"]
+DEFAULT_SNOW_CHARGER = syscoData["Devices"][DEFAULT_SNOW_IPHONE]["Verizon Wireless AlwaysOrder Accessories"]
 
 def standardizeToDateObject(dateString,carrier):
     VERIZON_DATE_FORMAT = "%m/%d/%Y"
@@ -1175,16 +1175,32 @@ if True:
         uplandOutlook = OutlookDriver(br)
         sysOrdBoxOutlook = OutlookDriver(br)
 
-        maintenance.validateCimpl(cimplDriver=cimpl)
-        time.sleep(3)
-        playsoundAsync(paths['media'] / "shaman_attention.mp3")
-        input("Please turn off Zscaler before continuing, friend.")
+        #maintenance.validateCimpl(cimplDriver=cimpl)
+        #time.sleep(3)
+        #playsoundAsync(paths['media'] / "shaman_attention.mp3")
+        #input("Please turn off Zscaler before continuing, friend.")
 
         # Manually log in to Verizon first, just to make life easier atm
         maintenance.validateVerizon(verizonDriver=vzw)
 
         # SCTASK processing
-        preProcessSCTASKs = []
+        preProcessSCTASKs = ["SCTASK1181790",
+                             "SCTASK1181783",
+                             "SCTASK1181778",
+                             "SCTASK1181777",
+                             "SCTASK1181776",
+                             "SCTASK1181771",
+                             "SCTASK1181769",
+                             "SCTASK1181765",
+                             "SCTASK1181756",
+                             "SCTASK1181745",
+                             "SCTASK1181742",
+                             "SCTASK1181733",
+                             "SCTASK1181725",
+                             "SCTASK1181721",
+                             "SCTASK1181715",
+                             "SCTASK1181714",
+                             "SCTASK1181713"]
         postProcessSCTASKs = [] # Note that, if no postProcessSCTASKs are specified, all valid SCTASKs in the sheet will be closed. Input just "None" to NOT do this.
         for task in preProcessSCTASKs:
             processPreOrderSCTASK(tmaDriver=tma,snowDriver=snow,verizonDriver=vzw,
@@ -1197,13 +1213,7 @@ if True:
 
 
         # Cimpl processing
-        preProcessWOs = [51136, 51137, 51138, 51139, 51140, 51141, 51142, 51143, 51147, 51150,
-                         51151, 51152, 51153, 51154, 51155, 51156, 51159, 51161, 51162, 51164, 51169, 51170, 51171,
-                         51172, 51173, 51174, 51175, 51176, 51177, 51179, 51180, 51185, 51186, 51187, 51189, 51190,
-                         51191, 51195, 51196, 51197, 51198, 51199, 51201, 51202, 51203, 51204, 51205, 51208, 51209,
-                         51213, 51214, 51219, 51222, 51227, 51230, 51231, 51232, 51233, 51234, 51235, 51236, 51237,
-                         51238, 51239, 51240, 51241, 51242, 51244, 51245, 51246, 51247, 51255, 51256, 51257, 51258,
-                         51259, 51260, 51261, 51262, 51264]
+        preProcessWOs = []
 
 
         postProcessWOs = []
