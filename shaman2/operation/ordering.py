@@ -1184,18 +1184,7 @@ if True:
         maintenance.validateVerizon(verizonDriver=vzw)
 
         # SCTASK processing
-        preProcessSCTASKs = ["SCTASK1181771",
-                             "SCTASK1181769",
-                             "SCTASK1181765",
-                             "SCTASK1181756",
-                             "SCTASK1181745",
-                             "SCTASK1181742",
-                             "SCTASK1181733",
-                             "SCTASK1181725",
-                             "SCTASK1181721",
-                             "SCTASK1181715",
-                             "SCTASK1181714",
-                             "SCTASK1181713"]
+        preProcessSCTASKs = ["SCTASK1175730"]
         postProcessSCTASKs = [] # Note that, if no postProcessSCTASKs are specified, all valid SCTASKs in the sheet will be closed. Input just "None" to NOT do this.
         for task in preProcessSCTASKs:
             processPreOrderSCTASK(tmaDriver=tma,snowDriver=snow,verizonDriver=vzw,
@@ -1250,6 +1239,3 @@ if True:
 # documentTMANewInstall(tmaDriver=tma,client="Sysco",netID="",serviceNum="",installDate="",device="iPhone14_128GB",imei="",carrier="Verizon Wireless",
 #                       planFeatures=[getPlansAndFeatures(deviceID="iPhone14_128GB",carrier="Verizon Wireless")[0]])
 # documentTMAUpgrade(tmaDriver=tma,client="Sysco",serviceNum="",installDate="",device="iPhone14_128GB",imei="")
-
-
-
