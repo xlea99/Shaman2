@@ -1175,27 +1175,16 @@ if True:
         uplandOutlook = OutlookDriver(br)
         sysOrdBoxOutlook = OutlookDriver(br)
 
-        #maintenance.validateCimpl(cimplDriver=cimpl)
-        #time.sleep(3)
-        #playsoundAsync(paths['media'] / "shaman_attention.mp3")
-        #input("Please turn off Zscaler before continuing, friend.")
+        maintenance.validateCimpl(cimplDriver=cimpl)
+        time.sleep(3)
+        playsoundAsync(paths['media'] / "shaman_attention.mp3")
+        input("Please turn off Zscaler before continuing, friend.")
 
         # Manually log in to Verizon first, just to make life easier atm
         maintenance.validateVerizon(verizonDriver=vzw)
 
         # SCTASK processing
-        preProcessSCTASKs = ["SCTASK1181771",
-                             "SCTASK1181769",
-                             "SCTASK1181765",
-                             "SCTASK1181756",
-                             "SCTASK1181745",
-                             "SCTASK1181742",
-                             "SCTASK1181733",
-                             "SCTASK1181725",
-                             "SCTASK1181721",
-                             "SCTASK1181715",
-                             "SCTASK1181714",
-                             "SCTASK1181713"]
+        preProcessSCTASKs = []
         postProcessSCTASKs = [] # Note that, if no postProcessSCTASKs are specified, all valid SCTASKs in the sheet will be closed. Input just "None" to NOT do this.
         for task in preProcessSCTASKs:
             processPreOrderSCTASK(tmaDriver=tma,snowDriver=snow,verizonDriver=vzw,
@@ -1209,9 +1198,7 @@ if True:
 
         # Cimpl processing
         preProcessWOs = []
-
-
-        postProcessWOs = []
+        postProcessWOs = [51317]
         for wo in postProcessWOs:
             processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,uplandOutlookDriver=uplandOutlook,sysOrdBoxOutlookDriver=sysOrdBoxOutlook,
                                   workorderNumber=wo)
@@ -1222,7 +1209,6 @@ if True:
     except Exception as e:
         playsoundAsync(paths["media"] / "shaman_error.mp3")
         raise e
-
 
 
 
@@ -1250,6 +1236,5 @@ if True:
 # documentTMANewInstall(tmaDriver=tma,client="Sysco",netID="",serviceNum="",installDate="",device="iPhone14_128GB",imei="",carrier="Verizon Wireless",
 #                       planFeatures=[getPlansAndFeatures(deviceID="iPhone14_128GB",carrier="Verizon Wireless")[0]])
 # documentTMAUpgrade(tmaDriver=tma,client="Sysco",serviceNum="",installDate="",device="iPhone14_128GB",imei="")
-
 
 
