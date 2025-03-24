@@ -1,4 +1,5 @@
 import re
+import os
 import time
 import random
 import unicodedata
@@ -128,4 +129,17 @@ def normalizeName(name):
     # Return the normalized name
     return asciiName
 
-print(normalizeName("Jeanné"))
+def alertUser(alertType):
+    validOptions = ["error","attention","order_ready"]
+    if alertType not in validOptions:
+        raise ValueError(f'idiot, {alertType} is not a valid alertType')
+
+    targetFolderPath = paths["media"] / f"alerts/{alertType}"
+
+    alertChoiceString = random.choice(os.listdir(targetFolderPath))
+
+    playsoundAsync(targetFolderPath / alertChoiceString)
+
+
+
+
