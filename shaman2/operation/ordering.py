@@ -240,6 +240,7 @@ def readRogersOrder(uplandOutlookDriver : OutlookDriver, sysOrdBoxOutlookDriver 
     rawRogersOrderString = sysOrdBoxOutlookDriver.readOpenEmailFullContent()
     return parseRawRogersOrder(rawRogersOrderString)
 
+
 #endregion === Carrier Order Reading ===
 #region === Carrier Order Placing ===
 
@@ -1175,16 +1176,16 @@ if True:
         uplandOutlook = OutlookDriver(br)
         sysOrdBoxOutlook = OutlookDriver(br)
 
-        #maintenance.validateCimpl(cimplDriver=cimpl)
-        #time.sleep(3)
-        #playsoundAsync(paths['media'] / "shaman_attention.mp3")
-        #input("Please turn off Zscaler before continuing, friend.")
+        maintenance.validateCimpl(cimplDriver=cimpl)
+        time.sleep(3)
+        playsoundAsync(paths['media'] / "shaman_attention.mp3")
+        input("Please turn off Zscaler before continuing, friend.")
 
         # Manually log in to Verizon first, just to make life easier atm
         maintenance.validateVerizon(verizonDriver=vzw)
 
         # SCTASK processing
-        preProcessSCTASKs = ["SCTASK1175730"]
+        preProcessSCTASKs = []
         postProcessSCTASKs = [] # Note that, if no postProcessSCTASKs are specified, all valid SCTASKs in the sheet will be closed. Input just "None" to NOT do this.
         for task in preProcessSCTASKs:
             processPreOrderSCTASK(tmaDriver=tma,snowDriver=snow,verizonDriver=vzw,
@@ -1197,9 +1198,12 @@ if True:
 
 
         # Cimpl processing
-        preProcessWOs = []
-
-
+        preProcessWOs = [51503, 51505, 51506, 51508, 51511, 51520, 51522, 51523, 51524, 51525, 51526,
+                         51527, 51528, 51529, 51530, 51533, 51534, 51535, 51537, 51538, 51539, 51542, 51543, 51546,
+                         51547, 51549, 51552, 51553, 51554, 51555, 51558, 51559, 51560, 51561, 51562, 51563, 51570,
+                         51572, 51573, 51574, 51575, 51576, 51577, 51578, 51579, 51580, 51581, 51582, 51583, 51584,
+                         51585, 51586, 51587, 51588, 51589, 51590, 51591, 51592, 51593, 51594, 51597, 51598, 51599,
+                         51600, 51601]
         postProcessWOs = []
         for wo in postProcessWOs:
             processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,uplandOutlookDriver=uplandOutlook,sysOrdBoxOutlookDriver=sysOrdBoxOutlook,
@@ -1239,3 +1243,5 @@ if True:
 # documentTMANewInstall(tmaDriver=tma,client="Sysco",netID="",serviceNum="",installDate="",device="iPhone14_128GB",imei="",carrier="Verizon Wireless",
 #                       planFeatures=[getPlansAndFeatures(deviceID="iPhone14_128GB",carrier="Verizon Wireless")[0]])
 # documentTMAUpgrade(tmaDriver=tma,client="Sysco",serviceNum="",installDate="",device="iPhone14_128GB",imei="")
+
+

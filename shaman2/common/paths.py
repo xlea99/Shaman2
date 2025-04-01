@@ -141,4 +141,3 @@ paths.add(pathname="config", path=paths["workspace"] / "config", createMissing=T
 paths.add(pathname="logs", path=paths["workspace"] / "logs", createMissing=True)
 paths.add(pathname="snapshots", path=paths["logs"] / "snapshots", createMissing=True)
 
-
