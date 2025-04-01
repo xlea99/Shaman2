@@ -1198,12 +1198,7 @@ if True:
 
 
         # Cimpl processing
-        preProcessWOs = [51503, 51505, 51506, 51508, 51511, 51520, 51522, 51523, 51524, 51525, 51526,
-                         51527, 51528, 51529, 51530, 51533, 51534, 51535, 51537, 51538, 51539, 51542, 51543, 51546,
-                         51547, 51549, 51552, 51553, 51554, 51555, 51558, 51559, 51560, 51561, 51562, 51563, 51570,
-                         51572, 51573, 51574, 51575, 51576, 51577, 51578, 51579, 51580, 51581, 51582, 51583, 51584,
-                         51585, 51586, 51587, 51588, 51589, 51590, 51591, 51592, 51593, 51594, 51597, 51598, 51599,
-                         51600, 51601]
+        preProcessWOs = []
         postProcessWOs = []
         for wo in postProcessWOs:
             processPostOrderWorkorder(tmaDriver=tma,cimplDriver=cimpl,vzwDriver=vzw,bakaDriver=baka,uplandOutlookDriver=uplandOutlook,sysOrdBoxOutlookDriver=sysOrdBoxOutlook,
