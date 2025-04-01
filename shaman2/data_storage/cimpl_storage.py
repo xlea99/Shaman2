@@ -135,13 +135,16 @@ class CimplWO:
 
         # Check to ensure no duplicate device or accessory types due to a Sysco user getting a bit over-excited
         # with accessories on the order page
-        allDeviceIDs = list(set(allDeviceIDs))
+        allDeviceIDs = set(allDeviceIDs)
         allAccessoryIDs = set(allAccessoryIDs)
+
+        # Clear out any empty devices added by mistake.
+        allDeviceIDs = list({x for x in allDeviceIDs if x.strip() != ""})
 
         # At this point, there SHOULD only be one deviceID. If there's not, this order is definitely too complex
         # for the Shaman.
-        if len(allDeviceIDs) > 1:
-            error = ValueError(f"More than one deviceID present in Cimpl WO {self.vals['WONumber']}: '{allDeviceIDs}' Can't be automated ATM.")
+        if len(allDeviceIDs) != 1:
+            error = ValueError(f"More/less than one deviceID present in Cimpl WO {self.vals['WONumber']}: '{allDeviceIDs}' Can't be automated ATM.")
             log.error(error)
             raise error
         else:

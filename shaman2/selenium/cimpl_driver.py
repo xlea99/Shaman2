@@ -818,8 +818,6 @@ class CimplDriver:
             # Switch back to default scope.
             self.browser.switch_to.default_content()
 
-        playsoundAsync(paths["media"] / "shaman_attention.mp3")
-        input("HEY BUDDY. CHECK THE EMAIL.")
         # Finally, click apply.
         applyButtonString = "/html/body/div[@class='application-content']/div/div/cimpl-landing/div/div[contains(@class,'pageMain')]/div[contains(@class,'mainContent')]/ng-transclude/div/workorder-details-page/cimpl-modal-popup/div/div/div/div[contains(@class,'d-modal-popup-content')]/div[contains(@class,'cimpl-modal-popup__footer')]/div/cimpl-button/button[contains(@id,'apply-action-button')]/div/span[contains(@class,'button-label')][text()='Apply']"
         applyButtonElement = self.browser.find_element(by=By.XPATH,value=applyButtonString)
